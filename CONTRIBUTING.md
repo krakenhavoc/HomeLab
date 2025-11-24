@@ -38,23 +38,31 @@ This repository serves as a portfolio and documentation of my homelab infrastruc
 
 ### Pull Requests
 
-1. **Fork the Repository**
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/krakenhavoc/HomeLab.git
    cd HomeLab
    git checkout -b feature/your-feature-name
    ```
 
-2. **Make Your Changes**
+2. **Configure Pre-Commit**
+    ```bash
+    python -m venv <venv-name>
+    source ./<venv-name>/bin/activate
+    pip install pre-commit
+    pre-commit install
+    ```
+
+3. **Make Your Changes**
    - Follow existing code style
    - Update documentation as needed
    - Test your changes thoroughly
 
-3. **Commit Guidelines**
+4. **Commit Guidelines**
    ```bash
    git commit -m "type: brief description"
    ```
-   
+
    Commit types:
    - `feat`: New feature
    - `fix`: Bug fix
@@ -64,7 +72,7 @@ This repository serves as a portfolio and documentation of my homelab infrastruc
    - `test`: Adding tests
    - `chore`: Maintenance tasks
 
-4. **Submit Pull Request**
+5. **Submit Pull Request**
    - Provide clear description of changes
    - Reference any related issues
    - Ensure all checks pass
@@ -150,10 +158,10 @@ CONSTANT_NAME = "value"
 
 def function_name(param: str) -> bool:
     """Function docstring.
-    
+
     Args:
         param: Parameter description
-        
+
     Returns:
         Return value description
     """
@@ -171,7 +179,7 @@ resource "proxmox_vm_qemu" "web_server" {
   # Group related settings
   name        = "web-server-01"
   target_node = var.proxmox_node
-  
+
   # Comment complex configurations
   # This enables cloud-init for automated setup
   os_type = "cloud-init"
@@ -193,21 +201,21 @@ variable "vm_count" {
 - name: Install and configure Nginx
   hosts: web_servers
   become: yes
-  
+
   tasks:
     # Group related tasks
     - name: Install Nginx
       apt:
         name: nginx
         state: present
-    
+
     # Use handlers for service restarts
     - name: Copy Nginx config
       template:
         src: nginx.conf.j2
         dest: /etc/nginx/nginx.conf
       notify: Reload Nginx
-  
+
   handlers:
     - name: Reload Nginx
       service:
