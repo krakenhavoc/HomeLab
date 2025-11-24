@@ -15,19 +15,21 @@ This repository contains documentation, diagrams, and code for my homelab enviro
 
 ```
 HomeLab/
-├── docs/                    # Documentation and guides
-├── diagrams/                # Network and infrastructure diagrams
+├── .github/
+│   ├── workflows/          # GitHub action pipelines
+├── docs/                   # Documentation and guides
+├── diagrams/               # Network and infrastructure diagrams
 │   ├── network/            # Network topology diagrams
 │   └── infrastructure/     # Infrastructure architecture diagrams
-├── terraform/               # Infrastructure as Code (Terraform)
+├── terraform/              # Infrastructure as Code (Terraform)
 │   ├── network/            # Network infrastructure
 │   ├── compute/            # Compute resources
 │   └── storage/            # Storage configurations
-├── ansible/                 # Configuration management
+├── ansible/                # Configuration management
 │   ├── playbooks/          # Ansible playbooks
 │   ├── roles/              # Custom roles
 │   └── inventory/          # Inventory files
-└── scripts/                 # Utility scripts and automation
+└── scripts/                # Utility scripts and automation
     ├── backup/             # Backup scripts
     ├── monitoring/         # Monitoring scripts
     └── deployment/         # Deployment automation
@@ -38,7 +40,7 @@ HomeLab/
 - **Virtualization**: Proxmox, Docker, Kubernetes
 - **Infrastructure as Code**: Terraform
 - **Configuration Management**: Ansible
-- **Networking**: VLANs, pfSense, UniFi
+- **Networking**: VLANs, OpnSense, UniFi
 - **Monitoring**: Prometheus, Grafana
 - **Storage**: NAS, ZFS
 - **Scripting**: Bash, Python
