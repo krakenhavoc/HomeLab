@@ -102,7 +102,9 @@ temp/
 *.backup
 *.bak
 *.old
-backup/
+/backup/
+/backups/
+**/backup-data/
 
 # Documentation build artifacts
 _site/
