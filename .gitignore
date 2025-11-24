@@ -1,0 +1,123 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Ansible
+*.retry
+.vault_pass
+.vault_password
+ansible.log
+*.pyc
+__pycache__/
+
+# Environment & Secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+.secrets/
+
+# Operating Systems
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+.project
+.classpath
+.settings/
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+*.log
+logs/
+log/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.backup
+*.bak
+*.old
+/backup/
+/backups/
+**/backup-data/
+
+# Documentation build artifacts
+_site/
+.sass-cache/
+.jekyll-metadata
+
+# Custom local config
+local/
+*.local
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
