@@ -53,7 +53,7 @@ variable "vlan_config" {
     subnet      = string
     description = string
   }))
-  
+
   default = {
     management = {
       id          = 1

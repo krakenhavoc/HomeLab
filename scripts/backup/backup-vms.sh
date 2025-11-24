@@ -96,7 +96,7 @@ check_backup_dir() {
             mkdir -p "$BACKUP_DIR" || error_exit "Failed to create backup directory"
         fi
     fi
-    
+
     if [[ "$DRY_RUN" == false ]]; then
         if [[ ! -w "$BACKUP_DIR" ]]; then
             error_exit "Backup directory is not writable: $BACKUP_DIR"
@@ -113,14 +113,14 @@ backup_vm() {
     local vm_id="$1"
     local timestamp=$(date +"$DATE_FORMAT")
     local backup_file="${BACKUP_DIR}/vzdump-qemu-${vm_id}-${timestamp}.vma.zst"
-    
+
     log_info "Starting backup of VM ${vm_id}..."
-    
+
     if [[ "$DRY_RUN" == true ]]; then
         log_info "[DRY RUN] Would backup VM ${vm_id} to ${backup_file}"
         return 0
     fi
-    
+
     if vzdump "$vm_id" \
         --storage "$BACKUP_DIR" \
         --mode snapshot \
@@ -137,27 +137,27 @@ backup_vm() {
 
 cleanup_old_backups() {
     log_info "Cleaning up backups older than ${RETENTION_DAYS} days..."
-    
+
     if [[ "$DRY_RUN" == true ]]; then
         log_info "[DRY RUN] Would delete backups older than ${RETENTION_DAYS} days"
         find "$BACKUP_DIR" -name "vzdump-*.vma.zst" -mtime +"$RETENTION_DAYS" -ls
         return 0
     fi
-    
+
     local deleted_count=0
     while IFS= read -r -d '' backup_file; do
         log_info "Deleting old backup: $backup_file"
         rm -f "$backup_file"
         ((deleted_count++))
     done < <(find "$BACKUP_DIR" -name "vzdump-*.vma.zst" -mtime +"$RETENTION_DAYS" -print0)
-    
+
     log_info "Deleted $deleted_count old backup(s)"
 }
 
 send_notification() {
     local status="$1"
     local message="$2"
-    
+
     # Placeholder for notification system
     # Could integrate with email, Slack, Discord, etc.
     log_info "Notification: [$status] $message"
@@ -167,17 +167,17 @@ main() {
     log_info "VM Backup Script Started"
     log_info "Backup Directory: $BACKUP_DIR"
     log_info "Retention Period: $RETENTION_DAYS days"
-    
+
     if [[ "$DRY_RUN" == true ]]; then
         log_warn "Running in DRY RUN mode - no changes will be made"
     fi
-    
+
     # Check dependencies
     check_dependencies
-    
+
     # Check backup directory
     check_backup_dir
-    
+
     # Get VMs to backup
     local vm_list=()
     if [[ ${#VM_IDS[@]} -eq 0 ]]; then
@@ -186,13 +186,13 @@ main() {
     else
         vm_list=("${VM_IDS[@]}")
     fi
-    
+
     log_info "VMs to backup: ${vm_list[*]}"
-    
+
     # Backup each VM
     local success_count=0
     local fail_count=0
-    
+
     for vm_id in "${vm_list[@]}"; do
         if backup_vm "$vm_id"; then
             ((success_count++))
@@ -200,16 +200,16 @@ main() {
             ((fail_count++))
         fi
     done
-    
+
     # Cleanup old backups
     cleanup_old_backups
-    
+
     # Summary
     log_info "Backup Summary:"
     log_info "  Total VMs: ${#vm_list[@]}"
     log_info "  Successful: $success_count"
     log_info "  Failed: $fail_count"
-    
+
     # Send notification
     if [[ $fail_count -eq 0 ]]; then
         send_notification "SUCCESS" "All VM backups completed successfully"

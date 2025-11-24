@@ -109,9 +109,9 @@ EOF
 
 main() {
     log "INFO" "Script started"
-    
+
     # Main logic here
-    
+
     log "INFO" "Script completed successfully"
 }
 
@@ -170,7 +170,7 @@ send_notification() {
     local title="$1"
     local message="$2"
     local priority="${3:-normal}"
-    
+
     # Send to various notification channels
     # Email, Slack, Discord, etc.
 }
@@ -258,42 +258,42 @@ def parse_arguments():
         description='Script description',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    
+
     parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         help='Enable verbose output'
     )
-    
+
     parser.add_argument(
         '-d', '--dry-run',
         action='store_true',
         help='Perform dry run'
     )
-    
+
     return parser.parse_args()
 
 
 def main():
     """Main function"""
     args = parse_arguments()
-    
+
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-    
+
     logger.info("Script started")
-    
+
     try:
         # Main logic here
         pass
-        
+
     except ScriptException as e:
         logger.error(f"Script error: {e}")
         return 1
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         return 1
-    
+
     logger.info("Script completed successfully")
     return 0
 

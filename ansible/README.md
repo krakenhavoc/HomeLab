@@ -124,9 +124,9 @@ import json
 import sys
 from proxmoxer import ProxmoxAPI
 
-proxmox = ProxmoxAPI('proxmox.homelab.local', 
-                     user='ansible@pam', 
-                     token_name='ansible', 
+proxmox = ProxmoxAPI('proxmox.homelab.local',
+                     user='ansible@pam',
+                     token_name='ansible',
                      token_value='secret')
 
 inventory = {
@@ -154,14 +154,14 @@ print(json.dumps(inventory))
 - name: Setup new server
   hosts: all
   become: yes
-  
+
   tasks:
     - name: Update apt cache
       apt:
         update_cache: yes
         cache_valid_time: 3600
       when: ansible_os_family == "Debian"
-    
+
     - name: Install essential packages
       apt:
         name:
@@ -172,15 +172,15 @@ print(json.dumps(inventory))
           - net-tools
           - python3-pip
         state: present
-    
+
     - name: Configure timezone
       timezone:
         name: America/New_York
-    
+
     - name: Set hostname
       hostname:
         name: "{{ inventory_hostname }}"
-    
+
     - name: Configure SSH
       lineinfile:
         path: /etc/ssh/sshd_config
@@ -190,7 +190,7 @@ print(json.dumps(inventory))
         - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
         - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
       notify: Restart SSH
-    
+
     - name: Setup firewall
       ufw:
         rule: "{{ item.rule }}"
@@ -199,11 +199,11 @@ print(json.dumps(inventory))
       loop:
         - { rule: 'allow', port: '22', proto: 'tcp' }
         - { rule: 'allow', port: '443', proto: 'tcp' }
-    
+
     - name: Enable firewall
       ufw:
         state: enabled
-  
+
   handlers:
     - name: Restart SSH
       service:
@@ -220,7 +220,7 @@ print(json.dumps(inventory))
 - name: Install Docker
   hosts: docker_hosts
   become: yes
-  
+
   tasks:
     - name: Install dependencies
       apt:
@@ -231,17 +231,17 @@ print(json.dumps(inventory))
           - gnupg
           - lsb-release
         state: present
-    
+
     - name: Add Docker GPG key
       apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-    
+
     - name: Add Docker repository
       apt_repository:
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
-    
+
     - name: Install Docker
       apt:
         name:
@@ -251,13 +251,13 @@ print(json.dumps(inventory))
           - docker-compose-plugin
         state: present
         update_cache: yes
-    
+
     - name: Add user to docker group
       user:
         name: "{{ ansible_user }}"
         groups: docker
         append: yes
-    
+
     - name: Enable Docker service
       systemd:
         name: docker
@@ -274,12 +274,12 @@ print(json.dumps(inventory))
 - name: Deploy application
   hosts: web_servers
   become: yes
-  
+
   vars:
     app_name: myapp
     app_port: 8080
     app_dir: /opt/{{ app_name }}
-  
+
   tasks:
     - name: Create application directory
       file:
@@ -288,7 +288,7 @@ print(json.dumps(inventory))
         owner: www-data
         group: www-data
         mode: '0755'
-    
+
     - name: Copy application files
       copy:
         src: "{{ item }}"
@@ -299,25 +299,25 @@ print(json.dumps(inventory))
         - app.py
         - requirements.txt
       notify: Restart application
-    
+
     - name: Install Python dependencies
       pip:
         requirements: "{{ app_dir }}/requirements.txt"
         virtualenv: "{{ app_dir }}/venv"
-    
+
     - name: Configure systemd service
       template:
         src: templates/app.service.j2
         dest: /etc/systemd/system/{{ app_name }}.service
       notify: Restart application
-    
+
     - name: Enable application service
       systemd:
         name: "{{ app_name }}"
         enabled: yes
         state: started
         daemon_reload: yes
-  
+
   handlers:
     - name: Restart application
       systemd:

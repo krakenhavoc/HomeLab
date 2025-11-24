@@ -100,13 +100,13 @@ done
 
 deploy_docker_compose() {
     local compose_file=$1
-    
+
     # Pull latest images
     docker-compose -f "$compose_file" pull
-    
+
     # Deploy services
     docker-compose -f "$compose_file" up -d
-    
+
     # Verify deployment
     docker-compose -f "$compose_file" ps
 }
@@ -120,10 +120,10 @@ deploy_docker_compose() {
 deploy_stack() {
     local stack_name=$1
     local compose_file=$2
-    
+
     # Deploy stack
     docker stack deploy -c "$compose_file" "$stack_name"
-    
+
     # Wait for services
     docker stack services "$stack_name"
 }
@@ -138,13 +138,13 @@ deploy_stack() {
 
 deploy_k8s_app() {
     local manifest_dir=$1
-    
+
     # Apply configurations
     kubectl apply -f "$manifest_dir/"
-    
+
     # Wait for rollout
     kubectl rollout status deployment/myapp
-    
+
     # Verify pods
     kubectl get pods -l app=myapp
 }
@@ -158,15 +158,15 @@ deploy_k8s_app() {
 deploy_helm_chart() {
     local chart_name=$1
     local release_name=$2
-    
+
     # Update helm repos
     helm repo update
-    
+
     # Install/upgrade chart
     helm upgrade --install "$release_name" "$chart_name" \
         --values values.yaml \
         --namespace production
-    
+
     # Verify release
     helm status "$release_name"
 }
@@ -213,7 +213,7 @@ wait_for_healthy() {
     local url=$1
     local max_attempts=30
     local attempt=0
-    
+
     while [[ $attempt -lt $max_attempts ]]; do
         if curl -f -s "$url/health" > /dev/null; then
             echo "Service is healthy"
@@ -222,7 +222,7 @@ wait_for_healthy() {
         ((attempt++))
         sleep 10
     done
-    
+
     echo "Service failed to become healthy"
     return 1
 }
@@ -233,13 +233,13 @@ wait_for_healthy() {
 ```bash
 check_service_health() {
     local service=$1
-    
+
     # Check if running
     systemctl is-active --quiet "$service" || return 1
-    
+
     # Check if responsive
     curl -f -s http://localhost:8080/health || return 1
-    
+
     return 0
 }
 ```
@@ -252,21 +252,21 @@ check_service_health() {
 deploy_with_rollback() {
     local version=$1
     local previous_version=$(get_current_version)
-    
+
     # Deploy new version
     if ! deploy_version "$version"; then
         echo "Deployment failed, rolling back..."
         deploy_version "$previous_version"
         return 1
     fi
-    
+
     # Verify health
     if ! wait_for_healthy; then
         echo "Health check failed, rolling back..."
         deploy_version "$previous_version"
         return 1
     fi
-    
+
     echo "Deployment successful"
     return 0
 }
@@ -278,18 +278,18 @@ deploy_with_rollback() {
 rollback_service() {
     local service=$1
     local target_version=$2
-    
+
     echo "Rolling back $service to version $target_version"
-    
+
     # Stop current version
     stop_service "$service"
-    
+
     # Deploy previous version
     deploy_version "$service" "$target_version"
-    
+
     # Start service
     start_service "$service"
-    
+
     # Verify
     verify_service "$service"
 }
@@ -302,19 +302,19 @@ rollback_service() {
 ```bash
 pre_deployment_checks() {
     echo "Running pre-deployment checks..."
-    
+
     # Check dependencies
     check_dependencies || return 1
-    
+
     # Validate configuration
     validate_config || return 1
-    
+
     # Check resources
     check_resources || return 1
-    
+
     # Verify connectivity
     check_connectivity || return 1
-    
+
     echo "All pre-deployment checks passed"
     return 0
 }
@@ -327,19 +327,19 @@ pre_deployment_checks() {
 ```bash
 post_deployment_verification() {
     echo "Running post-deployment verification..."
-    
+
     # Health checks
     verify_health || return 1
-    
+
     # Smoke tests
     run_smoke_tests || return 1
-    
+
     # Performance checks
     check_performance || return 1
-    
+
     # Notify success
     send_notification "Deployment successful"
-    
+
     return 0
 }
 ```
@@ -360,7 +360,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Run deployment script
         run: ./scripts/deployment/deploy-service.sh
         env:
@@ -387,13 +387,13 @@ deploy:
 ```bash
 track_deployment() {
     local start_time=$(date +%s)
-    
+
     # Perform deployment
     deploy_application
-    
+
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
-    
+
     # Send metrics to Prometheus
     echo "deployment_duration_seconds $duration" | \
         curl --data-binary @- http://pushgateway:9091/metrics/job/deployment
@@ -407,11 +407,11 @@ track_deployment() {
 ```bash
 deploy_with_backup() {
     local service=$1
-    
+
     # Create backup
     echo "Creating backup..."
     backup_service "$service"
-    
+
     # Deploy
     if deploy_service "$service"; then
         echo "Deployment successful"

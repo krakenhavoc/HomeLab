@@ -96,7 +96,7 @@ groups:
           severity: critical
         annotations:
           summary: "High CPU usage detected"
-      
+
       - alert: DiskSpaceLow
         expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
         for: 5m
@@ -252,7 +252,7 @@ vnstat -i eth0
 send_alert() {
     local severity=$1
     local message=$2
-    
+
     # Send to appropriate channels based on severity
     case $severity in
         critical)

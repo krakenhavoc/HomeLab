@@ -374,6 +374,6 @@ source /secure/path/.env
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: 2025-11  
+**Document Version**: 1.0
+**Last Updated**: 2025-11
 **Next Review**: Quarterly

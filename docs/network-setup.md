@@ -26,7 +26,7 @@ The homelab network is segmented into multiple VLANs for security and organizati
   - Handles routing between VLANs
   - Firewall rules and security policies
   - VPN access for remote management
-  
+
 - **Switch**: Managed Layer 3 Switch
   - VLAN trunking and routing
   - Port-based VLAN assignment

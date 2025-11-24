@@ -124,7 +124,7 @@ variable "vm_count" {
 ```hcl
 module "web_servers" {
   source = "./modules/vm"
-  
+
   count         = 3
   vm_name       = "web-server"
   cpu_cores     = 2

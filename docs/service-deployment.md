@@ -63,11 +63,11 @@ services:
   - Prometheus for metrics
   - Grafana for visualization
   - Alertmanager for notifications
-  
+
 - **Logging Stack**
   - Loki for log aggregation
   - Promtail for log collection
-  
+
 - **Ingress**
   - Traefik ingress controller
   - Cert-manager for TLS certificates

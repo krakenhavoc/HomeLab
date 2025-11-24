@@ -27,7 +27,7 @@ Manages compute infrastructure:
 ```hcl
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     proxmox = {
       source  = "telmate/proxmox"
@@ -58,7 +58,7 @@ resource "proxmox_vm_qemu" "web_server" {
   name        = "web-server-${count.index + 1}"
   target_node = var.proxmox_node
   clone       = "ubuntu-2204-template"
-  
+
   # VM Settings
   agent       = 1
   cores       = 2
@@ -67,14 +67,14 @@ resource "proxmox_vm_qemu" "web_server" {
   memory      = 4096
   scsihw      = "virtio-scsi-pci"
   bootdisk    = "scsi0"
-  
+
   # Network
   network {
     bridge = "vmbr0"
     model  = "virtio"
     tag    = 10  # Server VLAN
   }
-  
+
   # Disk
   disk {
     size    = "50G"
@@ -82,15 +82,15 @@ resource "proxmox_vm_qemu" "web_server" {
     storage = "local-zfs"
     iothread = 1
   }
-  
+
   # Cloud-init
   os_type    = "cloud-init"
   ipconfig0  = "ip=192.168.10.${10 + count.index}/24,gw=192.168.10.1"
   nameserver = "192.168.1.2"
-  
+
   # SSH Keys
   sshkeys = var.ssh_public_key
-  
+
   lifecycle {
     ignore_changes = [
       network,
@@ -106,7 +106,7 @@ resource "proxmox_vm_qemu" "database_server" {
   name        = "db-server-01"
   target_node = "pve-node-01"
   clone       = "ubuntu-2204-template"
-  
+
   # High-performance settings
   agent       = 1
   cores       = 4
@@ -114,7 +114,7 @@ resource "proxmox_vm_qemu" "database_server" {
   cpu         = "host"
   memory      = 16384
   balloon     = 0  # Disable ballooning for databases
-  
+
   # Multiple disks
   disk {
     size     = "100G"
@@ -123,7 +123,7 @@ resource "proxmox_vm_qemu" "database_server" {
     iothread = 1
     cache    = "writethrough"
   }
-  
+
   disk {
     size     = "500G"
     type     = "scsi"
@@ -131,7 +131,7 @@ resource "proxmox_vm_qemu" "database_server" {
     iothread = 1
     cache    = "writethrough"
   }
-  
+
   # Network with multiple interfaces
   network {
     bridge   = "vmbr0"
@@ -139,22 +139,22 @@ resource "proxmox_vm_qemu" "database_server" {
     tag      = 10
     firewall = true
   }
-  
+
   network {
     bridge   = "vmbr1"
     model    = "virtio"
     tag      = 100  # Storage network
     firewall = false
   }
-  
+
   # Cloud-init configuration
   os_type    = "cloud-init"
   ipconfig0  = "ip=192.168.10.20/24,gw=192.168.10.1"
   ipconfig1  = "ip=10.0.100.20/24"
   nameserver = "192.168.1.2,1.1.1.1"
-  
+
   sshkeys = var.ssh_public_key
-  
+
   # Custom cloud-init
   cicustom = "user=local:snippets/db-cloud-init.yml"
 }
@@ -168,29 +168,29 @@ resource "proxmox_vm_qemu" "database_server" {
 resource "proxmox_vm_qemu" "ubuntu_template" {
   name        = "ubuntu-2204-template"
   target_node = var.proxmox_node
-  
+
   # Template settings
   template    = true
-  
+
   # Download cloud image
   iso         = "local:iso/ubuntu-22.04-server-cloudimg-amd64.img"
-  
+
   cores       = 2
   memory      = 2048
-  
+
   disk {
     size    = "32G"
     type    = "scsi"
     storage = "local-zfs"
   }
-  
+
   network {
     bridge = "vmbr0"
     model  = "virtio"
   }
-  
+
   os_type = "cloud-init"
-  
+
   lifecycle {
     prevent_destroy = true
   }
@@ -241,7 +241,7 @@ variable "web_server_count" {
   description = "Number of web servers"
   type        = number
   default     = 3
-  
+
   validation {
     condition     = var.web_server_count > 0 && var.web_server_count <= 10
     error_message = "Web server count must be between 1 and 10."
@@ -255,7 +255,7 @@ variable "vm_defaults" {
     memory  = number
     storage = string
   })
-  
+
   default = {
     cores   = 2
     memory  = 4096
@@ -347,15 +347,15 @@ resource "proxmox_vm_qemu" "vm" {
   name        = var.vm_name
   target_node = var.proxmox_node
   clone       = "ubuntu-2204-template"
-  
+
   cores       = var.cores
   memory      = var.memory
-  
+
   disk {
     size    = var.disk_size
     storage = "local-zfs"
   }
-  
+
   network {
     bridge = "vmbr0"
     tag    = var.vlan_tag
@@ -372,7 +372,7 @@ Use the module:
 ```hcl
 module "app_servers" {
   source = "./modules/vm"
-  
+
   count     = 3
   vm_name   = "app-server-${count.index + 1}"
   cores     = 4
