@@ -3,7 +3,7 @@
 # Script: backup-vms.sh
 # Description: Automated VM backup script for Proxmox
 # Author: HomeLab Administrator
-# Date: 2025-11
+# Date: 2025-11-24
 # Usage: ./backup-vms.sh [options]
 
 set -euo pipefail
