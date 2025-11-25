@@ -1,0 +1,35 @@
+name: Terraform CI
+permissions:
+    contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  terraform:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+
+    - name: Terraform Init
+      run: |
+        cd terraform
+        terraform init -input=false
+
+    #   - name: Terraform Plan
+    #     run: terraform plan -input=false -out tfplan
+
+    #   - name: Terraform Apply
+    #     if: github.ref == 'refs/heads/main'
+    #     run: terraform apply -input=false tfplan
