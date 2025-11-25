@@ -20,6 +20,16 @@ This directory contains network topology diagrams for the homelab infrastructure
 
 ## Creating Diagrams
 
+### Using Mermaid.js
+
+1. Pull and run latest [mmd-cli](https://github.com/mermaid-js/mermaid-cli) with
+
+```bash
+docker run --rm -u `id -u`:`id -g` \
+-v $(pwd):/data minlag/mermaid-cli \
+-i <file-name>.mmd --icon-packs "@iconify-json/material-symbols""
+```
+
 ### Using draw.io
 
 1. Visit https://app.diagrams.net/
@@ -28,7 +38,7 @@ This directory contains network topology diagrams for the homelab infrastructure
 4. Export as PNG for documentation
 5. Save .drawio file for future edits
 
-### Using PlantUML
+### Using PlantUML - THIS IS BEING DEPRECATED - TO BE REMOVED
 
 ```plantuml
 @startuml Network Topology
@@ -59,17 +69,17 @@ node "Access Points" {
 ```
 Internet
   |
-  |--- [ISP Modem]
+  |--- [ISP ONT]
          |
-         |--- [pfSense Router/Firewall]
+         |--- [OPNsense Router/Firewall]
                 |
                 |--- [Core L3 Switch]
                        |
-                       |--- VLAN 1 (Management)
-                       |--- VLAN 10 (Servers)
-                       |--- VLAN 20 (IoT)
-                       |--- VLAN 30 (Guest)
-                       |--- VLAN 40 (Lab)
+                       |--- VLAN 1   (Mgmt)
+                       |--- VLAN 10  (DNS)
+                       |--- VLAN 20  (Lab)
+                       |--- VLAN 100 (Home)
+                       |--- VLAN 101 (IOT)
                        |
                        |--- [Access Points]
                        |--- [Server Rack]

@@ -1,0 +1,21 @@
+%% Requires Mermaid v10+ with architecture-beta enabled in renderer
+
+%%{init: {'securityLevel':'loose'}}%%
+architecture-beta
+
+    service ext(internet)[Internet]
+    service hub(material-symbols:settings-ethernet-rounded)[HUB]
+    service iot(material-symbols:settings-ethernet-rounded)[IOT]
+    service dns(material-symbols:settings-ethernet-rounded)[DNS]
+    service hib(material-symbols:settings-ethernet-rounded)[HIB]
+    service hom(material-symbols:settings-ethernet-rounded)[HOM]
+    service gst(material-symbols:settings-ethernet-rounded)[GST]
+    service wrk(material-symbols:settings-ethernet-rounded)[WRK]
+
+    ext:B -- T:hub
+    dns:R -- L:hub
+    hub:R -- L:iot
+    hib:T -- B:hub
+    gst:R -- L:hib
+    hom:T -- B:hib
+    wrk:L -- R:hib
