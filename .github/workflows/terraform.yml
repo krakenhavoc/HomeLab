@@ -18,6 +18,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.pull_request.head.ref }}
 
     - name: Set up Node.js
       uses: actions/setup-node@v6
@@ -31,7 +33,7 @@ jobs:
 
     - name: Terraform Init
       run: |
-        cd terraform
+        cd terraform/deployments/home-lab
         terraform init -input=false
 
     #   - name: Terraform Plan
