@@ -1,6 +1,6 @@
 name: Terraform CI
 permissions:
-    contents: read
+  contents: read
 
 on:
   push:
@@ -11,6 +11,9 @@ on:
 jobs:
   terraform:
     runs-on: self-hosted
+    env:
+      PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
+      PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
 
     steps:
     - name: Checkout code
@@ -25,7 +28,6 @@ jobs:
       uses: hashicorp/setup-terraform@v3
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
-
 
     - name: Terraform Init
       run: |
