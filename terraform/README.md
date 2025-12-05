@@ -19,16 +19,20 @@ terraform/
 
 ## Getting Started
 
-### Install Terraform
+### Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
 
 ```bash
 # macOS
-brew install terraform
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
 
-# Linux
-wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
-unzip terraform_1.6.0_linux_amd64.zip
-sudo mv terraform /usr/local/bin/
+# Linux (Ubuntu/Debian)
+curl -fsSL https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/main/terraform/install.sh | bash
+```
+
+```ps
+# Windows
+choco install terraform
 ```
 
 ### Verify Installation
