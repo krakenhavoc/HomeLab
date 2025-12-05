@@ -14,6 +14,7 @@ jobs:
     env:
       PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
       PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
+      TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
 
     steps:
     - name: Checkout code
@@ -36,8 +37,11 @@ jobs:
         cd terraform/deployments/home-lab
         terraform init -input=false
 
-    #   - name: Terraform Plan
-    #     run: terraform plan -input=false -out tfplan
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: terraform plan -input=false -out tfplan
 
     #   - name: Terraform Apply
     #     if: github.ref == 'refs/heads/main'

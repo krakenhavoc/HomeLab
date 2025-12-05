@@ -1,5 +1,5 @@
 resource "proxmox_vm_qemu" "cloudinit-example" {
-  vmid             = 100
+  vmid             = 102
   name             = "test-terraform0"
   target_node      = "pve"
   agent            = 1
@@ -20,8 +20,7 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   ipconfig0  = "ip=dhcp1,ip6=dhcp"
   skip_ipv6  = true
   ciuser     = "root"
-  cipassword = "replace-me"
-  sshkeys    = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/Pjg7YXZ8Yau9heCc4YWxFlzhThnI+IhUx2hLJRxYE Cloud-Init@Terraform"
+  cipassword = var.cloudinit-example_root-password
 
   # Most cloud-init images require a serial device for their display
   serial {
@@ -33,9 +32,9 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
       scsi0 {
         # We have to specify the disk from our template, else Terraform will think it's not supposed to be there
         disk {
-          storage = "local-lvm"
+          storage = "hdd_894g_thin"
           # The size of the disk should be at least as big as the disk in the template. If it's smaller, the disk will be recreated
-          size = "2G"
+          size = "15G"
         }
       }
     }
