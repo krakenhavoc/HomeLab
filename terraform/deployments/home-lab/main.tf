@@ -3,7 +3,6 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   name             = "test-terraform0"
   target_node      = "pve"
   agent            = 1
-  cores            = 2
   memory           = 1024
   boot             = "order=scsi0"        # has to be the same as the OS disk of the template
   clone            = "ubuntu24-cloudinit" # The name of the template
@@ -11,14 +10,17 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   vm_state         = "running"
   automatic_reboot = true
 
+  cpu {
+    cores = 2
+  }
   # Cloud-Init configuration
   cicustom   = "vendor=local:snippets/qemu-guest-agent.yml" # /var/lib/vz/snippets/qemu-guest-agent.yml
   ciupgrade  = true
   nameserver = "1.1.1.1 8.8.8.8"
-  ipconfig0  = "ip=192.168.1.10/24,gw=192.168.1.1,ip6=dhcp"
+  ipconfig0  = "ip=dhcp1,ip6=dhcp"
   skip_ipv6  = true
   ciuser     = "root"
-  cipassword = "Enter123!"
+  cipassword = "replace-me"
   sshkeys    = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIE/Pjg7YXZ8Yau9heCc4YWxFlzhThnI+IhUx2hLJRxYE Cloud-Init@Terraform"
 
   # Most cloud-init images require a serial device for their display
