@@ -33,14 +33,15 @@ jobs:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
     - name: Terraform Init
-      run: |
-        cd terraform/deployments/home-lab
-        terraform init -input=false
+      working-directory: terraform/deployments/home-lab
+      run: terraform init -input=false
 
     - name: Terraform Validate
+      working-directory: terraform/deployments/home-lab
       run: terraform validate
 
     - name: Terraform Plan
+      working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -out tfplan
 
     #   - name: Terraform Apply
