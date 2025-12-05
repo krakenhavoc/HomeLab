@@ -19,7 +19,5 @@ repos:
     files: ^terraform/.*\.tf$
   - id: terraform_tflint
     files: ^terraform/.*\.tf$
-  - id: terraform_docs
-    files: ^terraform/.*\.tf$
   - id: terraform_trivy
     files: ^terraform/.*\.tf$
