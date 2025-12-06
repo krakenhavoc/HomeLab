@@ -17,7 +17,7 @@ resource "proxmox_vm_qemu" "cloudinit-example" {
   cicustom   = "vendor=local:snippets/qemu-guest-agent.yml" # /var/lib/vz/snippets/qemu-guest-agent.yml
   ciupgrade  = true
   nameserver = "1.1.1.1 8.8.8.8"
-  ipconfig0  = "ip=dhcp1,ip6=dhcp"
+  ipconfig0  = "ip=dhcp"
   skip_ipv6  = true
   ciuser     = "root"
   cipassword = var.cloudinit-example_root-password

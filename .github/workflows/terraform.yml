@@ -49,7 +49,7 @@ jobs:
   terraform-apply:
     runs-on: self-hosted
     needs: terraform-plan
-    environment: terraform-apply
+    environment: terraform-apply # Requires manual approval before deploying
 
     steps:
     - name: Checkout code
