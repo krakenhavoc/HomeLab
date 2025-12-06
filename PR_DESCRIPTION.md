@@ -2,7 +2,7 @@
 
 ## 🎯 Summary
 
-This PR introduces automated Kubernetes cluster deployment capabilities to the HomeLab infrastructure. It implements a complete Kubernetes v1.29 cluster setup using cloud-init automation and Terraform modules, enabling rapid deployment of master and worker nodes on Proxmox VE.
+This PR introduces automated Kubernetes cluster deployment capabilities to the homelab infrastructure. It implements a complete Kubernetes v1.29 cluster setup using cloud-init automation and Terraform modules, enabling rapid deployment of master and worker nodes on Proxmox VE.
 
 ## 🚀 Key Features
 
