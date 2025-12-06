@@ -10,7 +10,6 @@ packages:
   - apt-transport-https
   - gpg
   - nfs-common
-  - jq
   # Note: docker.io removed (See "Important Note" below regarding containerd)
 
 write_files:
@@ -41,7 +40,7 @@ runcmd:
 
   # --- 3. Setup Kubernetes ---
   # Download the public signing key for the Kubernetes package repositories
-  - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - curl -fsLO https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   # Add the appropriate Kubernetes repository
   - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
   # Install the required packages
@@ -60,14 +59,7 @@ runcmd:
   - chmod 600 /root/.kube/config
 
   # --- 6. Network Plugin (Calico) ---
-  - curl -fsLO https://docs.projectcalico.org/manifests/calico.yaml
-  # Insert the correct CIDR block (10.244.0.0/16) after the CALICO_IPV4POOL_IPIP line,
-  # ensuring precise 13-space indentation for the '- name:' block.
-  - |
-    sed -i '/value: "Always"/r /dev/stdin' calico.yaml <<EOF
-              - name: CALICO_IPV4POOL_CIDR
-                value: "10.244.0.0/16"
-    EOF
+  - curl -fsSL "https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/feature/k8s-v0.1/scripts/deployment/cloud-init/calico-patch.sh" | bash
 
   # --- Finalize ---
   - kubeadm token create --print-join-command > /root/kubeadm_join_command.sh
