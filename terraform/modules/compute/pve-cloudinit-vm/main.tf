@@ -4,6 +4,7 @@ resource "proxmox_vm_qemu" "this" {
   agent            = var.enable_qemu_guest_agent
   memory           = var.memory_bytes
   boot             = "order=virtio0" # has to be the same as the OS disk of the template
+  bios             = "ovmf"
   clone            = var.clone_name
   scsihw           = "virtio-scsi-single"
   vm_state         = var.vm_state
