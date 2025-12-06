@@ -49,6 +49,7 @@ jobs:
   terraform-apply:
     runs-on: self-hosted
     needs: terraform-plan
+    environment: terraform-apply
 
     steps:
     - name: Checkout code
@@ -69,6 +70,10 @@ jobs:
       uses: hashicorp/setup-terraform@v3
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+    - name: Terraform Init
+      working-directory: terraform/deployments/home-lab
+      run: terraform init -input=false
 
     - name: Terraform Apply
       working-directory: terraform/deployments/home-lab
