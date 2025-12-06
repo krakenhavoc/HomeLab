@@ -30,7 +30,7 @@ sed -i '/^            # - name: CALICO_IPV4POOL_CIDR/,/^            #   value: "
 
 # 4. Apply the EDITED manifest
 echo "Applying patched Calico manifest..."
-kubectl apply --validate=false -f "$CALICO_FILE"
+kubectl apply --kubeconfig /etc/kubernetes/admin.conf -f "$CALICO_FILE"
 
 # 5. Clean up temporary files
 rm /tmp/cidr-block-to-insert.txt

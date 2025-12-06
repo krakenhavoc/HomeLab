@@ -62,6 +62,8 @@ runcmd:
   - CALICO_PATCH_URL="https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/feature/k8s-v0.1/scripts/deployment/cloud-init/calico-patch.sh"
   - curl -fsSL "$CALICO_PATCH_URL" -o /tmp/calico-patch.sh
   - chmod +x /tmp/calico-patch.sh
+  - echo "Waiting for Kubernetes API Server to be ready..."
+  - while ! kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes >/dev/null 2>&1; do echo "API Server not ready. Waiting 10 seconds..."; sleep 10; done
   - /tmp/calico-patch.sh
 
   # --- Finalize ---
