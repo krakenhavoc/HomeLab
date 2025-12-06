@@ -40,7 +40,7 @@ runcmd:
 
   # --- 3. Setup Kubernetes ---
   # Download the public signing key for the Kubernetes package repositories
-  - curl -fsLO https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   # Add the appropriate Kubernetes repository
   - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
   # Install the required packages
@@ -58,8 +58,11 @@ runcmd:
   - cp -i /etc/kubernetes/admin.conf /root/.kube/config
   - chmod 600 /root/.kube/config
 
-  # --- 6. Network Plugin (Calico) ---
-  - curl -fsSL "https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/feature/k8s-v0.1/scripts/deployment/cloud-init/calico-patch.sh" | bash
+  # --- 6. Network Plugin Patch (Calico) ---
+  - CALICO_PATCH_URL="https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/feature/k8s-v0.1/scripts/deployment/cloud-init/calico-patch.sh"
+  - curl -fsSL "$CALICO_PATCH_URL" -o /tmp/calico-patch.sh
+  - chmod +x /tmp/calico-patch.sh
+  - /tmp/calico-patch.sh
 
   # --- Finalize ---
   - kubeadm token create --print-join-command > /root/kubeadm_join_command.sh
