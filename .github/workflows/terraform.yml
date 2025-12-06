@@ -1,17 +1,18 @@
-name: Terraform CI
+name: Terraform CI/CD
 permissions:
   contents: read
 
 on:
   push:
 
+env:
+  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
+  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
+  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+
 jobs:
-  terraform:
+  terraform-plan:
     runs-on: self-hosted
-    env:
-      PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
-      PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
-      TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
 
     steps:
     - name: Checkout code
@@ -44,3 +45,31 @@ jobs:
       with:
         name: tf-plan
         path: terraform/deployments/home-lab/tfplan
+
+  terraform-apply:
+    runs-on: self-hosted
+    needs: terraform-plan
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Download TF Plan
+      uses: actions/download-artifact@v6
+      with:
+        name: tf-plan
+        path: terraform/deployments/home-lab
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+    - name: Terraform Apply
+      working-directory: terraform/deployments/home-lab
+      run: terraform apply -input=false tfplan
