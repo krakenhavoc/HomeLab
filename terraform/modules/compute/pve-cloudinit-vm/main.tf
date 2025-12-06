@@ -13,7 +13,7 @@ resource "proxmox_vm_qemu" "this" {
     cores = var.cpu_cores
   }
   # Cloud-Init configuration
-  cicustom   = "vendor=local:snippets/ubuntu.yml"
+  cicustom   = var.ci_user_data
   ciupgrade  = true
   nameserver = var.dns_nameservers
   ipconfig0  = "ip=dhcp"

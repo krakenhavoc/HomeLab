@@ -39,6 +39,12 @@ variable "cpu_cores" {
   default     = 2
 }
 
+variable "ci_user_data" {
+  description = "(Optional) Path to cloud init startup config | Default: vendor=local:snippets/ubuntu.yml"
+  type        = string
+  default     = "vendor=local:snippets/ubuntu.yml"
+}
+
 variable "dns_nameservers" {
   description = "(Optional) Space delimited list of DNS servers | Default: 1.1.1.1 8.8.8.8"
   type        = string
