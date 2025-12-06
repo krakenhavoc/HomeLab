@@ -4,9 +4,6 @@ permissions:
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
 
 jobs:
   terraform:
@@ -19,8 +16,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
-      with:
-        ref: ${{ github.event.pull_request.head.ref }}
 
     - name: Set up Node.js
       uses: actions/setup-node@v6
@@ -44,6 +39,8 @@ jobs:
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -out tfplan
 
-    #   - name: Terraform Apply
-    #     if: github.ref == 'refs/heads/main'
-    #     run: terraform apply -input=false tfplan
+    - name: Upload TF Plan
+      uses: actions/upload-artifact@v5
+      with:
+        name: tf-plan
+        path: terraform/deployments/home-lab/tfplan
