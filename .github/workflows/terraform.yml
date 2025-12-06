@@ -77,4 +77,4 @@ jobs:
 
     - name: Terraform Apply
       working-directory: terraform/deployments/home-lab
-      run: terraform apply -input=false -replace=module.k8s_master.proxmox_vm_qemu.this -auto-approve # tfplan
+      run: terraform apply -input=false tfplan
