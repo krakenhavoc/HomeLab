@@ -4,6 +4,9 @@ permissions:
 
 on:
   push:
+    paths:
+      - 'terraform/**'
+      - 'scripts/deployment/**'
 
 env:
   PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
