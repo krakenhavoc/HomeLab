@@ -594,7 +594,7 @@ kubectl delete pods --field-selector status.phase=Failed -A
    ```bash
    # Destroy existing infrastructure
    terraform destroy
-   
+
    # Redeploy
    terraform apply
    ```
@@ -605,7 +605,7 @@ kubectl delete pods --field-selector status.phase=Failed -A
    ```bash
    # Cordon node
    kubectl cordon <node-name>
-   
+
    # Delete compromised pods
    kubectl delete pod <pod-name> -n <namespace>
    ```
@@ -614,7 +614,7 @@ kubectl delete pods --field-selector status.phase=Failed -A
    ```bash
    # Save logs
    kubectl logs <pod-name> -n <namespace> > incident-logs.txt
-   
+
    # Export node data
    kubectl get nodes -o yaml > nodes-state.yaml
    ```

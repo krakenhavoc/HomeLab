@@ -34,33 +34,33 @@ The latest updates include a full Kubernetes cluster deployment using Terraform 
 ```
 HomeLab/
 ├── .github/
-│   ├── workflows/          # GitHub Actions CI/CD pipelines
-│   └── ISSUE_TEMPLATE/     # Issue templates for bug reports and features
-├── docs/                   # Documentation and guides
-│   ├── overview.md         # Architecture overview
-│   ├── runbook.md          # Deployment and operations guide
-│   ├── network-setup.md    # Network configuration
-│   ├── service-deployment.md  # Service deployment guides
-│   ├── backup-strategy.md  # Backup procedures
-│   └── security.md         # Security guidelines
-├── diagrams/               # Network and infrastructure diagrams
-│   ├── network/            # Network topology diagrams
-│   └── infrastructure/     # Infrastructure architecture diagrams
-├── terraform/              # Infrastructure as Code (Terraform)
-│   ├── deployments/        # Deployment configurations
-│   │   └── home-lab/       # Home lab deployment (K8s cluster)
-│   └── modules/            # Reusable Terraform modules
-│       └── compute/        # Compute resource modules
+│   ├── workflows/               # GitHub Actions CI/CD pipelines
+│   └── ISSUE_TEMPLATE/          # Issue templates for bug reports and features
+├── docs/                        # Documentation and guides
+│   ├── overview.md              # Architecture overview
+│   ├── runbook.md               # Deployment and operations guide
+│   ├── network-setup.md         # Network configuration
+│   ├── service-deployment.md    # Service deployment guides
+│   ├── backup-strategy.md       # Backup procedures
+│   └── security.md              # Security guidelines
+├── diagrams/                    # Network and infrastructure diagrams
+│   ├── network/                 # Network topology diagrams
+│   └── infrastructure/          # Infrastructure architecture diagrams
+├── terraform/                   # Infrastructure as Code (Terraform)
+│   ├── deployments/             # Deployment configurations
+│   │   └── home-lab/            # Home lab deployment (K8s cluster)
+│   └── modules/                 # Reusable Terraform modules
+│       └── compute/             # Compute resource modules
 │           └── pve-cloudinit-vm/  # Proxmox cloud-init VM module
-├── ansible/                # Configuration management
-│   ├── playbooks/          # Ansible playbooks
-│   ├── roles/              # Custom roles
-│   └── inventory/          # Inventory files
-└── scripts/                # Utility scripts and automation
-    ├── backup/             # Backup scripts
-    ├── monitoring/         # Monitoring scripts
-    └── deployment/         # Deployment automation
-        └── cloud-init/     # Cloud-init configurations for K8s
+├── ansible/                     # Configuration management
+│   ├── playbooks/               # Ansible playbooks
+│   ├── roles/                   # Custom roles
+│   └── inventory/               # Inventory files
+└── scripts/                     # Utility scripts and automation
+    ├── backup/                  # Backup scripts
+    ├── monitoring/              # Monitoring scripts
+    └── deployment/              # Deployment automation
+        └── cloud-init/          # Cloud-init configurations for K8s
 ```
 
 ## 🔧 Technologies Used
@@ -77,7 +77,7 @@ HomeLab/
 
 ### Prerequisites
 
-- **Terraform** >= 1.0
+- **Terraform** >= 1.14
 - **Ansible** >= 2.9
 - **Python** >= 3.8
 - **Proxmox VE** (for infrastructure deployment)
@@ -100,13 +100,13 @@ HomeLab/
    ```bash
    # Navigate to terraform deployment
    cd terraform/deployments/home-lab
-   
+
    # Initialize Terraform
    terraform init
-   
+
    # Review planned changes
    terraform plan
-   
+
    # Apply configuration
    terraform apply
    ```
@@ -115,7 +115,7 @@ HomeLab/
    ```bash
    # SSH to master node
    ssh root@k8s-master-1
-   
+
    # Check cluster status
    kubectl get nodes
    kubectl get pods -A

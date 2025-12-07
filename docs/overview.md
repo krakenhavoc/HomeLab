@@ -62,7 +62,7 @@ The current deployment includes a production-grade Kubernetes cluster:
 - **k8s-worker-2**: Worker node for application workloads
   - Memory: 4 GB RAM
   - Runs container workloads via containerd
-  
+
 - **k8s-worker-3**: Worker node for application workloads
   - Memory: 4 GB RAM
   - Runs container workloads via containerd
@@ -122,9 +122,9 @@ The current deployment includes a production-grade Kubernetes cluster:
 │ 10    │ │ 20    │     │  Cluster  │ │     │
 │(Mgmt) │ │(Apps) │     └───────────┘ └─────┘
 └───────┘ └───────┘           │
-                               │
-                    ┌──────────┴──────────┐
-                    │                     │
+                              │
+                    ┌─────────┴──────────┐
+                    │                    │
               ┌──────────┐          ┌──────────┐
               │ K8s      │          │ K8s      │
               │ Master   │          │ Workers  │
@@ -171,7 +171,7 @@ The current deployment includes a production-grade Kubernetes cluster:
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| OS | Ubuntu 22.04 LTS | Base operating system |
+| OS | Ubuntu 24.04 LTS | Base operating system |
 | Container Runtime | Containerd | 1.6+ |
 | Orchestration | Kubernetes | v1.29 |
 | CNI | Calico | Latest |
