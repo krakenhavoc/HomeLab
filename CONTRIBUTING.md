@@ -76,6 +76,38 @@ This repository serves as a portfolio and documentation of my homelab infrastruc
    - Provide clear description of changes
    - Reference any related issues
    - Ensure all checks pass
+   - Complete the PR template checklist
+   - Request review from maintainers
+
+### PR Guidelines
+
+- **Title**: Use conventional commit format (e.g., `feat: add new feature`)
+- **Description**: Explain what and why, not just how
+- **Size**: Keep PRs small and focused (prefer multiple small PRs)
+- **Tests**: Include tests if applicable
+- **Documentation**: Update relevant docs
+- **Breaking Changes**: Clearly mark and explain any breaking changes
+
+### Branching Strategy
+
+- `main` - Production-ready code
+- `feature/*` - New features
+- `fix/*` - Bug fixes
+- `docs/*` - Documentation updates
+- `chore/*` - Maintenance tasks
+
+### Reviewer Checklist
+
+When reviewing PRs, check for:
+
+- [ ] Code follows project style guidelines
+- [ ] Documentation is updated
+- [ ] Commit messages follow convention
+- [ ] No sensitive data (secrets, passwords)
+- [ ] Tests pass (if applicable)
+- [ ] Changes are backwards compatible (or breaking changes documented)
+- [ ] No unnecessary files committed
+- [ ] PR description is clear and complete
 
 ## 📝 Documentation Standards
 
