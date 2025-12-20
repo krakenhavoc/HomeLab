@@ -21,6 +21,8 @@ jobs:
       matrix:
         environments: ["lab"]
     environment: ${{ matrix.environments }}
+    env:
+        TF_WORKSPACE: ${{ matrix.environments }}
 
     steps:
     - name: Checkout code
@@ -39,8 +41,6 @@ jobs:
     - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform init -input=false
-      env:
-        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Terraform Validate ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
@@ -49,8 +49,6 @@ jobs:
     - name: Terraform Plan ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
-      env:
-        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Upload TF Plan ${{ matrix.environments }}
       uses: actions/upload-artifact@v5
@@ -65,6 +63,8 @@ jobs:
       matrix:
         environments: ["lab"]
     environment: ${{ matrix.environments }}
+    env:
+        TF_WORKSPACE: ${{ matrix.environments }}
 
     steps:
     - name: Checkout code
@@ -89,8 +89,6 @@ jobs:
     - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform init -input=false
-      env:
-        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Terraform Apply ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
