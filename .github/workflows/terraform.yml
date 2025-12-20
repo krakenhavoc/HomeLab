@@ -49,6 +49,8 @@ jobs:
     - name: Terraform Plan ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
+      env:
+        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Upload TF Plan ${{ matrix.environments }}
       uses: actions/upload-artifact@v5
