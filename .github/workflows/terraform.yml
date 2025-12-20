@@ -37,7 +37,9 @@ jobs:
 
     - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform init -input=false -backend-config=../env/${{ matrix.environments }}/backend.tf
+      run: terraform init -input=false
+      env:
+        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Terraform Validate ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
@@ -83,7 +85,9 @@ jobs:
 
     - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform init -input=false -backend-config=../env/${{ matrix.environments }}/backend.tf
+      run: terraform init -input=false
+      env:
+        TF_WORKSPACE: ${{ matrix.environments }}
 
     - name: Terraform Apply ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
