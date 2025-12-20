@@ -1,18 +1,19 @@
-module "k8s_master" {
-  source = "../../modules/compute/pve-cloudinit-vm"
+module "k8s_controlplane" {
+  source   = "../../modules/compute/pve-cloudinit-vm"
+  for_each = toset([for i in range(var.k8s_controlplane.node_count) : tostring(i)])
 
-  vm_name                         = "k8s-master-1"
-  memory_bytes                    = 4096
+  vm_name                         = "var.k8s_controlplane.name_prefix-${each.key}"
+  memory_bytes                    = var.k8s_controlplane.memory_bytes
   ci_user_data                    = "vendor=local:snippets/setup_k8s_master.yml"
   cloudinit-example_root-password = var.cloudinit-example_root-password
 }
 
 module "k8s_workers" {
   source   = "../../modules/compute/pve-cloudinit-vm"
-  for_each = toset(["2", "3"])
+  for_each = toset([for i in range(var.k8s_worker.node_count) : tostring(i)])
 
-  vm_name                         = "k8s-worker-${each.key}"
-  memory_bytes                    = 4096
+  vm_name                         = "var.k8s_worker.name_prefix-${each.key}"
+  memory_bytes                    = var.k8s_worker.memory_bytes
   ci_user_data                    = "vendor=local:snippets/setup_k8s_worker.yml"
   cloudinit-example_root-password = var.cloudinit-example_root-password
 }
