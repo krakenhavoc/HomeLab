@@ -15,8 +15,8 @@ variable "enable_qemu_guest_agent" {
   default     = 1
 }
 
-variable "memory_bytes" {
-  description = "(Optional) VM amount of RAM in bytes | Default: 2048"
+variable "memory_mb" {
+  description = "(Optional) VM amount of RAM in megabytes | Default: 2048"
   type        = number
   default     = 2048
 }

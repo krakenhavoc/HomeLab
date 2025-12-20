@@ -2,7 +2,7 @@ resource "proxmox_vm_qemu" "this" {
   name             = var.vm_name
   target_node      = var.pve_node
   agent            = var.enable_qemu_guest_agent
-  memory           = var.memory_bytes
+  memory           = var.memory_mb
   boot             = "order=virtio0" # has to be the same as the OS disk of the template
   bios             = "ovmf"
   clone            = var.clone_name
