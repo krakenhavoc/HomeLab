@@ -7,6 +7,7 @@ module "k8s_controlplane" {
   ci_user_data                    = "vendor=local:snippets/setup_k8s_master.yml"
   cloudinit-example_root-password = var.cloudinit-example_root-password
   os_disk_size                    = var.k8s_controlplane.os_disk_size
+  network_bridge                  = var.k8s_controlplane.network_bridge
 }
 
 module "k8s_workers" {
@@ -18,4 +19,5 @@ module "k8s_workers" {
   ci_user_data                    = "vendor=local:snippets/setup_k8s_worker.yml"
   cloudinit-example_root-password = var.cloudinit-example_root-password
   os_disk_size                    = var.k8s_worker.os_disk_size
+  network_bridge                  = var.k8s_worker.network_bridge
 }

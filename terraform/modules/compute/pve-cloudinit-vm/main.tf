@@ -50,7 +50,7 @@ resource "proxmox_vm_qemu" "this" {
 
   network {
     id     = 0
-    bridge = "vmbr0"
+    bridge = var.network_bridge
     model  = "virtio"
   }
 }

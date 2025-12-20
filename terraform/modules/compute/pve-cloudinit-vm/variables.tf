@@ -68,3 +68,9 @@ variable "os_disk_size" {
   type        = string
   default     = "15G"
 }
+
+variable "network_bridge" {
+  description = "(Optional) Host network adapter to use | Default: vmbr0 (same as host)"
+  type        = string
+  default     = "vmbr0"
+}
