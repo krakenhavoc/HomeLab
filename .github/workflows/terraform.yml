@@ -7,6 +7,7 @@ on:
     paths:
       - 'terraform/**'
       - 'scripts/deployment/**'
+      - '.github/workflows/terraform.yml'
 
 env:
   PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
@@ -47,13 +48,13 @@ jobs:
 
     - name: Terraform Plan ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform plan -input=false -var-file=../env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
+      run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
 
     - name: Upload TF Plan ${{ matrix.environments }}
       uses: actions/upload-artifact@v5
       with:
         name: tf-plan-${{ matrix.environments }}
-        path: terraform/deployments/home-lab/tfplan
+        path: terraform/deployments/home-lab/tfplan-${{ matrix.environments }}
 
   terraform-apply:
     runs-on: self-hosted
