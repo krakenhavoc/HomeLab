@@ -16,6 +16,10 @@ env:
 jobs:
   terraform-plan:
     runs-on: self-hosted
+    strategy:
+      matrix:
+        environments: ["lab"]
+    environment: ${{ matrix.environments }}
 
     steps:
     - name: Checkout code
@@ -31,37 +35,40 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-    - name: Terraform Init
+    - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform init -input=false
+      run: terraform init -input=false -backend-config=../env/${{ matrix.environments }}/backend.tf
 
-    - name: Terraform Validate
+    - name: Terraform Validate ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform validate
 
-    - name: Terraform Plan
+    - name: Terraform Plan ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform plan -input=false -out tfplan
+      run: terraform plan -input=false -var-file=../env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
 
-    - name: Upload TF Plan
+    - name: Upload TF Plan ${{ matrix.environments }}
       uses: actions/upload-artifact@v5
       with:
-        name: tf-plan
+        name: tf-plan-${{ matrix.environments }}
         path: terraform/deployments/home-lab/tfplan
 
   terraform-apply:
     runs-on: self-hosted
     needs: terraform-plan
-    environment: terraform-apply # Requires manual approval before deploying
+    strategy:
+      matrix:
+        environments: ["lab"]
+    environment: ${{ matrix.environments }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    - name: Download TF Plan
+    - name: Download TF Plan ${{ matrix.environments }}
       uses: actions/download-artifact@v6
       with:
-        name: tf-plan
+        name: tf-plan-${{ matrix.environments }}
         path: terraform/deployments/home-lab
 
     - name: Set up Node.js
@@ -74,10 +81,10 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-    - name: Terraform Init
+    - name: Terraform Init ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform init -input=false
+      run: terraform init -input=false -backend-config=../env/${{ matrix.environments }}/backend.tf
 
-    - name: Terraform Apply
+    - name: Terraform Apply ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
-      run: terraform apply -input=false tfplan
+      run: terraform apply -input=false tfplan-${{ matrix.environments }}
