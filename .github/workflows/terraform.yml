@@ -21,7 +21,7 @@ env:
   TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
 
 jobs:
-  terraform-plan:
+  terraform-ci:
     runs-on: self-hosted
     strategy:
       matrix:
@@ -44,17 +44,25 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-    - name: Terraform Init ${{ matrix.environments }}
+    - name: Terraform Init
       working-directory: terraform/deployments/home-lab
       run: terraform init -input=false
 
-    - name: Terraform Validate ${{ matrix.environments }}
+    - name: Terraform Validate
       working-directory: terraform/deployments/home-lab
       run: terraform validate
 
-    - name: Terraform Plan ${{ matrix.environments }}
+    - name: Terraform Plan
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
+
+    - name: Install jq
+      if: github.event_name == 'pull_request'
+      run: |
+        if ! command -v jq >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y jq
+        fi
 
     - name: Generate TF Plan Summary
       if: github.event_name == 'pull_request'
@@ -90,15 +98,15 @@ jobs:
             body: process.env.PLAN_SUMMARY
           })
 
-    - name: Upload TF Plan ${{ matrix.environments }}
+    - name: Upload TF Plan
       uses: actions/upload-artifact@v5
       with:
         name: tf-plan-${{ matrix.environments }}
         path: terraform/deployments/home-lab/tfplan-${{ matrix.environments }}
 
-  terraform-apply:
+  terraform-cd:
     runs-on: self-hosted
-    needs: terraform-plan
+    needs: terraform-ci
     strategy:
       matrix:
         environments: ["lab"]
@@ -110,7 +118,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    - name: Download TF Plan ${{ matrix.environments }}
+    - name: Download TF Plan
       uses: actions/download-artifact@v6
       with:
         name: tf-plan-${{ matrix.environments }}
@@ -126,10 +134,10 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-    - name: Terraform Init ${{ matrix.environments }}
+    - name: Terraform Init
       working-directory: terraform/deployments/home-lab
       run: terraform init -input=false
 
-    - name: Terraform Apply ${{ matrix.environments }}
+    - name: Terraform Apply
       working-directory: terraform/deployments/home-lab
       run: terraform apply -input=false tfplan-${{ matrix.environments }}
