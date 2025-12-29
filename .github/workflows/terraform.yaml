@@ -58,14 +58,6 @@ jobs:
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
 
-    - name: Install jq
-      if: github.event_name == 'pull_request'
-      run: |
-        if ! command -v jq >/dev/null 2>&1; then
-          sudo apt-get update
-          sudo apt-get install -y jq
-        fi
-
     - name: Generate TF Plan Summary
       if: github.event_name == 'pull_request'
       working-directory: terraform/deployments/home-lab
