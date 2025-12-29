@@ -1,9 +1,15 @@
 name: Terraform CI/CD
 permissions:
   contents: read
+  pull-requests: write
 
 on:
   push:
+    paths:
+      - 'terraform/**'
+      - 'scripts/deployment/**'
+      - '.github/workflows/terraform.yml'
+  pull_request:
     paths:
       - 'terraform/**'
       - 'scripts/deployment/**'
@@ -49,6 +55,40 @@ jobs:
     - name: Terraform Plan ${{ matrix.environments }}
       working-directory: terraform/deployments/home-lab
       run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
+
+    - name: Generate TF Plan Summary
+      if: github.event_name == 'pull_request'
+      working-directory: terraform/deployments/home-lab
+      run: |
+        terraform show -json tfplan-${{ matrix.environments }} > plan.json
+
+        ADD=$(jq '[.resource_changes[] | select(.change.actions | index("create"))] | length' plan.json)
+        CHANGE=$(jq '[.resource_changes[] | select(.change.actions | index("update"))] | length' plan.json)
+        DESTROY=$(jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length' plan.json)
+
+        echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
+        echo "### Terraform Plan Summary (\`${{ matrix.environments }}\`)" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "| Action | Count |" >> $GITHUB_ENV
+        echo "|--------|-------|" >> $GITHUB_ENV
+        echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
+        echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
+        echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "_Workspace: \`${{ matrix.environments }}\`_" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV'
+
+    - name: Add TF Plan Summary to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: process.env.PLAN_SUMMARY
+          })
 
     - name: Upload TF Plan ${{ matrix.environments }}
       uses: actions/upload-artifact@v5
