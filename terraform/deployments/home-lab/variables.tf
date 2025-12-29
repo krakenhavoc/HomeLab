@@ -12,7 +12,7 @@ variable "k8s_controlplane" {
     cpu_cores      = optional(number, 2)
     memory_mb      = optional(number, 4096)
     os_disk_size   = optional(number, 20)
-    network_bridge = optional(string, "vmbr0.200")
+    network_bridge = optional(string, "vmbr200")
   })
   default = {}
 }
