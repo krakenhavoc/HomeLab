@@ -1,3 +1,10 @@
+---
+name: Bug Report
+about: Report a bug or issue with the HomeLab project
+title: "[BUG] "
+labels: bug
+---
+
 # Bug report
 
 Thanks for taking the time to file a bug. Please provide the following information to help us reproduce and fix the issue.

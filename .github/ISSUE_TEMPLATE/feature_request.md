@@ -1,3 +1,10 @@
+---
+name: Feature Request
+about: Suggest a new feature or enhancement for the HomeLab project
+title: "[FEATURE] "
+labels: enhancement
+---
+
 # Feature request
 
 Please fill out this template to help us evaluate and prioritize your request.

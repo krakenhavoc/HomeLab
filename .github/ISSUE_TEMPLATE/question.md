@@ -1,3 +1,10 @@
+---
+name: Question
+about: Ask a usage or design question about the HomeLab project
+title: "[QUESTION] "
+labels: question
+---
+
 # Question
 
 Use this template when you have usage or design questions.
