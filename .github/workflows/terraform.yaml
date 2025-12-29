@@ -78,7 +78,7 @@ jobs:
         echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         echo "_Workspace: \`${{ matrix.environments }}\`_" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV'
+        echo "EOF" >> $GITHUB_ENV
 
     - name: Add TF Plan Summary to PR
       if: github.event_name == 'pull_request'
