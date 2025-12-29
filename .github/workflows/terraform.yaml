@@ -6,14 +6,16 @@ permissions:
 on:
   push:
     paths:
-      - 'terraform/**'
-      - 'scripts/deployment/**'
-      - '.github/workflows/terraform.yml'
+    - 'terraform/**'
+    - 'scripts/deployment/**'
+    - '.github/workflows/terraform.yml'
+    branches:
+    - main
   pull_request:
     paths:
-      - 'terraform/**'
-      - 'scripts/deployment/**'
-      - '.github/workflows/terraform.yml'
+    - 'terraform/**'
+    - 'scripts/deployment/**'
+    - '.github/workflows/terraform.yml'
 
 env:
   PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
