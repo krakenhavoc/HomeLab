@@ -59,7 +59,7 @@ runcmd:
   - chmod 600 /root/.kube/config
 
   # --- 6. Network Plugin Patch (Calico) ---
-  - CALICO_PATCH_URL="https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/feature/k8s-v0.1/scripts/deployment/cloud-init/calico-patch.sh"
+  - CALICO_PATCH_URL="https://raw.githubusercontent.com/krakenhavoc/HomeLab/__GITHUB_SHA__/scripts/deployment/cloud-init/kubernetes/calico-patch.sh"
   - curl -fsSL "$CALICO_PATCH_URL" -o /tmp/calico-patch.sh
   - chmod +x /tmp/calico-patch.sh
   - echo "Waiting for Kubernetes API Server to be ready..."

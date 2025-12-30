@@ -36,6 +36,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
 
+    - name: Render cloud-init with commit SHA
+      working-directory: scripts/deployment/cloud-init
+      run: |
+        set -euo pipefail
+
+        sed -i "s|__GITHUB_SHA__|${GITHUB_SHA}|g" kubernetes/setup-k8s-master.yaml
+
+    - name: Sync cloud-init snippets to PVE
+      working-directory: scripts/deployment/cloud-init
+      run: |
+        rsync -av --delete \
+          kubernetes/ \
+          /mnt/pve-snippets/kubernetes/
+
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
