@@ -46,7 +46,7 @@ jobs:
     - name: Sync cloud-init snippets to PVE
       working-directory: scripts/deployment/cloud-init
       run: |
-        rsync -av --no-owner --delete \
+        rsync -av --no-owner --no-group --delete \
           kubernetes/ \
           /mnt/pve-snippets/kubernetes/
 
