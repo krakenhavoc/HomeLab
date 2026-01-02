@@ -56,9 +56,10 @@ jobs:
         node-version: '20'
 
     - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v3.1.2
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+        terraform_version: "1.14.0"
 
     - name: Terraform Init
       working-directory: terraform/deployments/home-lab
@@ -138,9 +139,10 @@ jobs:
         node-version: '20'
 
     - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v3.1.2
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+        terraform_version: "1.14.0"
 
     - name: Terraform Init
       working-directory: terraform/deployments/home-lab
