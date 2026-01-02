@@ -60,6 +60,8 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
         terraform_version: "1.14.0"
+      env:
+        ACTIONS_STEP_DEBUG: true # Temporary
 
     - name: Terraform Init
       working-directory: terraform/deployments/home-lab
