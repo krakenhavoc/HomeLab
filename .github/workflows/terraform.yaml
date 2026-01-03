@@ -31,6 +31,7 @@ jobs:
     environment: ${{ matrix.environments }}
     env:
         TF_WORKSPACE: ${{ matrix.environments }}
+        NODE_OPTIONS: "--dns-result-order=ipv4first"
 
     steps:
     - name: Checkout code
@@ -60,8 +61,6 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
         terraform_version: "1.14.0"
-      env:
-        ACTIONS_STEP_DEBUG: true # Temporary
 
     - name: Terraform Init
       working-directory: terraform/deployments/home-lab
