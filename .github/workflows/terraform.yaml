@@ -31,7 +31,7 @@ jobs:
     environment: ${{ matrix.environments }}
     env:
         TF_WORKSPACE: ${{ matrix.environments }}
-        NODE_OPTIONS: "--dns-result-order=ipv4first"
+        NODE_OPTIONS: "--no-network-family-autoselection"
 
     steps:
     - name: Checkout code
