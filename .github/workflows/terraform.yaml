@@ -8,14 +8,14 @@ on:
     paths:
     - 'terraform/**'
     - 'scripts/deployment/**'
-    - '.github/workflows/terraform.yml'
+    - '.github/workflows/terraform.yaml'
     branches:
     - main
   pull_request:
     paths:
     - 'terraform/**'
     - 'scripts/deployment/**'
-    - '.github/workflows/terraform.yml'
+    - '.github/workflows/terraform.yaml'
 
 env:
   PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}

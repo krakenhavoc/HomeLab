@@ -13,13 +13,14 @@ on:
         description: "Hashicorp workspace tag for resource's state"
         required: true
         default: ''
+env:
+  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
+  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
+  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
 
 jobs:
   terraform-replace:
     runs-on: self-hosted
-    strategy:
-      matrix:
-        environments: ${{ inputs.environment }}
     environment: ${{ inputs.environment }}
     env:
         TF_WORKSPACE: ${{ inputs.environment }}
@@ -62,6 +63,7 @@ jobs:
       run: terraform validate
 
     - name: Terraform Apply
+      working-directory: terraform/deployments/home-lab
       run: |
         # Construct the replace flag if an input was provided
         REPLACE_FLAG=""
