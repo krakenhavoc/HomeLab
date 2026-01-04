@@ -15,8 +15,8 @@ variable "enable_qemu_guest_agent" {
   default     = 1
 }
 
-variable "memory_bytes" {
-  description = "(Optional) VM amount of RAM in bytes | Default: 2048"
+variable "memory_mb" {
+  description = "(Optional) VM amount of RAM in megabytes | Default: 2048"
   type        = number
   default     = 2048
 }
@@ -67,4 +67,10 @@ variable "os_disk_size" {
   description = "(Optional) OS Disk size | Default: 15G"
   type        = string
   default     = "15G"
+}
+
+variable "network_bridge" {
+  description = "(Optional) Host network adapter to use | Default: vmbr0 (same as host)"
+  type        = string
+  default     = "vmbr0"
 }

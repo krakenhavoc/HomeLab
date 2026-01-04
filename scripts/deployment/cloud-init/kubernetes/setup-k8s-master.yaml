@@ -2,6 +2,7 @@
 package_update: true
 package_upgrade: true
 
+# 1. Install only standard OS packages here
 packages:
   - qemu-guest-agent
   - openssh-server
@@ -9,6 +10,7 @@ packages:
   - apt-transport-https
   - gpg
   - nfs-common
+  # Note: docker.io removed (See "Important Note" below regarding containerd)
 
 write_files:
   - path: /etc/sysctl.d/99-kubernetes-cri.conf
@@ -16,6 +18,10 @@ write_files:
       net.bridge.bridge-nf-call-iptables=1
       net.bridge.bridge-nf-call-ip6tables=1
       net.ipv4.ip_forward=1
+  - path: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
 
 runcmd:
   # --- 1. OS Setup ---
@@ -28,6 +34,7 @@ runcmd:
   - systemctl enable ssh
 
   # --- 2. Install Container Runtime (Containerd) ---
+  # Kubernetes 1.24+ deprecated DockerShim. Containerd is preferred.
   - apt-get update
   - apt-get install -y containerd
   - mkdir -p /etc/containerd
@@ -35,22 +42,38 @@ runcmd:
   - sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
   - systemctl restart containerd
 
-  # --- 3. Setup Kubernetes Repositories ---
+  # --- 3. Setup Kubernetes ---
   # Download the public signing key for the Kubernetes package repositories
   - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   # Add the appropriate Kubernetes repository
   - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
-  # --- Install required packages
+  # Install the required packages
   - apt-get update
   - apt-get install -y kubelet kubeadm kubectl
   - apt-mark hold kubelet kubeadm kubectl
 
-  # --- Kubernetes Cluster Join (CRITICAL STEP) ---
-  # Replace the entire line below with the output from your master's 'kubeadm token create' command.
-  #- kubeadm join 192.168.1.10:6443 --token abcdef.0123456789abcdef --discovery-token-ca-cert-hash sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  # --- 4. Initialize Cluster ---
+  # Pull images first to ensure network connectivity
+  - kubeadm config images pull
+  - kubeadm init --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=NumCPU
+
+  # --- 5. Setup Kubeconfig ---
+  - mkdir -p /root/.kube
+  - cp -i /etc/kubernetes/admin.conf /root/.kube/config
+  - chmod 600 /root/.kube/config
+
+  # --- 6. Network Plugin Patch (Calico) ---
+  - CALICO_PATCH_URL="https://raw.githubusercontent.com/krakenhavoc/HomeLab/__GITHUB_SHA__/scripts/deployment/cloud-init/kubernetes/calico-patch.sh"
+  - curl -fsSL "$CALICO_PATCH_URL" -o /tmp/calico-patch.sh
+  - chmod +x /tmp/calico-patch.sh
+  - echo "Waiting for Kubernetes API Server to be ready..."
+  - while ! kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes >/dev/null 2>&1; do echo "API Server not ready. Waiting 10 seconds..."; sleep 10; done
+  - /tmp/calico-patch.sh
 
   # --- Finalize ---
+  - kubeadm token create --print-join-command > /root/kubeadm_join_command.sh
+  - chmod +x /root/kubeadm_join_command.sh
   - systemctl enable kubelet
   - reboot
 
-final_message: "Kubernetes Worker Node setup complete."
+final_message: "Kubernetes Setup Complete. Check /root/kubeadm_join_command.sh"

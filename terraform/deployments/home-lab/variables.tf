@@ -3,3 +3,29 @@ variable "cloudinit-example_root-password" {
   type        = string
   sensitive   = true
 }
+
+variable "k8s_controlplane" {
+  description = "object containing the K8s control plane node configuration"
+  type = object({
+    node_count     = optional(number, 1)
+    name_prefix    = optional(string, "k8s-controlplane")
+    cpu_cores      = optional(number, 2)
+    memory_mb      = optional(number, 4096)
+    os_disk_size   = optional(string, "20G")
+    network_bridge = optional(string, "vmbr200")
+  })
+  default = {}
+}
+
+variable "k8s_worker" {
+  description = "object containing the K8s worker node configuration"
+  type = object({
+    node_count     = optional(number, 2)
+    name_prefix    = optional(string, "k8s-worker")
+    cpu_cores      = optional(number, 2)
+    memory_mb      = optional(number, 4096)
+    os_disk_size   = optional(string, "30G")
+    network_bridge = optional(string, "vmbr200")
+  })
+  default = {}
+}

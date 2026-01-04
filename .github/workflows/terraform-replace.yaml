@@ -1,0 +1,74 @@
+name: Terraform Replace
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      replace_resource:
+        description: 'Resource address to recreate (e.g. module.vpc.aws_instance.web)'
+        required: true
+        default: ''
+      environment:
+        description: "Hashicorp workspace tag for resource's state"
+        required: true
+        default: ''
+env:
+  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
+  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
+  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+
+jobs:
+  terraform-replace:
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }}
+    env:
+        TF_WORKSPACE: ${{ inputs.environment }}
+        NODE_OPTIONS: "--no-network-family-autoselection"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Render cloud-init with commit SHA
+      working-directory: scripts/deployment/cloud-init
+      run: |
+        set -euo pipefail
+
+        sed -i "s|__GITHUB_SHA__|${GITHUB_SHA}|g" kubernetes/setup-k8s-master.yaml
+
+    - name: Sync cloud-init snippets to PVE
+      working-directory: scripts/deployment/cloud-init
+      run: |
+        rsync -av --no-owner --no-group --delete \
+          kubernetes/ \
+          /mnt/pve-snippets/kubernetes/snippets/
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3.1.2
+      with:
+        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+    - name: Terraform Init
+      working-directory: terraform/deployments/home-lab
+      run: terraform init -input=false
+
+    - name: Terraform Validate
+      working-directory: terraform/deployments/home-lab
+      run: terraform validate
+
+    - name: Terraform Apply
+      working-directory: terraform/deployments/home-lab
+      run: |
+        # Construct the replace flag if an input was provided
+        REPLACE_FLAG=""
+        if [ -n "${{ github.event.inputs.replace_resource }}" ]; then
+          REPLACE_FLAG="-replace=${{ github.event.inputs.replace_resource }}"
+        fi
+
+        terraform apply -auto-approve $REPLACE_FLAG
