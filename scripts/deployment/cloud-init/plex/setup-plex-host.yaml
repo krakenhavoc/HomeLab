@@ -1,0 +1,9 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+# Install only standard OS packages here
+packages:
+  - qemu-guest-agent
+  - openssh-server
+  - docker

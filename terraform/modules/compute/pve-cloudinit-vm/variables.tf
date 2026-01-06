@@ -74,3 +74,9 @@ variable "network_bridge" {
   type        = string
   default     = "vmbr0"
 }
+
+variable "storage_id" {
+  description = "(Optional) Storage location for template and cloud init drive"
+  type        = string
+  default     = "local-lvm"
+}
