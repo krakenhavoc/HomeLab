@@ -21,3 +21,21 @@ repos:
     files: ^terraform/.*\.tf$
   - id: terraform_trivy
     files: ^terraform/.*\.tf$
+
+- repo: https://github.com/koalaman/shellcheck-precommit
+  rev: v0.10.0
+  hooks:
+    - id: shellcheck
+      args: ["-x"]
+      files: \.(sh|bash)$
+
+- repo: https://github.com/scop/pre-commit-shfmt
+  rev: v3.12.0-2
+  hooks:
+    - id: shfmt-docker
+      args:
+        - -i=2
+        - -ci
+        - -sr
+        - -kp
+      files: \.(sh|bash)$
