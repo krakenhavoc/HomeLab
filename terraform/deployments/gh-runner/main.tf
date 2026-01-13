@@ -11,7 +11,7 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
       gh_registration_token    = var.gh_registration_token
       gh_runner_hostname       = each.value.name
       proxmox_host             = var.pve.host
-      proxmox_private_key      = var.proxmox_private_key
+      proxmox_private_key      = indent(4, var.proxmox_private_key)
       deployment_tag           = local.deployment_tag
       labels_flag              = local.deployment_tag == "gh-controller" ? "--labels self-hosted,linux,controller" : "--labels self-hosted,linux,worker"
     })
