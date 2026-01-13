@@ -1,8 +1,6 @@
 # GitHub Actions Runner Workers Configuration
 # Deploy multiple worker instances for running GitHub Actions jobs
 
-instance_count = 1
-
 deployment_tag = "gh-worker"
 
 gh_runner = {

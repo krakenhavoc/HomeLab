@@ -61,6 +61,11 @@ jobs:
       with:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
+    - name: Set up SSH for Proxmox Provider
+      run: |
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/id_proxmox
+
     - name: Terraform Init
       working-directory: terraform/deployments/gh-runner
       run: terraform init -input=false
