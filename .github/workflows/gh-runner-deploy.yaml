@@ -20,6 +20,7 @@ env:
   TF_VAR_admin_password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
   TF_WORKSPACE: ${{ inputs.is_controller && 'GH-Controller' || 'GH-Worker' }}
   TF_VAR_instance_count: ${{ inputs.is_controller && '1' || inputs.resource_count }}
+  TF_VAR_proxmox_private_key: ${{ secrets.PROXMOX_PRIVATE_KEY }}
 
 jobs:
   generate-token:

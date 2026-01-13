@@ -10,6 +10,12 @@ variable "pve" {
   }
 }
 
+variable "proxmox_private_key" {
+  description = "Private key for Proxmox VE API access"
+  type        = string
+  sensitive   = true
+}
+
 variable "instance_count" {
   description = "Number of self-hosted runners to deploy"
   type        = number

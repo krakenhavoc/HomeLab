@@ -25,6 +25,27 @@ users:
 
 runcmd:
   - |
+    echo "==> Creating /home/gh-runner/.ssh directory..."
+    mkdir -p /home/gh-runner/.ssh
+
+    echo "==> Writing private key to /home/gh-runner/.ssh/id_proxmox..."
+    cat <<EOF > /home/gh-runner/.ssh/id_proxmox
+    ${proxmox_private_key}
+    EOF
+    echo "==> /home/gh-runner/.ssh/id_proxmox created."
+
+    echo "==> Setting restrictions on .ssh directory and private key..."
+    chmod 700 /home/gh-runner/.ssh
+    chmod 600 /home/gh-runner/.ssh/id_proxmox
+    chown -R gh-runner:gh-runner /home/gh-runner/.ssh
+    echo "==> Permissions set."
+
+    echo "==> Adding proxmox host to known_hosts..."
+    ssh-keyscan -H ${proxmox_host} >> /home/gh-runner/.ssh/known_hosts
+    chown gh-runner:gh-runner /home/gh-runner/.ssh/known_hosts
+    echo "==> Proxmox host added to known_hosts."
+
+  - |
     echo "==> Creating /opt/actions-runner directory..."
     /bin/mkdir -p /opt/actions-runner
     echo "==> Downloading GitHub Actions runner v2.330.0..."
