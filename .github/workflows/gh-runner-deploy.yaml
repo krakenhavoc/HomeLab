@@ -5,15 +5,21 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
-      resource_count:
-        description: 'Total number of self-hosted runners that should be deployed (if number is smaller than current, excess runners will be destroyed)'
+      is_controller:
+        description: 'Deploy controller (true) or worker (false)'
         required: true
-        default: ''
+        type: boolean
+        default: false
+      resource_count:
+        description: 'Number of worker runners (ignored if deploying controller)'
+        required: false
+        default: '1'
 
 env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
   TF_VAR_admin_password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
-  TF_VAR_instance_count: ${{ inputs.resource_count }}
+  TF_WORKSPACE: ${{ inputs.is_controller && 'GH-Controller' || 'GH-Worker' }}
+  TF_VAR_instance_count: ${{ inputs.is_controller && '1' || inputs.resource_count }}
 
 jobs:
   generate-token:
@@ -34,7 +40,7 @@ jobs:
         echo "REGISTRATION_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
   deploy:
-    runs-on: self-hosted
+    runs-on: ${{ inputs.is_controller && 'worker' || 'controller' }}
     needs: generate-token
     env:
         NODE_OPTIONS: "--no-network-family-autoselection"
@@ -64,4 +70,9 @@ jobs:
 
     - name: Terraform Apply
       working-directory: terraform/deployments/gh-runner
-      run: terraform apply -auto-approve
+      run: |
+        if [ "${{ inputs.is_controller }}" = "true" ]; then
+          terraform apply -auto-approve -var-file=env/gh-controller.tfvars
+        else
+          terraform apply -auto-approve -var-file=env/gh-worker.tfvars
+        fi
