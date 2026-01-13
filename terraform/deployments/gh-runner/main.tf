@@ -1,6 +1,6 @@
 resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
   provider     = pve
-  for_each     = toset([for i in range(var.instance_count) : tostring(i)])
+  for_each     = local.instances
   content_type = "snippets"
   datastore_id = "snippets"
   node_name    = var.pve.host
@@ -9,37 +9,24 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
     data = templatefile("${path.module}/setup-gh-runner.yaml.tftpl", {
       gh_runner_admin_username = var.gh_runner.admin_username
       gh_registration_token    = var.gh_registration_token
-      gh_runner_hostname       = "${var.gh_runner.name_prefix}-${each.key}"
-      admin_password           = var.admin_password
+      gh_runner_hostname       = each.value.name
+      proxmox_host             = var.pve.host
+      proxmox_private_key      = indent(4, var.proxmox_private_key)
+      deployment_tag           = local.deployment_tag
+      labels_flag              = local.deployment_tag == "gh-controller" ? "--labels self-hosted,linux,controller" : "--labels self-hosted,linux,worker"
     })
-    file_name = "setup-${var.gh_runner.name_prefix}-${each.key}.yaml"
+    file_name = "setup-${each.value.name}.yaml"
   }
 }
 
-# module "gh_runner" {
-#   source   = "../../modules/compute/pve-cloudinit-vm"
-#   for_each = toset([for i in range(var.node_count) : tostring(i)])
-
-#   vm_name                         = "${var.gh_runner.name_prefix}-${each.key}"
-#   cpu_cores                       = var.gh_runner.cpu_cores
-#   memory_mb                       = var.gh_runner.memory_mb
-#   clone_name                      = var.gh_runner.template
-#   cloudinit-example_root-password = var.cloudinit-example_root-password
-#   os_disk_size                    = var.gh_runner.os_disk_size
-#   network_bridge                  = var.gh_runner.network_bridge
-#   ci_user_data                    = "user=local:snippets/setup-gh-runner.yaml"
-
-#   depends_on = [proxmox_virtual_environment_file.gh_runner_cloudinit]
-# }
-
 resource "proxmox_virtual_environment_vm" "gh_runner" {
   provider = pve
-  for_each = toset([for i in range(var.instance_count) : tostring(i)])
+  for_each = local.instances
 
-  name        = "${var.gh_runner.name_prefix}-${each.key}"
+  name        = each.value.name
   node_name   = var.pve.host
-  description = "Managed by Terraform"
-  tags        = ["terraform", "ubuntu"]
+  description = "Managed by Terraform - ${each.value.role}"
+  tags        = each.value.tags
 
   # 1. Matching your module's BIOS setting
   bios = "ovmf"

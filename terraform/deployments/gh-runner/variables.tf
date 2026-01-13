@@ -1,9 +1,3 @@
-# variable "cloudinit-example_root-password" {
-#   description = "Root pass for the Example Cloud-Init VM"
-#   type        = string
-#   sensitive   = true
-# }
-
 variable "pve" {
   description = "Object containing the ProxMox Virtual Environment details"
   type = object({
@@ -16,13 +10,19 @@ variable "pve" {
   }
 }
 
+variable "proxmox_private_key" {
+  description = "Private key for Proxmox VE API access"
+  type        = string
+  sensitive   = true
+}
+
 variable "instance_count" {
   description = "Number of self-hosted runners to deploy"
   type        = number
   default     = 1
   validation {
-    condition     = var.instance_count > 1
-    error_message = "Instance count must be greater than one."
+    condition     = var.instance_count > 0
+    error_message = "Instance count must be greater than zero."
   }
 }
 
@@ -45,8 +45,8 @@ variable "gh_registration_token" {
   sensitive = true
 }
 
-variable "admin_password" {
-  description = "Password for the admin user"
+variable "deployment_tag" {
+  description = "Optional override for deployment tag (gh-controller or gh-worker). Defaults to TF workspace."
   type        = string
-  sensitive   = true
+  default     = null
 }
