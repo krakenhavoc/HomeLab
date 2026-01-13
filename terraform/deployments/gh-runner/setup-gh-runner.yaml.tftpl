@@ -59,6 +59,10 @@ runcmd:
         echo "ERROR: Tarball missing in /opt/actions-runner" && exit 1
     fi
 
+    echo "==> Installing missing .NET/Linux dependencies..."
+    cd /opt/actions-runner
+    ./bin/installdependencies.sh
+    echo "==> Dependencies installed."
     echo "==> Setting ownership of /opt/actions-runner to ${gh_runner_admin_username}..."
     /bin/chown -R ${gh_runner_admin_username}:${gh_runner_admin_username} /opt/actions-runner
     echo "==> Ownership set."

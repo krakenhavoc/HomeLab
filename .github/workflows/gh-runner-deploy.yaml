@@ -33,10 +33,13 @@ jobs:
       id: registration
       run: |
         TOKEN=$(curl -s -X POST \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
           -H "Accept: application/vnd.github+json" \
           https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners/registration-token \
           | jq -r .token)
+
+        # Verify it's not empty before setting output
+        if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "Token generation failed"; exit 1; fi
 
         echo "REGISTRATION_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
 
