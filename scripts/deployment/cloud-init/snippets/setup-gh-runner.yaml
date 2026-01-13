@@ -1,0 +1,49 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+
+users:
+- name: gh-runner
+  gecos: "GitHub Actions Runner"
+  shell: /bin/bash
+  ssh-authorized-keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+- mkdir /opt/actions-runner && cd /opt/actions-runner
+- curl -o actions-runner-linux-x64-2.330.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.330.0/actions-runner-linux-x64-2.330.0.tar.gz
+- tar xzf ./actions-runner-linux-x64-2.330.0.tar.gz
+- chown -R gh-runner:gh-runner /opt/actions-runner
+- loginctl enable-linger gh-runner
+- |
+    sudo -u gh-runner env XDG_RUNTIME_DIR=/run/user/$(id -u gh-runner) bash <<'EOF'
+    cd /opt/actions-runner
+    TOKEN=__TOKEN__
+    ./config.sh \
+      --url https://github.com/krakenhavoc/HomeLab \
+      --token "$TOKEN" \
+      --labels self-hosted,linux
+    mkdir -p /home/gh-runner/.config/systemd/user/
+    cat <<UNIT > /home/gh-runner/.config/systemd/user/github-runner.service
+    [Unit]
+    Description=GitHub Actions Runner
+    After=network.target
+
+    [Service]
+    Type=simple
+    WorkingDirectory=/opt/actions-runner
+    ExecStart=/opt/actions-runner/run.sh
+    Restart=always
+    RestartSec=5
+
+    [Install]
+    WantedBy=default.target
+    UNIT
+
+    # Reload the user-level daemon and start the service
+    systemctl --user daemon-reload
+    systemctl --user enable github-runner.service
+    systemctl --user start github-runner.service
+    EOF
+
+final_message: "GitHub Runner deployed. Check status with systemctl status"

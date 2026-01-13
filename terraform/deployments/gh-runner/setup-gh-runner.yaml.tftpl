@@ -1,0 +1,90 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${gh_runner_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+users:
+  - name: ${gh_runner_admin_username}
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+  - name: gh-runner
+    gecos: "GitHub Actions Runner"
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+chpasswd:
+  list: |
+    ${gh_runner_admin_username}:${admin_password}
+  expire: false
+
+runcmd:
+  - |
+    echo "Starting post-deployment configuration..."
+
+    for i in {1..30}; do
+      if /usr/bin/id "gh-runner" &>/dev/null; then
+        echo "User gh-runner found."
+        break
+      fi
+      echo "Waiting for user gh-runner creation... ($i/30)"
+      sleep 1
+      if [ $i -eq 30 ]; then echo "User creation timed out" && exit 1; fi
+    done
+
+    /bin/mkdir -p /opt/actions-runner
+    /usr/bin/curl -o /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.330.0/actions-runner-linux-x64-2.330.0.tar.gz
+
+    if [ -f "/opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz" ]; then
+      /usr/bin/tar -xzf /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -C /opt/actions-runner
+      /usr/bin/chown -R gh-runner:gh-runner /opt/actions-runner
+    else
+        echo "Tarball missing in /opt/actions-runner" && exit 1
+    fi
+
+    /usr/bin/loginctl enable-linger gh-runner
+  - |
+    /usr/bin/sudo -u gh-runner /usr/bin/env XDG_RUNTIME_DIR=/run/user/$(/usr/bin/id -u gh-runner) /bin/bash <<'EOF'
+    TOKEN="${gh_registration_token}"
+    /opt/actions-runner/config.sh \
+      --url https://github.com/krakenhavoc/HomeLab \
+      --token "$TOKEN" \
+      --labels self-hosted,linux --unattended --replace
+
+    mkdir -p /home/gh-runner/.config/systemd/user/
+    cat <<UNIT > /home/gh-runner/.config/systemd/user/github-runner.service
+    [Unit]
+    Description=GitHub Actions Runner
+    After=network.target
+
+    [Service]
+    Type=simple
+    WorkingDirectory=/opt/actions-runner
+    ExecStart=/opt/actions-runner/run.sh
+    Restart=always
+    RestartSec=5
+
+    [Install]
+    WantedBy=default.target
+    UNIT
+
+    systemctl --user daemon-reload
+    systemctl --user enable github-runner.service
+    systemctl --user start github-runner.service
+    EOF
+
+final_message: "GitHub Runner for ${gh_runner_hostname} is up."

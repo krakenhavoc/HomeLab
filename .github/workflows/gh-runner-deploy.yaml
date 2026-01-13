@@ -1,0 +1,67 @@
+name: GitHub Runner Deploy
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      resource_count:
+        description: 'Total number of self-hosted runners that should be deployed (if number is smaller than current, excess runners will be destroyed)'
+        required: true
+        default: ''
+
+env:
+  PROXMOX_VE_API_TOKEN: '${{ vars.PM_API_TOKEN_ID }}=${{ secrets.PM_API_TOKEN }}'
+  TF_VAR_admin_password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  TF_VAR_instance_count: ${{ inputs.resource_count }}
+
+jobs:
+  generate-token:
+    runs-on: ubuntu-latest
+    outputs:
+      registration_token: ${{ steps.registration.outputs.token }}
+
+    steps:
+    - name: Generate GitHub Runner Registration Token
+      id: registration
+      run: |
+        TOKEN=$(curl -s -X POST \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners/registration-token \
+          | jq -r .token)
+
+        echo "REGISTRATION_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+
+  deploy:
+    runs-on: self-hosted
+    needs: generate-token
+    env:
+        NODE_OPTIONS: "--no-network-family-autoselection"
+        TF_VAR_gh_registration_token: ${{ needs.generate-token.outputs.registration_token }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3.1.2
+      with:
+        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+    - name: Terraform Init
+      working-directory: terraform/deployments/gh-runner
+      run: terraform init -input=false
+
+    - name: Terraform Validate
+      working-directory: terraform/deployments/gh-runner
+      run: terraform validate
+
+    - name: Terraform Apply
+      working-directory: terraform/deployments/gh-runner
+      run: terraform apply -auto-approve

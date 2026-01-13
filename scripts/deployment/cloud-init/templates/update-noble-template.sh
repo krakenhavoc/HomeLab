@@ -21,18 +21,23 @@ echo "==> Creating VM"
 qm create "${VMID}" \
   --name "${CODENAME}-template" \
   --memory 2048 \
-  --net0 virtio,bridge="${BRIDGE}" \
+  --net0 "virtio,bridge=${BRIDGE}" \
   --agent enabled=1 \
-  --scsihw virtio-scsi-pci
+  --scsihw virtio-scsi-pci \
+  --ostype l26 \
+  --bios ovmf \
+  --machine q35 \
+  --efidisk0 "${STORAGE}:0,pre-enrolled-keys=0" \
+  --serial0 socket
 
 echo "==> Importing disk"
 qm importdisk "${VMID}" "${IMAGE_FILE}" "${STORAGE}"
 
 echo "==> Attaching disk and cloud-init"
 qm set "${VMID}" \
-  --scsi0 "${STORAGE}":vm-"${VMID}"-disk-0 \
-  --ide2 "${STORAGE}":cloudinit \
-  --boot order=scsi0 \
+  --virtio0 "${STORAGE}:vm-${VMID}-disk-1" \
+  --scsi1 "${STORAGE}:cloudinit" \
+  --boot order=virtio0 \
   --serial0 socket \
   --vga serial0
 
