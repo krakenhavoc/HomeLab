@@ -41,7 +41,7 @@ jobs:
         # Verify it's not empty before setting output
         if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "Token generation failed"; exit 1; fi
 
-        echo "REGISTRATION_TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ${{ inputs.is_controller && 'worker' || 'controller' }}
