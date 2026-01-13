@@ -65,6 +65,8 @@ jobs:
       run: |
         eval $(ssh-agent -s)
         ssh-add ~/.ssh/id_proxmox
+        echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+        echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
 
     - name: Terraform Init
       working-directory: terraform/deployments/gh-runner
