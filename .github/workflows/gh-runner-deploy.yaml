@@ -11,10 +11,9 @@ on:
         default: ''
 
 env:
-  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
-  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
-  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
-  TF_VAR_node_count: ${{ inputs.resource_count }}
+  PROXMOX_VE_API_TOKEN: '${{ vars.PM_API_TOKEN_ID }}=${{ secrets.PM_API_TOKEN }}'
+  TF_VAR_admin_password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  TF_VAR_instance_count: ${{ inputs.resource_count }}
 
 jobs:
   generate-token:
