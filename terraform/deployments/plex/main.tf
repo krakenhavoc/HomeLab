@@ -9,14 +9,14 @@ resource "proxmox_virtual_environment_file" "plex_cloudinit" {
       hostname       = var.plex_host.name_prefix,
       admin_username = "plex"
     })
-    file_name = "setup-plex.yaml"
+    file_name = "setup-plex-${var.plex_host.env}.yaml"
   }
 }
 
 module "plex_host" {
   source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.1"
 
-  vm_name                        = var.plex_host.name_prefix
+  vm_name                        = "${var.plex_host.name_prefix}-${var.plex_host.env}"
   vm_node_name                   = var.pve.host
   vm_description                 = var.plex_host.description
   vm_tags                        = var.plex_host.tags
