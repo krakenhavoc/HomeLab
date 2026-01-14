@@ -28,6 +28,7 @@ variable "vm_cloudinit_datastore_id" {
 variable "plex_host" {
   description = "Configuration for the Plex host VM"
   type = object({
+    env            = optional(string, "dev")
     name_prefix    = optional(string, "plex-hibiscus")
     description    = optional(string, "Plex Media Server")
     tags           = optional(list(string), ["plex"])
@@ -36,7 +37,7 @@ variable "plex_host" {
     memory_mb      = optional(number, 4096)
     os_disk_size   = optional(number, 30)
     disk_interface = optional(string, "virtio0")
-    network_bridge = optional(string, "vmbr201")
+    network_bridge = optional(string, "vmbr0")
   })
   default = {}
 }
