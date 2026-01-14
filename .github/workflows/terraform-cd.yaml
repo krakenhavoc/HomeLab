@@ -39,6 +39,9 @@ on:
       hcp_api_token:
         description: 'HCP Terraform Cloud API token'
         required: true
+      proxmox_ve_api_token:
+        description: 'Proxmox VE API token for Proxmox Provider'
+        required: false
 
 permissions:
   contents: read
@@ -50,6 +53,7 @@ jobs:
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
+      PROXMOX_VE_API_TOKEN: ${{ secrets.proxmox_ve_api_token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
