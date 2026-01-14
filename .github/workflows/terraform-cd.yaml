@@ -1,0 +1,88 @@
+name: Terraform CD
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: 'Working directory for Terraform commands'
+        required: true
+        type: string
+      environment:
+        description: 'Environment name (lab, dev, prod, etc.)'
+        required: true
+        type: string
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+      enable_proxmox_ssh:
+        description: 'Start ssh-agent and add Proxmox key'
+        required: false
+        type: boolean
+        default: false
+      terraform_version:
+        description: 'Terraform version to use'
+        required: false
+        type: string
+        default: '1.14.3'
+      workspace:
+        description: 'Terraform Cloud workspace name'
+        required: false
+        type: string
+        default: ''
+      plan_artifact_name:
+        description: 'Name of the plan artifact to download'
+        required: true
+        type: string
+    secrets:
+      hcp_api_token:
+        description: 'HCP Terraform Cloud API token'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    env:
+      TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
+      NODE_OPTIONS: "--no-network-family-autoselection"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up SSH for Proxmox Provider
+        if: inputs.enable_proxmox_ssh == true
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_proxmox
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+
+      - name: Download TF Plan
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ inputs.plan_artifact_name }}
+          path: ${{ inputs.working_directory }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.hcp_api_token }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform init -input=false
+
+      - name: Terraform Apply
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform apply -input=false tfplan-${{ inputs.environment }}

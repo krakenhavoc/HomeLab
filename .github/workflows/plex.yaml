@@ -1,146 +1,53 @@
 name: Plex CI/CD
-permissions:
-  contents: read
-  pull-requests: write
 
 on:
   push:
     paths:
-    - 'terraform/deployments/plex/**'
-    - 'scripts/deployment/cloud-init/plex/**'
-    - '.github/workflows/plex.yaml'
+      - 'terraform/deployments/plex/**'
+      - 'scripts/deployment/cloud-init/plex/**'
+      - '.github/workflows/plex.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
     branches:
-    - main
+      - main
   pull_request:
     paths:
-    - 'terraform/deployments/plex/**'
-    - 'scripts/deployment/cloud-init/plex/**'
-    - '.github/workflows/plex.yaml'
+      - 'terraform/deployments/plex/**'
+      - 'scripts/deployment/cloud-init/plex/**'
+      - '.github/workflows/plex.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
 
 env:
-  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
-  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
-  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
 jobs:
   plex-ci:
-    runs-on: self-hosted
     strategy:
       matrix:
-        environments: ["plex-dev"]
-    environment: ${{ matrix.environments }}
-    env:
-        TF_WORKSPACE: ${{ matrix.environments }}
-        NODE_OPTIONS: "--no-network-family-autoselection"
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    - name: Sync cloud-init snippets to PVE
-      working-directory: scripts/deployment/cloud-init
-      run: |
-        rsync -av --no-owner --no-group --delete \
-          plex/ \
-          /mnt/pve-snippets/plex/snippets/
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '20'
-
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3.1.2
-      with:
-        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
-
-    - name: Terraform Init
-      working-directory: terraform/deployments/plex
-      run: terraform init -input=false
-
-    - name: Terraform Validate
-      working-directory: terraform/deployments/plex
-      run: terraform validate
-
-    - name: Terraform Plan
-      working-directory: terraform/deployments/plex
-      run: terraform plan -input=false -var-file=env/${{ matrix.environments }}/terraform.tfvars -out tfplan-${{ matrix.environments }}
-
-    - name: Generate TF Plan Summary
-      if: github.event_name == 'pull_request'
-      working-directory: terraform/deployments/plex
-      run: |
-        terraform show -json tfplan-${{ matrix.environments }} > plan.json
-
-        ADD=$(jq '[.resource_changes[] | select(.change.actions | index("create"))] | length' plan.json)
-        CHANGE=$(jq '[.resource_changes[] | select(.change.actions | index("update"))] | length' plan.json)
-        DESTROY=$(jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length' plan.json)
-
-        echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
-        echo "### Terraform Plan Summary (\`${{ matrix.environments }}\`)" >> $GITHUB_ENV
-        echo "" >> $GITHUB_ENV
-        echo "| Action | Count |" >> $GITHUB_ENV
-        echo "|--------|-------|" >> $GITHUB_ENV
-        echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
-        echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
-        echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
-        echo "" >> $GITHUB_ENV
-        echo "_Workspace: \`${{ matrix.environments }}\`_" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
-
-    - name: Add TF Plan Summary to PR
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: process.env.PLAN_SUMMARY
-          })
-
-    - name: Upload TF Plan
-      uses: actions/upload-artifact@v5
-      with:
-        name: tf-plan-${{ matrix.environments }}
-        path: terraform/deployments/plex/tfplan-${{ matrix.environments }}
+        environment: ["plex-dev"]
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/plex
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
 
   plex-cd:
-    runs-on: self-hosted
     needs: plex-ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     strategy:
       matrix:
-        environments: ["plex-dev"]
-    environment: ${{ matrix.environments }}
-    env:
-        TF_WORKSPACE: ${{ matrix.environments }}
-        NODE_OPTIONS: "--no-network-family-autoselection"
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-
-    - name: Download TF Plan
-      uses: actions/download-artifact@v6
-      with:
-        name: tf-plan-${{ matrix.environments }}
-        path: terraform/deployments/plex
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '20'
-
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3.1.2
-      with:
-        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
-
-    - name: Terraform Init
-      working-directory: terraform/deployments/plex
-      run: terraform init -input=false
-
-    - name: Terraform Apply
-      working-directory: terraform/deployments/plex
-      run: terraform apply -input=false tfplan-${{ matrix.environments }}
+        environment: ["plex-dev"]
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/plex
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}

@@ -1,0 +1,22 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${hostname}
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+users:
+  - name: ${admin_username}
+    gecos: "Plex"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
