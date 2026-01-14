@@ -1,0 +1,89 @@
+name: GitHub Runner Deploy
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      is_controller:
+        description: 'Deploy controller (true) or worker (false)'
+        required: true
+        type: boolean
+        default: false
+      resource_count:
+        description: 'Number of worker runners (ignored if deploying controller)'
+        required: false
+        default: '1'
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+  TF_VAR_admin_password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  TF_WORKSPACE: ${{ inputs.is_controller && 'GH-Controller' || 'GH-Worker' }}
+  TF_VAR_instance_count: ${{ inputs.is_controller && '1' || inputs.resource_count }}
+  TF_VAR_proxmox_private_key: ${{ secrets.PROXMOX_PRIVATE_KEY }}
+
+jobs:
+  generate-token:
+    runs-on: ubuntu-latest
+    outputs:
+      registration_token: ${{ steps.registration.outputs.token }}
+
+    steps:
+    - name: Generate GitHub Runner Registration Token
+      id: registration
+      run: |
+        TOKEN=$(curl -s -X POST \
+          -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
+          -H "Accept: application/vnd.github+json" \
+          https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners/registration-token \
+          | jq -r .token)
+
+        # Verify it's not empty before setting output
+        if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "Token generation failed"; exit 1; fi
+
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+  deploy:
+    runs-on: ${{ inputs.is_controller && 'worker' || 'controller' }}
+    needs: generate-token
+    env:
+        NODE_OPTIONS: "--no-network-family-autoselection"
+        TF_VAR_gh_registration_token: ${{ needs.generate-token.outputs.registration_token }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3.1.2
+      with:
+        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+
+    - name: Set up SSH for Proxmox Provider
+      run: |
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/id_proxmox
+        echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+        echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+
+    - name: Terraform Init
+      working-directory: terraform/deployments/gh-runner
+      run: terraform init -input=false
+
+    - name: Terraform Validate
+      working-directory: terraform/deployments/gh-runner
+      run: terraform validate
+
+    - name: Terraform Apply
+      working-directory: terraform/deployments/gh-runner
+      run: |
+        if [ "${{ inputs.is_controller }}" = "true" ]; then
+          terraform apply -auto-approve -var-file=env/gh-controller.tfvars
+        else
+          terraform apply -auto-approve -var-file=env/gh-worker.tfvars
+        fi

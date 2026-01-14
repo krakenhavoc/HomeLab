@@ -1,0 +1,86 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${gh_runner_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - unzip
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+users:
+  - name: ${gh_runner_admin_username}
+    gecos: "GitHub Actions Runner"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+  - |
+    echo "==> Creating /home/gh-runner/.ssh directory..."
+    mkdir -p /home/gh-runner/.ssh
+
+    echo "==> Writing private key to /home/gh-runner/.ssh/id_proxmox..."
+    cat <<EOF > /home/gh-runner/.ssh/id_proxmox
+    ${proxmox_private_key}
+    EOF
+    echo "==> /home/gh-runner/.ssh/id_proxmox created."
+
+    echo "==> Setting restrictions on .ssh directory and private key..."
+    chmod 700 /home/gh-runner/.ssh
+    chmod 600 /home/gh-runner/.ssh/id_proxmox
+    chown -R gh-runner:gh-runner /home/gh-runner/.ssh
+    echo "==> Permissions set."
+
+    echo "==> Adding proxmox host to known_hosts..."
+    ssh-keyscan -H ${proxmox_host} >> /home/gh-runner/.ssh/known_hosts
+    chown gh-runner:gh-runner /home/gh-runner/.ssh/known_hosts
+    echo "==> Proxmox host added to known_hosts."
+
+  - |
+    echo "==> Creating /opt/actions-runner directory..."
+    /bin/mkdir -p /opt/actions-runner
+    echo "==> Downloading GitHub Actions runner v2.330.0..."
+    /usr/bin/curl -o /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.330.0/actions-runner-linux-x64-2.330.0.tar.gz
+
+    if [ -f "/opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz" ]; then
+      echo "==> Extracting runner tarball..."
+      /usr/bin/tar -xzf /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -C /opt/actions-runner
+      echo "==> Extraction complete."
+    else
+        echo "ERROR: Tarball missing in /opt/actions-runner" && exit 1
+    fi
+
+    echo "==> Installing missing .NET/Linux dependencies..."
+    cd /opt/actions-runner
+    ./bin/installdependencies.sh
+    echo "==> Dependencies installed."
+    echo "==> Setting ownership of /opt/actions-runner to ${gh_runner_admin_username}..."
+    /bin/chown -R ${gh_runner_admin_username}:${gh_runner_admin_username} /opt/actions-runner
+    echo "==> Ownership set."
+
+  - |
+    echo "==> Configuring GitHub Actions runner..."
+    TOKEN="${gh_registration_token}"
+    sudo -u ${gh_runner_admin_username} /opt/actions-runner/config.sh \
+      --url https://github.com/krakenhavoc/HomeLab \
+      --token "$TOKEN" \
+      ${labels_flag} \
+      --unattended --replace
+    echo "==> Config.sh completed."
+
+    echo "==> Installing runner service for ${gh_runner_admin_username}..."
+    cd /opt/actions-runner && ./svc.sh install ${gh_runner_admin_username}
+    echo \"==> Service installed, starting...\"
+    cd /opt/actions-runner && ./svc.sh start
+    echo "==> Service started successfully."
+
+final_message: "GitHub Runner for ${gh_runner_hostname} is up."
