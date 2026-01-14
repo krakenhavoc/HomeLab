@@ -1,0 +1,56 @@
+name: Plex CI/CD
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - 'terraform/deployments/plex/**'
+      - 'scripts/deployment/cloud-init/plex/**'
+      - '.github/workflows/plex.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'terraform/deployments/plex/**'
+      - 'scripts/deployment/cloud-init/plex/**'
+      - '.github/workflows/plex.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  plex-ci:
+    strategy:
+      matrix:
+        environment: ["plex-dev"]
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/plex
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+
+  plex-cd:
+    needs: plex-ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      matrix:
+        environment: ["plex-dev"]
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/plex
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}

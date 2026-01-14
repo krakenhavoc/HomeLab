@@ -1,0 +1,133 @@
+name: Terraform CI
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        description: 'Working directory for Terraform commands'
+        required: true
+        type: string
+      var_file_path:
+        description: 'Path to tfvars file relative to working directory'
+        required: true
+        type: string
+      environment:
+        description: 'Environment name (lab, dev, prod, etc.)'
+        required: true
+        type: string
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+      enable_proxmox_ssh:
+        description: 'Start ssh-agent and add Proxmox key'
+        required: false
+        type: boolean
+        default: false
+      terraform_version:
+        description: 'Terraform version to use'
+        required: false
+        type: string
+        default: '1.14.3'
+      workspace:
+        description: 'Terraform Cloud workspace name'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      hcp_api_token:
+        description: 'HCP Terraform Cloud API token'
+        required: true
+    outputs:
+      plan_artifact_name:
+        description: 'Name of the uploaded plan artifact'
+        value: ${{ jobs.plan.outputs.artifact_name }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  plan:
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    outputs:
+      artifact_name: tf-plan-${{ inputs.environment }}
+    env:
+      TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
+      NODE_OPTIONS: "--no-network-family-autoselection"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up SSH for Proxmox Provider
+        if: inputs.enable_proxmox_ssh == true
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_proxmox
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.hcp_api_token }}
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} -out=tfplan-${{ inputs.environment }}
+
+      - name: Generate TF Plan Summary
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform show -json tfplan-${{ inputs.environment }} > plan.json
+
+          ADD=$(jq '[.resource_changes[] | select(.change.actions | index("create"))] | length' plan.json)
+          CHANGE=$(jq '[.resource_changes[] | select(.change.actions | index("update"))] | length' plan.json)
+          DESTROY=$(jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length' plan.json)
+
+          echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
+          echo "### Terraform Plan Summary (\`${{ inputs.environment }}\`)" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "| Action | Count |" >> $GITHUB_ENV
+          echo "|--------|-------|" >> $GITHUB_ENV
+          echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
+          echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
+          echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "_Workspace: \`${{ inputs.environment }}\` | Deployment: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Add TF Plan Summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.PLAN_SUMMARY
+            })
+
+      - name: Upload TF Plan
+        uses: actions/upload-artifact@v5
+        with:
+          name: tf-plan-${{ inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.environment }}
