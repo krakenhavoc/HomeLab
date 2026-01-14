@@ -8,7 +8,6 @@ on:
   push:
     paths:
       - 'terraform/deployments/plex/**'
-      - 'scripts/deployment/cloud-init/plex/**'
       - '.github/workflows/plex.yaml'
       - '.github/workflows/terraform-ci.yaml'
       - '.github/workflows/terraform-cd.yaml'
@@ -17,7 +16,6 @@ on:
   pull_request:
     paths:
       - 'terraform/deployments/plex/**'
-      - 'scripts/deployment/cloud-init/plex/**'
       - '.github/workflows/plex.yaml'
       - '.github/workflows/terraform-ci.yaml'
       - '.github/workflows/terraform-cd.yaml'
