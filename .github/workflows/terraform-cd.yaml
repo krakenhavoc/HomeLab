@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       environment:
-        description: 'Environment name (lab, dev, prod, etc.)'
+        description: 'Environment name (lab, dev, prd, etc.)'
         required: true
         type: string
       runner:
@@ -50,6 +50,7 @@ jobs:
   apply:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || !contains(inputs.environment, 'prd')
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
