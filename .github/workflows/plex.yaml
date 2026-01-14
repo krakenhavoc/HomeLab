@@ -2,6 +2,7 @@ name: Plex CI/CD
 
 permissions:
   contents: read
+  pull-requests: write
 
 on:
   push:
