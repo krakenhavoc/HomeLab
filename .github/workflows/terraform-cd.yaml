@@ -50,7 +50,8 @@ jobs:
   apply:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || !contains(inputs.environment, 'prd')
+    # Only run apply on main branch for production environments, otherwise always runs
+    if: (github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(inputs.environment, 'prd')) || !contains(inputs.environment, 'prd')
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
