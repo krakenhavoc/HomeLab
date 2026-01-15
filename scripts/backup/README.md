@@ -180,6 +180,13 @@ df -h /mnt/backup
 - Audit logs for backup operations
 - Off-site backups use separate credentials
 
+## Related Documentation
+
+- **[Backup Strategy Guide](../../docs/backup-strategy.md)** - Comprehensive backup procedures
+- **[Main Documentation](../../docs/README.md)** - Complete homelab docs
+- **[Scripts Overview](../README.md)** - All automation scripts
+- **[Runbook](../../docs/runbook.md)** - Operations and troubleshooting
+
 ## Future Enhancements
 
 - [ ] Implement incremental backups
@@ -188,3 +195,5 @@ df -h /mnt/backup
 - [ ] Automated restore testing
 - [ ] Cloud backup automation
 - [ ] Backup deduplication reporting
+- [ ] Integration with monitoring stack
+- [ ] Automated recovery validation

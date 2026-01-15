@@ -95,3 +95,10 @@ When making network changes:
 - Show VLAN assignments
 - Document firewall rules visually
 - Keep diagrams up to date with infrastructure changes
+
+## Related Documentation
+
+- **[Infrastructure Diagrams](../infrastructure/README.md)** - Infrastructure architecture
+- **[Network Setup Guide](../../docs/network-setup.md)** - Detailed network configuration
+- **[Terraform Network Modules](../../terraform/modules/network/README.md)** - Network IaC
+- **[Main Documentation](../../docs/README.md)** - Complete homelab docs
