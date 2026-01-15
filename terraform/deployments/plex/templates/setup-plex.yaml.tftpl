@@ -34,7 +34,7 @@ write_files:
     owner: ${admin_username}:${admin_username}
     permissions: '0644'
     content: |
-      ${indent(6, docker_compose)}
+      ${docker_compose}
 
 runcmd:
   - mkdir -p /home/${admin_username}/library
