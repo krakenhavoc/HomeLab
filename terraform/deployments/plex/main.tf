@@ -5,9 +5,10 @@ resource "proxmox_virtual_environment_file" "plex_cloudinit" {
   node_name    = var.pve.host
 
   source_raw {
-    data = templatefile("${path.module}/setup-plex.yaml.tftpl", {
-      hostname       = var.plex_host.name_prefix,
+    data = templatefile("${path.module}/templates/setup-plex.yaml.tftpl", {
+      hostname       = "${var.plex_host.name_prefix}-${var.plex_host.env}",
       admin_username = "plex"
+      docker_compose = indent(6, local.docker_compose)
     })
     file_name = "setup-plex-${var.plex_host.env}.yaml"
   }

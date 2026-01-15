@@ -41,3 +41,9 @@ variable "plex_host" {
   })
   default = {}
 }
+
+variable "plex_release_tag" {
+  description = "Plex Docker image release tag"
+  type        = string
+  default     = "latest"
+}
