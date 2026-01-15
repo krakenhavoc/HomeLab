@@ -2,14 +2,56 @@
 
 This directory contains utility scripts and automation tools for the homelab.
 
-## Directory Structure
+## 📁 Directory Structure
 
 ```
 scripts/
-├── backup/          # Backup automation scripts
-├── monitoring/      # Monitoring and health check scripts
-└── deployment/      # Deployment automation scripts
+├── README.md            # This file
+├── backup/              # Backup automation scripts
+│   └── README.md        # Backup documentation
+├── monitoring/          # Monitoring and health check scripts
+│   └── README.md        # Monitoring documentation
+└── deployment/          # Deployment automation scripts
+    ├── README.md        # Deployment scripts documentation
+    └── cloud-init/      # Cloud-init configurations (NEW!)
+        ├── README.md    # Cloud-init comprehensive guide
+        ├── kubernetes/  # Kubernetes node configurations
+        ├── plex/        # Plex Media Server configuration
+        ├── snippets/    # Reusable configuration snippets
+        └── templates/   # VM template creation scripts
 ```
+
+## 🚀 Quick Links
+
+### ☁️ Cloud-init Configurations
+See **[deployment/cloud-init/README.md](deployment/cloud-init/README.md)** for:
+- Automated VM provisioning with cloud-init
+- Kubernetes node setup scripts
+- Plex Media Server configuration
+- GitHub Actions runner setup
+- Reusable configuration snippets
+- Cloud-init syntax and examples
+
+### 💾 Backup Scripts
+See **[backup/README.md](backup/README.md)** for:
+- Automated backup routines
+- VM and container backup strategies
+- Backup verification procedures
+- Disaster recovery plans
+
+### 📊 Monitoring Scripts
+See **[monitoring/README.md](monitoring/README.md)** for:
+- Health check automation
+- Resource monitoring scripts
+- Log analysis tools
+- Alert generation
+
+### 🚢 Deployment Scripts
+See **[deployment/README.md](deployment/README.md)** for:
+- Service deployment automation
+- Rolling update procedures
+- Blue-green deployment strategies
+- Rollback procedures
 
 ## Prerequisites
 
@@ -500,6 +542,14 @@ bash -x script.sh
 - [Python Best Practices](https://docs.python-guide.org/)
 - [Cron Documentation](https://man7.org/linux/man-pages/man5/crontab.5.html)
 
+## Related Documentation
+
+- **[Cloud-init Guide](deployment/cloud-init/README.md)** - Comprehensive cloud-init documentation
+- **[Backup Strategy](backup/README.md)** - Backup automation and procedures
+- **[Monitoring Guide](monitoring/README.md)** - Monitoring and health checks
+- **[Deployment Guide](deployment/README.md)** - Deployment automation
+- **[Main Documentation](../docs/README.md)** - Complete homelab documentation
+
 ## Future Enhancements
 
 - Add more comprehensive error handling
@@ -507,3 +557,5 @@ bash -x script.sh
 - Add notification integrations
 - Create dashboard for script monitoring
 - Automated testing framework
+- Expand cloud-init library
+- Add CI/CD integration for scripts

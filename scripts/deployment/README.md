@@ -2,9 +2,44 @@
 
 Automation scripts for deploying and managing services in the homelab.
 
-## Overview
+## 📁 Directory Structure
+
+```
+deployment/
+├── README.md            # This file
+└── cloud-init/          # Cloud-init configurations (COMPREHENSIVE DOCS!)
+    ├── README.md        # Complete cloud-init guide
+    ├── kubernetes/      # Kubernetes cluster node configs
+    │   ├── setup-k8s-master.yaml
+    │   ├── setup-k8s-worker.yaml
+    │   └── calico-patch.sh
+    ├── plex/            # Plex Media Server configuration
+    │   └── setup-plex-host.yaml
+    ├── snippets/        # Reusable Proxmox snippets
+    │   ├── setup-k8s-master.yaml
+    │   ├── setup-k8s-worker.yaml
+    │   └── setup-gh-runner.yaml
+    └── templates/       # VM template creation scripts
+        └── update-noble-template.sh
+```
+
+## 🚀 Overview
 
 This directory contains scripts for automated deployment, updates, and management of homelab services.
+
+## ☁️ Cloud-init Configurations
+
+**See [cloud-init/README.md](cloud-init/README.md) for comprehensive documentation on:**
+- Automated VM provisioning with cloud-init
+- Kubernetes v1.29 cluster node setup
+- Plex Media Server automated installation
+- GitHub Actions runner configuration
+- Cloud-init syntax and best practices
+- Testing and troubleshooting guides
+- Security considerations
+- Extensive examples and use cases
+
+The cloud-init directory contains production-ready configurations used by all Terraform deployments for automated VM setup and configuration.
 
 ## Available Scripts
 
@@ -488,6 +523,14 @@ netstat -tlnp | grep :8080
 - [Kubernetes Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 - [Docker Compose](https://docs.docker.com/compose/)
 - [Helm Charts](https://helm.sh/docs/)
+- [Cloud-init Documentation](https://cloudinit.readthedocs.io/)
+
+## Related Documentation
+
+- **[Cloud-init Configurations](cloud-init/README.md)** - Comprehensive automated provisioning guide
+- **[Terraform Deployments](../../terraform/deployments/README.md)** - Infrastructure deployments
+- **[Scripts Overview](../README.md)** - All automation scripts
+- **[Main Documentation](../../docs/README.md)** - Complete homelab docs
 
 ## Future Enhancements
 
@@ -497,3 +540,5 @@ netstat -tlnp | grep :8080
 - [ ] Deployment approval workflows
 - [ ] Enhanced rollback automation
 - [ ] Deployment analytics dashboard
+- [ ] Expand cloud-init configurations
+- [ ] Add more deployment strategies

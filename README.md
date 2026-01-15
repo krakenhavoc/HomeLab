@@ -20,6 +20,14 @@ This repository contains documentation, diagrams, and code for my homelab enviro
 
 ## 📰 Recent Changes
 
+### January 2026 - Documentation Overhaul
+Comprehensive documentation update across the repository:
+- **New READMEs** added to all major directories (docs, terraform, modules, deployments)
+- **Detailed deployment guides** for Kubernetes, Plex, and GitHub Actions runners
+- **Cloud-init documentation** for automated VM provisioning
+- **Module documentation** for reusable Terraform components
+- **Cross-references** between related documentation sections
+
 ### Kubernetes Cluster Deployment (v0.1)
 The latest updates include a full Kubernetes cluster deployment using Terraform and cloud-init:
 - **Kubernetes v1.29** cluster with one master and two worker nodes
@@ -29,6 +37,11 @@ The latest updates include a full Kubernetes cluster deployment using Terraform 
 - Terraform modules for VM deployment on Proxmox
 - CI/CD workflows for infrastructure validation
 
+### Additional Deployments
+- **Plex Media Server** - Automated deployment with cloud-init
+- **GitHub Actions Runners** - Self-hosted runners for CI/CD
+- **Multiple Terraform modules** - Reusable infrastructure components
+
 ## 📁 Repository Structure
 
 ```
@@ -36,7 +49,8 @@ HomeLab/
 ├── .github/
 │   ├── workflows/               # GitHub Actions CI/CD pipelines
 │   └── ISSUE_TEMPLATE/          # Issue templates for bug reports and features
-├── docs/                        # Documentation and guides
+├── docs/                        # Documentation and guides (NEW README!)
+│   ├── README.md                # Documentation directory guide
 │   ├── overview.md              # Architecture overview
 │   ├── runbook.md               # Deployment and operations guide
 │   ├── network-setup.md         # Network configuration
@@ -45,22 +59,48 @@ HomeLab/
 │   └── security.md              # Security guidelines
 ├── diagrams/                    # Network and infrastructure diagrams
 │   ├── network/                 # Network topology diagrams
+│   │   └── README.md            # Network diagram documentation
 │   └── infrastructure/          # Infrastructure architecture diagrams
+│       └── README.md            # Infrastructure diagram documentation
 ├── terraform/                   # Infrastructure as Code (Terraform)
-│   ├── deployments/             # Deployment configurations
-│   │   └── home-lab/            # Home lab deployment (K8s cluster)
-│   └── modules/                 # Reusable Terraform modules
-│       └── compute/             # Compute resource modules
-│           └── pve-cloudinit-vm/  # Proxmox cloud-init VM module
+│   ├── README.md                # Terraform usage guide
+│   ├── deployments/             # Deployment configurations (NEW README!)
+│   │   ├── README.md            # Deployments overview
+│   │   ├── home-lab/            # Kubernetes cluster deployment
+│   │   │   └── README.md        # K8s cluster deployment guide
+│   │   ├── plex/                # Plex Media Server deployment
+│   │   │   └── README.md        # Plex deployment guide
+│   │   └── gh-runner/           # GitHub Actions runner
+│   │       └── README.md        # Runner deployment guide
+│   └── modules/                 # Reusable Terraform modules (NEW README!)
+│       ├── README.md            # Modules overview and standards
+│       ├── compute/             # Compute resource modules
+│       │   ├── README.md        # Compute modules documentation
+│       │   ├── pm-cloudinit-vm/ # Proxmox VM (modern provider)
+│       │   │   └── README.md    # Module usage guide
+│       │   └── pve-cloudinit-vm/# Proxmox VM (Telmate provider)
+│       │       └── README.md    # Module usage guide
+│       └── network/             # Network modules
+│           └── README.md        # Network modules documentation
 ├── ansible/                     # Configuration management
+│   ├── README.md                # Ansible documentation
 │   ├── playbooks/               # Ansible playbooks
 │   ├── roles/                   # Custom roles
 │   └── inventory/               # Inventory files
 └── scripts/                     # Utility scripts and automation
+    ├── README.md                # Scripts documentation
     ├── backup/                  # Backup scripts
+    │   └── README.md            # Backup documentation
     ├── monitoring/              # Monitoring scripts
+    │   └── README.md            # Monitoring documentation
     └── deployment/              # Deployment automation
-        └── cloud-init/          # Cloud-init configurations for K8s
+        ├── README.md            # Deployment scripts docs
+        └── cloud-init/          # Cloud-init configurations (NEW README!)
+            ├── README.md        # Cloud-init guide and examples
+            ├── kubernetes/      # Kubernetes node configs
+            ├── plex/            # Plex server config
+            ├── snippets/        # Reusable snippets
+            └── templates/       # Template creation scripts
 ```
 
 ## 🔧 Technologies Used
@@ -170,13 +210,28 @@ kubectl get services
 
 ## 📖 Documentation
 
-Detailed documentation for each component can be found in the `docs/` directory:
-- [Architecture Overview](docs/overview.md) - High-level system architecture and topology
-- [Runbook](docs/runbook.md) - Deployment procedures and troubleshooting
-- [Network Setup](docs/network-setup.md) - Network configuration details
-- [Service Deployment](docs/service-deployment.md) - Service deployment guides
-- [Backup Strategy](docs/backup-strategy.md) - Backup procedures and recovery
-- [Security Guidelines](docs/security.md) - Security best practices
+Comprehensive documentation is now available throughout the repository:
+
+### Core Documentation ([/docs](docs/))
+- **[Documentation Index](docs/README.md)** - Complete guide to all documentation
+- **[Architecture Overview](docs/overview.md)** - High-level system architecture and topology
+- **[Runbook](docs/runbook.md)** - Deployment procedures and troubleshooting
+- **[Network Setup](docs/network-setup.md)** - Network configuration details
+- **[Service Deployment](docs/service-deployment.md)** - Service deployment guides
+- **[Backup Strategy](docs/backup-strategy.md)** - Backup procedures and recovery
+- **[Security Guidelines](docs/security.md)** - Security best practices
+
+### Deployment Guides ([/terraform/deployments](terraform/deployments/))
+- **[Deployments Overview](terraform/deployments/README.md)** - All available deployments
+- **[Kubernetes Cluster](terraform/deployments/home-lab/README.md)** - K8s v1.29 cluster setup
+- **[Plex Media Server](terraform/deployments/plex/README.md)** - Plex deployment guide
+- **[GitHub Actions Runner](terraform/deployments/gh-runner/README.md)** - Self-hosted runner setup
+
+### Technical Documentation
+- **[Terraform Modules](terraform/modules/README.md)** - Reusable infrastructure components
+- **[Cloud-init Configurations](scripts/deployment/cloud-init/README.md)** - Automated VM provisioning
+- **[Ansible Playbooks](ansible/README.md)** - Configuration management
+- **[Utility Scripts](scripts/README.md)** - Automation and tooling
 
 ## 🌐 Supported Platforms
 
@@ -202,7 +257,7 @@ Detailed documentation for each component can be found in the `docs/` directory:
 - Infrastructure follows the principle of least privilege
 - Regular security updates and patch management
 
-## 📈 Future Enhancements
+## Future Enhancements
 
 - [ ] Implement GitOps workflows (ArgoCD/Flux)
 - [ ] Expand CI/CD pipelines for automated testing
@@ -211,6 +266,25 @@ Detailed documentation for each component can be found in the `docs/` directory:
 - [ ] Implement log aggregation (ELK/Loki)
 - [ ] Automated disaster recovery procedures
 - [ ] Service mesh integration (Istio/Linkerd)
+- [ ] Expand documentation with video tutorials
+- [ ] Add infrastructure cost tracking
+
+## 📚 Quick Navigation
+
+**Getting Started:**
+- [📖 Documentation Index](docs/README.md)
+- [🏗️ Architecture Overview](docs/overview.md)
+- [📘 Runbook](docs/runbook.md)
+
+**Deployments:**
+- [⚙️ All Deployments](terraform/deployments/README.md)
+- [☸️ Kubernetes Cluster](terraform/deployments/home-lab/README.md)
+- [🎬 Plex Media Server](terraform/deployments/plex/README.md)
+
+**Technical:**
+- [🧩 Terraform Modules](terraform/modules/README.md)
+- [☁️ Cloud-init Configs](scripts/deployment/cloud-init/README.md)
+- [🔧 Ansible Playbooks](ansible/README.md)
 
 ## 🤝 Contributing
 
