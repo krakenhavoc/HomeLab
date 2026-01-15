@@ -325,3 +325,10 @@ Update monitoring after network changes:
 - [pfSense Documentation](https://docs.netgate.com/pfsense/en/latest/)
 - [Terraform pfSense Provider](https://registry.terraform.io/providers/frankrefischer/pfsense/latest/docs)
 - [Network Design Best Practices](https://www.cisco.com/c/en/us/support/docs/lan-switching/vlan/10023-4.html)
+
+## Related Documentation
+
+- **[Terraform Modules](../README.md)** - All available modules
+- **[Network Diagrams](../../../diagrams/network/README.md)** - Network topology
+- **[Network Setup Guide](../../../docs/network-setup.md)** - Detailed network configuration
+- **[Main Documentation](../../../docs/README.md)** - Complete homelab docs

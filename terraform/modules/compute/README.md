@@ -456,6 +456,13 @@ After deployment, add VMs to monitoring:
 - Alert rules
 - Log aggregation
 
+## Related Documentation
+
+- **[Terraform Modules](../README.md)** - All available modules
+- **[Terraform Deployments](../../../deployments/README.md)** - Production deployments
+- **[Cloud-init Guide](../../../../scripts/deployment/cloud-init/README.md)** - VM provisioning
+- **[Main Documentation](../../../../docs/README.md)** - Complete homelab docs
+
 ## Future Enhancements
 
 - Implement VM autoscaling
@@ -463,3 +470,5 @@ After deployment, add VMs to monitoring:
 - Integrate with Kubernetes
 - Automated backup integration
 - Advanced networking (SR-IOV)
+- Enhanced monitoring integration
+- Custom cloud-init templates

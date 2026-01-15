@@ -361,6 +361,13 @@ resource "proxmox_vm_qemu" "monitoring" {
 - [Grafana Dashboards](https://grafana.com/grafana/dashboards/)
 - [Node Exporter Guide](https://github.com/prometheus/node_exporter)
 
+## Related Documentation
+
+- **[Main Documentation](../../docs/README.md)** - Complete homelab documentation
+- **[Scripts Overview](../README.md)** - All automation scripts
+- **[Runbook](../../docs/runbook.md)** - Operations and troubleshooting
+- **[Terraform Deployments](../../terraform/deployments/README.md)** - Infrastructure monitoring
+
 ## Future Enhancements
 
 - [ ] Machine learning for anomaly detection
@@ -368,3 +375,5 @@ resource "proxmox_vm_qemu" "monitoring" {
 - [ ] Enhanced log correlation
 - [ ] Custom metric exporters
 - [ ] Mobile monitoring app
+- [ ] Integration with alerting systems
+- [ ] Expanded dashboard library

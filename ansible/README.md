@@ -569,6 +569,13 @@ ansible-playbook playbook.yml --become --ask-become-pass
 - [Ansible Galaxy](https://galaxy.ansible.com/)
 - [Ansible Best Practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
 
+## Related Documentation
+
+- **[Main Documentation](../docs/README.md)** - Complete homelab documentation
+- **[Terraform Deployments](../terraform/deployments/README.md)** - Infrastructure deployments
+- **[Cloud-init Configs](../scripts/deployment/cloud-init/README.md)** - VM provisioning
+- **[Scripts](../scripts/README.md)** - Utility scripts and automation
+
 ## Future Enhancements
 
 - Implement Ansible Tower/AWX
@@ -576,3 +583,5 @@ ansible-playbook playbook.yml --become --ask-become-pass
 - Create custom modules
 - Enhance error handling
 - Add more comprehensive testing
+- Integration with cloud-init workflows
+- Expand role library

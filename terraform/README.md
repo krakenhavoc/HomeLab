@@ -2,14 +2,39 @@
 
 This directory contains Terraform configurations for managing homelab infrastructure.
 
-## Directory Structure
+## 📋 Directory Structure
 
 ```
 terraform/
-├── network/          # Network infrastructure
-├── compute/          # Virtual machines and compute resources
-└── storage/          # Storage configurations
+├── README.md             # This file
+├── install.sh            # Terraform installation script
+├── deployments/          # Production deployments (See deployments/README.md)
+│   ├── home-lab/         # Kubernetes cluster deployment
+│   ├── plex/             # Plex Media Server
+│   └── gh-runner/        # GitHub Actions runner
+└── modules/              # Reusable modules (See modules/README.md)
+    ├── compute/          # Compute resource modules
+    │   ├── pm-cloudinit-vm/    # Proxmox VM (modern provider)
+    │   └── pve-cloudinit-vm/   # Proxmox VM (Telmate provider)
+    └── network/          # Network infrastructure modules
 ```
+
+## 🚀 Quick Links
+
+### 📦 Deployments
+See **[deployments/README.md](deployments/README.md)** for:
+- Available deployment configurations
+- Kubernetes cluster setup
+- Plex Media Server deployment
+- GitHub Actions runner setup
+- Deployment workflow and best practices
+
+### 🧩 Modules
+See **[modules/README.md](modules/README.md)** for:
+- Reusable Terraform modules
+- Module development standards
+- Usage examples and testing
+- Module versioning guidelines
 
 ## Prerequisites
 
@@ -287,6 +312,13 @@ Each subdirectory contains:
 - [Terraform Best Practices](https://www.terraform-best-practices.com/)
 - [Learn Terraform](https://learn.hashicorp.com/terraform)
 
+## Related Documentation
+
+- **[Deployments Guide](deployments/README.md)** - Production deployment configurations
+- **[Modules Guide](modules/README.md)** - Reusable infrastructure modules
+- **[Cloud-init Configs](../scripts/deployment/cloud-init/README.md)** - VM provisioning
+- **[Main Documentation](../docs/README.md)** - Complete homelab docs
+
 ## Future Enhancements
 
 - Implement Terraform Cloud for state management
@@ -294,3 +326,5 @@ Each subdirectory contains:
 - Create custom provider for homelab devices
 - Implement policy as code with Sentinel
 - Add drift detection automation
+- Expand module library
+- Add multi-cloud support
