@@ -81,3 +81,9 @@ variable "vm_network_bridge" {
   description = "Network bridge for the VM"
   type        = string
 }
+
+variable "vm_vlan_id" {
+  description = "VLAN ID for the network device"
+  type        = number
+  default     = null
+}

@@ -40,6 +40,56 @@ run "valid_minimal_config" {
   }
 }
 
+# Test with VLAN configured
+run "valid_with_vlan" {
+  command = plan
+
+  variables {
+    vm_name                        = "test-vm-vlan"
+    vm_node_name                   = "pve-node1"
+    vm_description                 = "Test VM with VLAN"
+    clone_vm_id                    = 9000
+    vm_cpu_cores                   = 2
+    vm_memory_mb                   = 2048
+    vm_disk_datastore_id           = "local-lvm"
+    vm_disk_size                   = 20
+    vm_cloudinit_datastore_id      = "local"
+    vm_cloudinit_user_data_file_id = "local:snippets/user-data.yml"
+    vm_network_bridge              = "vmbr0"
+    vm_vlan_id                     = 100
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.network_device[0].vlan_id == 100
+    error_message = "VLAN ID should be set to 100"
+  }
+}
+
+# Test without VLAN configured
+run "valid_without_vlan" {
+  command = plan
+
+  variables {
+    vm_name                        = "test-vm-no-vlan"
+    vm_node_name                   = "pve-node1"
+    vm_description                 = "Test VM without VLAN"
+    clone_vm_id                    = 9000
+    vm_cpu_cores                   = 2
+    vm_memory_mb                   = 2048
+    vm_disk_datastore_id           = "local-lvm"
+    vm_disk_size                   = 20
+    vm_cloudinit_datastore_id      = "local"
+    vm_cloudinit_user_data_file_id = "local:snippets/user-data.yml"
+    vm_network_bridge              = "vmbr0"
+    # vm_vlan_id omitted
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.network_device[0].vlan_id == null
+    error_message = "VLAN ID should be null when not configured"
+  }
+}
+
 # Test with custom BIOS setting
 run "valid_seabios_config" {
   command = plan
