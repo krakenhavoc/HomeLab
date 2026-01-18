@@ -34,6 +34,7 @@ jobs:
       var_file_path: env/${{ matrix.environment }}/terraform.tfvars
       environment: ${{ matrix.environment }}
       runner: self-hosted
+      enable_proxmox_ssh: true
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
@@ -48,6 +49,7 @@ jobs:
       working_directory: terraform/deployments/lab
       environment: ${{ matrix.environment }}
       runner: self-hosted
+      enable_proxmox_ssh: true
       plan_artifact_name: tf-plan-${{ matrix.environment }}
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
