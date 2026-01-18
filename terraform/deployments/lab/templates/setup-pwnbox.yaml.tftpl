@@ -1,0 +1,76 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${pwnbox_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - ubuntu-desktop
+  - xrdp
+  - xorgxrdp
+  - neovim
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+users:
+  - name: ${pwnbox_admin_username}
+    gecos: "KrakenHavoc CTF Pwnbox Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+  - systemctl enable --now xrdp
+  - bash -c "ufw allow 3389/tcp || true"
+  - systemctl set-default graphical.target
+  - |
+    sudo -u ${pwnbox_admin_username} dbus-launch gsettings set org.gnome.desktop.interface enable-animations false
+
+write_files:
+  - path: /usr/share/themes/Arc-Dark/gtk-3.0/gtk.css
+    content: |
+      /* Minimal Arc‑Dark GTK3 stylesheet – just enough to force a dark look */
+      @import url("resource:///org/gnome/theme/Adwaita-dark/gtk.css");
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/dconf/profile/user
+    content: |
+      user-db:user
+      system-db:local
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/dconf/db/local.d/00-gnome-theme
+    content: |
+      [org/gnome/desktop/interface]
+      gtk-theme='Arc-Dark'
+      icon-theme='Yaru-dark'
+      cursor-theme='Yaru'
+    owner: root:root
+    permissions: '0644'
+
+  - path: /etc/dconf/db/local.d/01-gnome-behavior
+    content: |
+      [org/gnome/desktop/peripherals/mouse]
+      accel-profile='flat'   # smoother pointer for remote sessions
+    owner: root:root
+    permissions: '0644'
+
+bootcmd:
+  - dconf update
+
+final_message: |
+  ==========================================================
+  ✅ Ubuntu 24.04 with GNOME + XRDP is ready!
+  👉 Connect with any RDP client to ${pwnbox_hostname}:3389
+  👉 Login with the same username/password you use for SSH.
+  👉 GNOME is using the Arc‑Dark theme (easy on the eyes).
+  ==========================================================
