@@ -14,9 +14,7 @@ on:
         required: true
         default: ''
 env:
-  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
-  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
-  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
 jobs:
   terraform-replace:
@@ -29,20 +27,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
-
-    - name: Render cloud-init with commit SHA
-      working-directory: scripts/deployment/cloud-init
-      run: |
-        set -euo pipefail
-
-        sed -i "s|__GITHUB_SHA__|${GITHUB_SHA}|g" kubernetes/setup-k8s-master.yaml
-
-    - name: Sync cloud-init snippets to PVE
-      working-directory: scripts/deployment/cloud-init
-      run: |
-        rsync -av --no-owner --no-group --delete \
-          kubernetes/ \
-          /mnt/pve-snippets/kubernetes/snippets/
 
     - name: Set up Node.js
       uses: actions/setup-node@v6
