@@ -9,6 +9,10 @@ on:
         description: 'Resource address to recreate (e.g. module.vpc.aws_instance.web)'
         required: true
         default: ''
+      deployment_name:
+        description: "Deployment name (e.g. home-lab, frontends, plex, etc)"
+        required: true
+        default: ''
       environment:
         description: "Hashicorp workspace tag for resource's state"
         required: true
@@ -39,15 +43,15 @@ jobs:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
     - name: Terraform Init
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: terraform init -input=false
 
     - name: Terraform Validate
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: terraform validate
 
     - name: Terraform Apply
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: |
         # Construct the replace flag if an input was provided
         REPLACE_FLAG=""
