@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         environment: ["lab"]
-    uses: krakenhavoc/HomeLab/.github/workflows/terraform-ci.yaml@06368e42ab32bbb48ac9f73145042574046c72c3
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-ci.yaml@v0.2.0
     with:
       working_directory: terraform/deployments/lab
       var_file_path: env/${{ matrix.environment }}/terraform.tfvars
@@ -44,7 +44,7 @@ jobs:
     strategy:
       matrix:
         environment: ["lab"]
-    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@06368e42ab32bbb48ac9f73145042574046c72c3
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@v0.2.0
     with:
       working_directory: terraform/deployments/lab
       environment: ${{ matrix.environment }}
