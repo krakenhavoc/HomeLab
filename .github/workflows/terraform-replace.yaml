@@ -59,4 +59,4 @@ jobs:
           REPLACE_FLAG="-replace=${{ github.event.inputs.replace_resource }}"
         fi
 
-        terraform apply -auto-approve $REPLACE_FLAG
+        terraform apply -auto-approve $REPLACE_FLAG --var-file=env/${{ inputs.environment }}/terraform.tfvars
