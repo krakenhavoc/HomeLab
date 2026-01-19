@@ -14,7 +14,7 @@ resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
 }
 
 module "pwnbox" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=feature/pm-vm-vlan"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
 
   vm_name                        = var.pwnbox.name_prefix
   vm_node_name                   = var.pve.host
