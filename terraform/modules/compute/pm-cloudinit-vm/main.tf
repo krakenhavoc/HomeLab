@@ -45,7 +45,8 @@ resource "proxmox_virtual_environment_vm" "this" {
   }
 
   network_device {
-    bridge = var.vm_network_bridge
+    bridge  = var.vm_network_bridge
+    vlan_id = var.vm_vlan_id
   }
 
   serial_device {}
