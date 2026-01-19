@@ -1,0 +1,56 @@
+name: Frontends Deploy
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - 'terraform/deployments/frontends/**'
+      - '.github/workflows/frontends-deploy.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'terraform/deployments/frontends/**'
+      - '.github/workflows/frontends-deploy.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  frontends-ci:
+    strategy:
+      matrix:
+        environment: ["frontends-dev"]
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-ci.yaml@v0.2.0
+    with:
+      working_directory: terraform/deployments/frontends
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+  frontends-cd:
+    needs: frontends-ci
+    strategy:
+      matrix:
+        environment: ["frontends-dev"]
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@v0.2.0
+    with:
+      working_directory: terraform/deployments/frontends
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}

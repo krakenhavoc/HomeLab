@@ -1,0 +1,45 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${hostname}
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+
+users:
+  - name: ${admin_username}
+    gecos: "PFE Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+write_files:
+  - path: /tmp/docker-compose.yaml
+    owner: root:root
+    permissions: '0644'
+    content: |
+      ${docker_compose}
+
+runcmd:
+  - systemctl enable --now docker
+  - mv /tmp/docker-compose.yaml /home/${admin_username}/docker-compose.yaml || true
+  - chown ${admin_username}:${admin_username} /home/${admin_username}/docker-compose.yaml || true
+  - sudo -u ${admin_username} sudo docker compose -f /home/${admin_username}/docker-compose.yaml up -d
+
+final_message: "${hostname} is up."
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
