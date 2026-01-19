@@ -1,0 +1,56 @@
+name: Lab Deploy
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - 'terraform/deployments/lab/**'
+      - '.github/workflows/lab.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'terraform/deployments/lab/**'
+      - '.github/workflows/lab.yaml'
+      - '.github/workflows/terraform-ci.yaml'
+      - '.github/workflows/terraform-cd.yaml'
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  lab-ci:
+    strategy:
+      matrix:
+        environment: ["lab"]
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-ci.yaml@v0.2.0
+    with:
+      working_directory: terraform/deployments/lab
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+  lab-cd:
+    needs: lab-ci
+    strategy:
+      matrix:
+        environment: ["lab"]
+    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@v0.2.0
+    with:
+      working_directory: terraform/deployments/lab
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
