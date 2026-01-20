@@ -1,0 +1,56 @@
+name: Shared CI/CD
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - "terraform/deployments/shared/**"
+      - ".github/workflows/shared.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "terraform/deployments/shared/**"
+      - ".github/workflows/shared.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  shared-ci:
+    strategy:
+      matrix:
+        environment: ["shared"]
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/shared
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: false
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+  shared-cd:
+    needs: shared-ci
+    strategy:
+      matrix:
+        environment: ["shared"]
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/shared
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+      enable_proxmox_ssh: false
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
