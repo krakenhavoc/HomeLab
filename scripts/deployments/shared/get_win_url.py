@@ -73,6 +73,11 @@ def get_url():
         final_url = download_btn.get_attribute("href")
         print(json.dumps({"url": final_url}))
         return final_url
+    except Exception as e:
+        sys.stderr.write(f"Scraper Error: {str(e)}\n")
+        # Take a screenshot for GH Actions debugging
+        driver.save_screenshot("error_state.png")
+        sys.exit(1)
 
     finally:
         driver.quit()

@@ -33,12 +33,29 @@ jobs:
       - uses: actions/setup-python@v6.1.0
         with:
           python-version: "3.13"
+          cache: "pip"
       - name: Run Scraper
         id: scraper
         working-directory: scripts/deployments/shared
         run: |
           pip install -r requirements.txt
-          URL=$(python get_win_url.py | jq -r .url)
+
+          # Run script and capture output
+          RAW_OUTPUT=$(python get_win_url.py)
+          URL=$(echo "$RAW_OUTPUT" | jq -r .url)
+
+          # Validation
+          if [ -z "$URL" ] || [ "$URL" == "null" ]; then
+            echo "::error::Scraper returned an empty or null URL. Check Python script logs."
+            exit 1
+          fi
+
+          if [[ ! "$URL" =~ ^https?:// ]]; then
+            echo "::error::Scraper returned an invalid URL format: $URL"
+            exit 1
+          fi
+
+          echo "Successfully retrieved URL. Exporting to outputs."
           echo "url=$URL" >> $GITHUB_OUTPUT
 
   shared-ci:
