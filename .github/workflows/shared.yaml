@@ -25,7 +25,7 @@ env:
 
 jobs:
   get-win11-iso-url:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       iso_url: ${{ steps.scraper.outputs.url }}
     steps:
