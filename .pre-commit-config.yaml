@@ -1,41 +1,64 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v3.2.0
-  hooks:
-  - id: trailing-whitespace
-  - id: end-of-file-fixer
-  - id: check-yaml
-  - id: check-added-large-files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
 
-# Terraform Specific
-- repo: https://github.com/antonbabenko/pre-commit-terraform
-  rev: v1.104.0
-  hooks:
-  - id: terraform_fmt
-    files: ^terraform/.*\.tf$
-  - id: terraform_validate
-    files: ^terraform/.*\.tf$
-  - id: terraform_tflint
-    files: ^terraform/.*\.tf$
-  - id: terraform_trivy
-    files: ^terraform/.*\.tf$
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types: [yaml]
 
-- repo: https://github.com/koalaman/shellcheck-precommit
-  rev: v0.10.0
-  hooks:
-    - id: shellcheck
-      args: ["-x"]
-      files: \.(sh|bash)$
+  # Terraform Specific
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.104.0
+    hooks:
+      - id: terraform_fmt
+        files: ^terraform/.*\.tf$
+      - id: terraform_validate
+        files: ^terraform/.*\.tf$
+      - id: terraform_tflint
+        files: ^terraform/.*\.tf$
+      - id: terraform_trivy
+        files: ^terraform/.*\.tf$
 
-- repo: https://github.com/scop/pre-commit-shfmt
-  rev: v3.12.0-2
-  hooks:
-    - id: shfmt-docker
-      args:
-        - -i=2
-        - -ci
-        - -sr
-        - -kp
-      files: \.(sh|bash)$
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        args: ["-x"]
+        files: \.(sh|bash)$
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.12.0-2
+    hooks:
+      - id: shfmt-docker
+        args:
+          - -i=2
+          - -ci
+          - -sr
+          - -kp
+        files: \.(sh|bash)$
+
+  - repo: https://github.com/myint/autoflake
+    rev: v2.2.1
+    hooks:
+      - id: autoflake
+        args: ["--in-place", "--remove-all-unused-imports"]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1 # Use the latest stable version
+    hooks:
+      - id: black
+        language_version: python3
