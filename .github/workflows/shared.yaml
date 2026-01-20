@@ -58,6 +58,13 @@ jobs:
           echo "Successfully retrieved URL. Exporting to outputs."
           echo "url=$URL" >> $GITHUB_OUTPUT
 
+      - name: Upload Debug Screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-debug
+          path: scripts/deployments/shared/*.png
+
   shared-ci:
     needs: get-win11-iso-url
     strategy:
