@@ -9,14 +9,16 @@ on:
         description: 'Resource address to recreate (e.g. module.vpc.aws_instance.web)'
         required: true
         default: ''
+      deployment_name:
+        description: "Deployment name (e.g. home-lab, frontends, plex, etc)"
+        required: true
+        default: ''
       environment:
         description: "Hashicorp workspace tag for resource's state"
         required: true
         default: ''
 env:
-  PM_API_TOKEN_ID: ${{ vars.PM_API_TOKEN_ID }}
-  PM_API_TOKEN_SECRET: ${{ secrets.PM_API_TOKEN }}
-  TF_VAR_cloudinit-example_root-password: ${{ secrets.CI_EXAMPLE_ROOT_PASS }}
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
 jobs:
   terraform-replace:
@@ -30,20 +32,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v6
 
-    - name: Render cloud-init with commit SHA
-      working-directory: scripts/deployment/cloud-init
-      run: |
-        set -euo pipefail
-
-        sed -i "s|__GITHUB_SHA__|${GITHUB_SHA}|g" kubernetes/setup-k8s-master.yaml
-
-    - name: Sync cloud-init snippets to PVE
-      working-directory: scripts/deployment/cloud-init
-      run: |
-        rsync -av --no-owner --no-group --delete \
-          kubernetes/ \
-          /mnt/pve-snippets/kubernetes/snippets/
-
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
@@ -55,15 +43,15 @@ jobs:
         cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
     - name: Terraform Init
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: terraform init -input=false
 
     - name: Terraform Validate
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: terraform validate
 
     - name: Terraform Apply
-      working-directory: terraform/deployments/home-lab
+      working-directory: terraform/deployments/${{ inputs.deployment_name }}
       run: |
         # Construct the replace flag if an input was provided
         REPLACE_FLAG=""
@@ -71,4 +59,4 @@ jobs:
           REPLACE_FLAG="-replace=${{ github.event.inputs.replace_resource }}"
         fi
 
-        terraform apply -auto-approve $REPLACE_FLAG
+        terraform apply -auto-approve $REPLACE_FLAG --var-file=env/${{ inputs.environment }}/terraform.tfvars
