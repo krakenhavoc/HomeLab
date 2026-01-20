@@ -4,47 +4,52 @@ on:
   workflow_call:
     inputs:
       working_directory:
-        description: 'Working directory for Terraform commands'
+        description: "Working directory for Terraform commands"
         required: true
         type: string
       var_file_path:
-        description: 'Path to tfvars file relative to working directory'
+        description: "Path to tfvars file relative to working directory"
         required: true
         type: string
       environment:
-        description: 'Environment name (lab, dev, prod, etc.)'
+        description: "Environment name (lab, dev, prod, etc.)"
         required: true
         type: string
       runner:
-        description: 'GitHub runner to use'
+        description: "GitHub runner to use"
         required: false
         type: string
-        default: 'ubuntu-latest'
+        default: "ubuntu-latest"
       enable_proxmox_ssh:
-        description: 'Start ssh-agent and add Proxmox key'
+        description: "Start ssh-agent and add Proxmox key"
         required: false
         type: boolean
         default: false
       terraform_version:
-        description: 'Terraform version to use'
+        description: "Terraform version to use"
         required: false
         type: string
-        default: '1.14.3'
+        default: "1.14.3"
       workspace:
-        description: 'Terraform Cloud workspace name'
+        description: "Terraform Cloud workspace name"
         required: false
         type: string
-        default: ''
+        default: ""
+      terraform_vars:
+        description: "Additional Terraform variables to pass"
+        required: false
+        type: string
+        default: ""
     secrets:
       hcp_api_token:
-        description: 'HCP Terraform Cloud API token'
+        description: "HCP Terraform Cloud API token"
         required: true
       proxmox_ve_api_token:
-        description: 'Proxmox VE API token for Proxmox Provider'
+        description: "Proxmox VE API token for Proxmox Provider"
         required: false
     outputs:
       plan_artifact_name:
-        description: 'Name of the uploaded plan artifact'
+        description: "Name of the uploaded plan artifact"
         value: ${{ jobs.plan.outputs.artifact_name }}
 
 permissions:
@@ -76,7 +81,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3.1.2
@@ -94,7 +99,7 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ inputs.working_directory }}
-        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} -out=tfplan-${{ inputs.environment }}
+        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} ${{ inputs.terraform_vars }} -out=tfplan-${{ inputs.environment }}
 
       - name: Generate TF Plan Summary
         if: github.event_name == 'pull_request'

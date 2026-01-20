@@ -24,7 +24,25 @@ env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
 jobs:
+  get-win11-iso-url:
+    runs-on: ubuntu-latest
+    outputs:
+      iso_url: ${{ steps.scraper.outputs.url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: "3.13"
+      - name: Run Scraper
+        id: scraper
+        working-directory: scripts/deployments/shared
+        run: |
+          pip install -r requirements.txt
+          URL=$(python get_win_url.py | jq -r .url)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
   shared-ci:
+    needs: get-win11-iso-url
     strategy:
       matrix:
         environment: ["shared"]
@@ -35,6 +53,7 @@ jobs:
       environment: ${{ matrix.environment }}
       runner: self-hosted
       enable_proxmox_ssh: false
+      terraform_vars: "-var=win11_iso_url='${{ needs.get-win11-iso-url.outputs.iso_url }}'"
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}

@@ -4,7 +4,7 @@ resource "proxmox_virtual_environment_download_file" "windows_11_iso" {
   content_type = "iso"
 
   # Accesses the "url" key from the Python JSON output
-  url       = data.external.win11_iso.result.url
+  url       = var.win11_iso_url
   file_name = local.win11_iso_name
 
   # This prevents Terraform from re-downloading if the file exists,
