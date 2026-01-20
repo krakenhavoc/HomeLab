@@ -9,6 +9,7 @@ resource "proxmox_virtual_environment_file" "pfe_host_cloudinit" {
       hostname       = "${var.pfe_host.name_prefix}-${var.pfe_host.env}",
       admin_username = "pfe"
       docker_compose = indent(6, local.docker_compose)
+      redlib_env     = indent(6, local.redlib_env)
     })
     file_name = "setup-pfe-${var.pfe_host.env}.yaml"
   }
