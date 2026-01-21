@@ -12,3 +12,11 @@ resource "proxmox_virtual_environment_download_file" "windows_11_iso" {
   # needed as URL will change but we don't want to re-download each time
   overwrite = false
 }
+
+resource "proxmox_virtual_environment_download_file" "virtio_drivers" {
+  node_name    = "pve"
+  datastore_id = "local"
+  content_type = "iso"
+  url          = "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso"
+  file_name    = "virtio-win.iso"
+}
