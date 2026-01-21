@@ -1,4 +1,4 @@
-provider "pve" {
+provider "proxmox" {
   endpoint = var.pve.endpoint
   insecure = false
 

@@ -39,3 +39,27 @@ variable "pwnbox" {
   })
   default = {}
 }
+
+variable "win11" {
+  description = "Object containing the Windows 11 VM configuration"
+  type = object({
+    name_prefix       = string
+    cpu_cores         = number
+    memory_mb         = number
+    os_disk_size      = number
+    disk_interface    = string
+    disk_datastore_id = string
+    network_bridge    = string
+    vlan_id           = number
+  })
+  default = {
+    name_prefix       = "win11-vm"
+    cpu_cores         = 4
+    memory_mb         = 8192
+    os_disk_size      = 64
+    disk_interface    = "virtio0"
+    disk_datastore_id = "hdd_556g_thin"
+    network_bridge    = "vmbr0"
+    vlan_id           = 99
+  }
+}
