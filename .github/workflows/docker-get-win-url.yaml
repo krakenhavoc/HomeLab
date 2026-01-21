@@ -67,7 +67,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache,mode=max
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, steps.image.outputs.name) || '' }}
 
       - name: Image digest
-        run: echo ${{ steps.build-and-push.outputs.digest }}
+        if: github.event_name != 'pull_request'
+        run: echo "Image digest:${{ steps.build-and-push.outputs.digest }}"
