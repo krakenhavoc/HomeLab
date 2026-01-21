@@ -1,6 +1,4 @@
 resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
-  #Temporary provider block until state is updated to use proxmox provider
-  provider     = proxmox
   content_type = "snippets"
   datastore_id = "snippets"
   node_name    = var.pve.host
@@ -35,8 +33,6 @@ module "pwnbox" {
 }
 
 resource "proxmox_virtual_environment_vm" "win11_vm" {
-  #Temporary provider block until state is updated to use proxmox provider
-  provider  = proxmox
   name      = var.win11.name_prefix
   node_name = var.pve.host
 
