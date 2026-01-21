@@ -114,7 +114,7 @@ jobs:
           TOTAL_CHANGES=$((ADD + CHANGE + DESTROY))
 
           echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
-          echo "### Terraform Plan Summary (\`shared\`)" >> $GITHUB_ENV
+          echo "### Terraform Plan Summary (\`${{ inputs.environment }}\`)" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
 
           if [ "$TOTAL_CHANGES" -eq "0" ]; then
@@ -128,7 +128,7 @@ jobs:
           fi
 
           echo "" >> $GITHUB_ENV
-          echo "_Workspace: \`shared\` | Deployment: \`terraform/deployments/shared\`_" >> $GITHUB_ENV
+          echo "_Workspace: \`${{ env.TF_WORKSPACE || 'default' }}\` | Path: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Add TF Plan Summary to PR
