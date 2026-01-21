@@ -40,6 +40,8 @@ resource "proxmox_virtual_environment_vm" "win11_vm" {
   name      = var.win11.name_prefix
   node_name = var.pve.host
 
+  bios = "ovmf"
+
   cpu {
     cores = var.win11.cpu_cores
     type  = "host"
