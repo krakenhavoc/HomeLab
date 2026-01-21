@@ -88,4 +88,12 @@ resource "proxmox_virtual_environment_vm" "win11_vm" {
     file_id   = data.proxmox_virtual_environment_file.win11_iso.id
     interface = "ide2"
   }
+
+  # Secondary CDROM: VirtIO Drivers
+  disk {
+    file_id      = data.proxmox_virtual_environment_file.virtio_win_iso.id
+    interface    = "ide0"
+    datastore_id = "local"
+    file_format  = "raw"
+  }
 }

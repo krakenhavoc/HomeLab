@@ -15,3 +15,11 @@ data "proxmox_virtual_environment_file" "win11_iso" {
   content_type = "iso"
   file_name    = "win11-latest.iso"
 }
+
+
+data "proxmox_virtual_environment_file" "virtio_win_iso" {
+  node_name    = "pve"
+  datastore_id = "local"
+  content_type = "iso"
+  file_name    = "virtio-win.iso"
+}
