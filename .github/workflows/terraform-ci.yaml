@@ -107,20 +107,28 @@ jobs:
         run: |
           terraform show -json tfplan-${{ inputs.environment }} > plan.json
 
-          ADD=$(jq '[.resource_changes[] | select(.change.actions | index("create"))] | length' plan.json)
-          CHANGE=$(jq '[.resource_changes[] | select(.change.actions | index("update"))] | length' plan.json)
-          DESTROY=$(jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length' plan.json)
+          ADD=$(jq '[.resource_changes[]? | select(.change.actions | index("create"))] | length // 0' plan.json)
+          CHANGE=$(jq '[.resource_changes[]? | select(.change.actions | index("update"))] | length // 0' plan.json)
+          DESTROY=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length // 0' plan.json)
+
+          TOTAL_CHANGES=$((ADD + CHANGE + DESTROY))
 
           echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
           echo "### Terraform Plan Summary (\`${{ inputs.environment }}\`)" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
-          echo "| Action | Count |" >> $GITHUB_ENV
-          echo "|--------|-------|" >> $GITHUB_ENV
-          echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
-          echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
-          echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
+
+          if [ "$TOTAL_CHANGES" -eq "0" ]; then
+            echo "✅ **No changes.** Infrastructure matches configuration." >> $GITHUB_ENV
+          else
+            echo "| Action | Count |" >> $GITHUB_ENV
+            echo "|--------|-------|" >> $GITHUB_ENV
+            echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
+            echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
+            echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
+          fi
+
           echo "" >> $GITHUB_ENV
-          echo "_Workspace: \`${{ inputs.environment }}\` | Deployment: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
+          echo "_Workspace: \`${{ env.TF_WORKSPACE || 'default' }}\` | Path: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Add TF Plan Summary to PR
