@@ -3,6 +3,7 @@ name: Shared CI/CD
 permissions:
   contents: read
   pull-requests: write
+  packages: read
 
 on:
   push:
@@ -34,19 +35,31 @@ jobs:
         with:
           python-version: "3.13"
           cache: "pip"
-      - name: Run Scraper
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull and Run Scraper
         id: scraper
-        working-directory: scripts/deployments/shared
         run: |
-          pip install -r requirements.txt
+          # Define the image URL (lowercase)
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/get-win-url:latest"
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
-          # Run script and capture output
-          RAW_OUTPUT=$(python get_win_url.py)
+          echo "Pulling latest scraper image..."
+          docker pull $IMAGE_NAME
+
+          # Run the container and capture the JSON output
+          RAW_OUTPUT=$(docker run --rm $IMAGE_NAME)
+
+          # Parse the URL using jq
           URL=$(echo "$RAW_OUTPUT" | jq -r .url)
 
           # Validation
           if [ -z "$URL" ] || [ "$URL" == "null" ]; then
-            echo "::error::Scraper returned an empty or null URL. Check Python script logs."
+            echo "::error::Scraper returned an empty or null URL. RAW: $RAW_OUTPUT"
             exit 1
           fi
 
@@ -55,15 +68,8 @@ jobs:
             exit 1
           fi
 
-          echo "Successfully retrieved URL. Exporting to outputs."
+          echo "Successfully retrieved URL."
           echo "url=$URL" >> $GITHUB_OUTPUT
-
-      - name: Upload Debug Screenshot
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scraper-debug
-          path: scripts/deployments/shared/*.png
 
   shared-ci:
     needs: get-win11-iso-url
