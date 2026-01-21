@@ -93,7 +93,7 @@ resource "proxmox_virtual_environment_vm" "win11_vm" {
   disk {
     file_id      = data.proxmox_virtual_environment_file.virtio_win_iso.id
     interface    = "ide0"
-    datastore_id = "local"
+    datastore_id = var.win11.disk_datastore_id
     file_format  = "raw"
   }
 }
