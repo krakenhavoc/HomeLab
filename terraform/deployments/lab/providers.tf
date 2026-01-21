@@ -7,5 +7,14 @@ provider "proxmox" {
     username = "root"
     # You can also use password or private_key here
   }
-  alias = "pve"
+}
+provider "pve" {
+  endpoint = var.pve.endpoint
+  insecure = false
+
+  ssh {
+    agent    = true
+    username = "root"
+    # You can also use password or private_key here
+  }
 }
