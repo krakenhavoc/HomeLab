@@ -76,9 +76,10 @@ resource "proxmox_virtual_environment_vm" "win11_vm" {
   }
 
   efi_disk {
-    datastore_id = var.win11.disk_datastore_id
-    file_format  = "raw"
-    type         = "4m"
+    datastore_id      = var.win11.disk_datastore_id
+    file_format       = "raw"
+    type              = "4m"
+    pre_enrolled_keys = true
   }
 
   cdrom {
