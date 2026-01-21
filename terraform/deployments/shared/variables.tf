@@ -13,6 +13,7 @@ variable "pve" {
 variable "win11_iso_url" {
   description = "URL to download the latest Windows 11 ISO"
   type        = string
+  default     = ""
 }
 
 variable "datastore_id" {

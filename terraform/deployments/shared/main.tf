@@ -1,9 +1,10 @@
 resource "proxmox_virtual_environment_download_file" "windows_11_iso" {
+  count = var.win11_iso_url != "" ? 1 : 0
+
   node_name    = var.pve.host
   datastore_id = var.datastore_id
   content_type = "iso"
 
-  # Accesses the "url" key from the Python JSON output
   url       = var.win11_iso_url
   file_name = local.win11_iso_name
 
