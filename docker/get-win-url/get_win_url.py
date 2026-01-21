@@ -1,9 +1,9 @@
 import json
 import sys
+import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -11,76 +11,77 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 
 def get_url():
     options = Options()
-    options.add_argument("--headless=new")  # Modern headless mode
-    options.add_argument("--no-sandbox")  # Required for many Linux environments
-    options.add_argument("--disable-dev-shm-usage")  # Overcomes limited resource issues
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    )
 
-    # Create a service object that points to a log file
-    service = Service(log_output="webdriver.log")
-
-    driver = webdriver.Chrome(options=options, service=service)
+    driver = webdriver.Chrome(options=options)
 
     try:
         driver.get("https://www.microsoft.com/software-download/windows11")
 
-        # 1. Select the Edition
-        select_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "product-edition"))
+        # 1. Select Edition
+        edition_dropdown = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.ID, "product-edition"))
         )
-        select = Select(select_element)
-        # Usually the first option is the multi-edition ISO
-        select.select_by_index(1)
+        Select(edition_dropdown).select_by_index(1)
 
-        # 2. Click the first Download button
-        submit_btn = driver.find_element(By.ID, "submit-product-edition")
-        submit_btn.click()
+        # Click the first 'Download' button
+        driver.find_element(By.ID, "submit-product-edition").click()
 
-        # 3. WAIT for the language dropdown to actually contain options
-        # Sometimes the element exists but is empty while loading
-        WebDriverWait(driver, 15).until(
-            lambda d: len(Select(d.find_element(By.ID, "product-languages")).options)
-            > 1
+        # 2. Select Language
+        # Wait for the language dropdown to appear AND have options
+        lang_el = WebDriverWait(driver, 20).until(
+            EC.visibility_of_element_located((By.ID, "product-languages"))
         )
 
-        lang_select_el = driver.find_element(By.ID, "product-languages")
-        select = Select(lang_select_el)
+        # Give the AJAX a moment to populate the list
+        time.sleep(2)
+        lang_select = Select(lang_el)
 
-        # Loop through options and find one that CONTAINS "English"
-        # This avoids issues with hidden characters or "United States" vs "US"
-        found = False
-        for option in select.options:
-            if "English" in option.text:
-                select.select_by_value(option.get_attribute("value"))
-                found = True
+        # Match "English" but avoid "International" if possible
+        target_text = ""
+        for option in lang_select.options:
+            if "English" in option.text and "International" not in option.text:
+                target_text = option.text
                 break
 
-        if not found:
-            raise Exception("English language not found in options")
+        if target_text:
+            lang_select.select_by_visible_text(target_text)
+        else:
+            lang_select.select_by_index(1)  # Fallback to first available lang
 
-        # 4. Click Download button for language selection
-        download_btn = driver.find_element(By.ID, "submit-product-languages")
-        download_btn.click()
+        # 3. Click the 'Confirm' button (ID is submit-sku)
+        confirm_btn = WebDriverWait(driver, 20).until(
+            EC.element_to_be_clickable((By.ID, "submit-sku"))
+        )
+        confirm_btn.click()
 
-        # 5. Get the download link
-        # There should be a download link that appears after language selection
-        link = WebDriverWait(driver, 10).until(
+        # 4. Get the 64-bit Link
+        download_link = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located(
-                (By.CSS_SELECTOR, "a[href*='download.microsoft.com']")
+                (By.XPATH, "//a[contains(normalize-space(.), '64-bit')]")
             )
         )
 
-        download_url = link.get_attribute("href")
+        return download_link.get_attribute("href")
 
-        return {"url": download_url}
-
+    except Exception as e:
+        # Save a screenshot inside the container for debugging if it fails
+        driver.save_screenshot("debug_error.png")
+        raise e
     finally:
         driver.quit()
 
 
 if __name__ == "__main__":
     try:
-        result = get_url()
-        print(json.dumps(result))
+        url = get_url()
+        print(json.dumps({"url": url}))
     except Exception as e:
-        print(json.dumps({"error": str(e)}), file=sys.stderr)
+        print(json.dumps({"error": str(e)}))
         sys.exit(1)
