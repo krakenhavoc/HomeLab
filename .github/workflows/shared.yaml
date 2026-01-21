@@ -3,6 +3,7 @@ name: Shared CI/CD
 permissions:
   contents: read
   pull-requests: write
+  packages: read
 
 on:
   push:
@@ -44,7 +45,7 @@ jobs:
         id: scraper
         run: |
           # Define the image URL (lowercase)
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/win11-scraper:latest"
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/get-win-url:latest"
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
           echo "Pulling latest scraper image..."
