@@ -1,5 +1,4 @@
 resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
-  provider     = pve
   content_type = "snippets"
   datastore_id = "snippets"
   node_name    = var.pve.host
@@ -31,4 +30,56 @@ module "pwnbox" {
   vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.pwnbox_cloudinit.id
   vm_network_bridge              = var.pwnbox.network_bridge
   vm_vlan_id                     = var.pwnbox.vlan_id
+}
+
+resource "proxmox_virtual_environment_vm" "win11_vm" {
+  name      = var.win11.name_prefix
+  node_name = var.pve.host
+
+  cpu {
+    cores = var.win11.cpu_cores
+    type  = "host"
+  }
+
+  memory {
+    dedicated = var.win11.memory_mb
+  }
+
+  agent {
+    enabled = false
+  }
+
+  network_device {
+    bridge  = var.win11.network_bridge
+    vlan_id = var.win11.vlan_id
+  }
+
+  disk {
+    datastore_id = var.win11.disk_datastore_id
+    file_id      = data.proxmox_virtual_environment_file.win11_iso.id
+    interface    = var.win11.disk_interface
+    size         = var.win11.os_disk_size
+  }
+
+  operating_system {
+    type = "win11"
+  }
+
+  # Windows 11 requires TPM and EFI
+  tpm_state {
+    version      = "v2.0"
+    datastore_id = var.win11.disk_datastore_id
+  }
+
+  efi_disk {
+    datastore_id = var.win11.disk_datastore_id
+    file_format  = "raw"
+    type         = "4m"
+  }
+
+  cdrom {
+    enabled   = true
+    file_id   = data.proxmox_virtual_environment_file.win11_iso.id
+    interface = "ide2"
+  }
 }

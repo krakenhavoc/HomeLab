@@ -1,4 +1,4 @@
-provider "pve" {
+provider "proxmox" {
   endpoint = var.pve.endpoint
   insecure = false
 
@@ -7,4 +7,5 @@ provider "pve" {
     username = "root"
     # You can also use password or private_key here
   }
+  alias = "pve"
 }

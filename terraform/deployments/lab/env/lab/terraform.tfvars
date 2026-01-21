@@ -17,3 +17,13 @@ pwnbox = {
   vlan_id        = 200
   admin_username = "krkn"
 }
+win11 = {
+  name_prefix      = "USLT-W00054"
+  cpu_cores        = 4
+  memory_mb        = 8192
+  os_disk_size     = 64
+  disk_interface   = "virtio0"
+  disk_datastore_id = "hdd_556g_thin"
+  network_bridge   = "vmbr0"
+  vlan_id          = 99
+}
