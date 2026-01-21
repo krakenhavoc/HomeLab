@@ -62,8 +62,9 @@ resource "proxmox_virtual_environment_vm" "win11_vm" {
 
   disk {
     datastore_id = var.win11.disk_datastore_id
-    file_id      = data.proxmox_virtual_environment_file.win11_iso.id
     interface    = var.win11.disk_interface
+    iothread     = true
+    discard      = "on"
     size         = var.win11.os_disk_size
   }
 
