@@ -1,0 +1,99 @@
+name: Shared CI/CD
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - "terraform/deployments/shared/**"
+      - ".github/workflows/shared.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "terraform/deployments/shared/**"
+      - ".github/workflows/shared.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  get-win11-iso-url:
+    runs-on: self-hosted
+    outputs:
+      iso_url: ${{ steps.scraper.outputs.url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: Run Scraper
+        id: scraper
+        working-directory: scripts/deployments/shared
+        run: |
+          pip install -r requirements.txt
+
+          # Run script and capture output
+          RAW_OUTPUT=$(python get_win_url.py)
+          URL=$(echo "$RAW_OUTPUT" | jq -r .url)
+
+          # Validation
+          if [ -z "$URL" ] || [ "$URL" == "null" ]; then
+            echo "::error::Scraper returned an empty or null URL. Check Python script logs."
+            exit 1
+          fi
+
+          if [[ ! "$URL" =~ ^https?:// ]]; then
+            echo "::error::Scraper returned an invalid URL format: $URL"
+            exit 1
+          fi
+
+          echo "Successfully retrieved URL. Exporting to outputs."
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Upload Debug Screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-debug
+          path: scripts/deployments/shared/*.png
+
+  shared-ci:
+    needs: get-win11-iso-url
+    strategy:
+      matrix:
+        environment: ["shared"]
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/shared
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: false
+      terraform_vars: "-var=win11_iso_url='${{ needs.get-win11-iso-url.outputs.iso_url }}'"
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+  shared-cd:
+    needs: shared-ci
+    strategy:
+      matrix:
+        environment: ["shared"]
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/shared
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+      enable_proxmox_ssh: false
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}

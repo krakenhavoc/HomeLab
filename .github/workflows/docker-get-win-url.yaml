@@ -1,0 +1,74 @@
+name: Get Win URL CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/get-win-url/**"
+      - "scripts/deployments/shared/get_win_url.py"
+      - "scripts/deployments/shared/requirements.txt"
+      - ".github/workflows/docker-get-win-url.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docker/get-win-url/**"
+      - "scripts/deployments/shared/get_win_url.py"
+      - "scripts/deployments/shared/requirements.txt"
+      - ".github/workflows/docker-get-win-url.yaml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image name
+        id: image
+        run: echo "name=$(echo ${{ github.repository }}/get-win-url | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch,prefix=
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/get-win-url
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, steps.image.outputs.name) || '' }}
+
+      - name: Image digest
+        if: github.event_name != 'pull_request'
+        run: echo "Image digest:${{ steps.build-and-push.outputs.digest }}"
