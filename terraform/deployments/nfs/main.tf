@@ -31,6 +31,10 @@ resource "proxmox_virtual_environment_container" "nfs" {
     mount   = ["nfs"]
   }
 
+  disk {
+    datastore_id = var.nfs_server.datastore_id
+    size         = var.nfs_server.disk_size
+  }
   network_interface {
     name    = "veth0"
     bridge  = var.nfs_server.network_bridge

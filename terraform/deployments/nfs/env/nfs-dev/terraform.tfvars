@@ -8,5 +8,6 @@ nfs_server = {
   disk_interface = "virtio0"
   network_bridge = "vmbr0"
   vlan_id        = 201
-  datastore_id   = "local-lvm"
+  datastore_id   = "ssd_1641G_thin"
+  disk_size      = "10G"
   }
