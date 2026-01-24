@@ -38,6 +38,7 @@ variable "plex_host" {
     os_disk_size   = optional(number, 30)
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")
+    vlan_id        = optional(number, null)
   })
   default = {}
 }
@@ -46,4 +47,16 @@ variable "plex_release_tag" {
   description = "Plex Docker image release tag"
   type        = string
   default     = "latest"
+}
+
+variable "nfs_server_ip" {
+  description = "IP of the NFS server to mount shares from"
+  type        = string
+  default     = ""
+}
+
+variable "nfs_server_path" {
+  description = "Path on the NFS server to mount"
+  type        = string
+  default     = "/export/nfs"
 }

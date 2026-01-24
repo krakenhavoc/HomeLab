@@ -13,6 +13,7 @@ packages:
   - qemu-guest-agent
   - docker-ce
   - docker-ce-cli
+  - nfs-common
 
 users:
   - name: ${admin_username}
@@ -30,11 +31,14 @@ write_files:
     content: |
       ${docker_compose}
 
+mounts:
+  - [ "${nfs_server}:${nfs_path}", "${volume_mount_path}", "nfs", "defaults", "0", "0" ]
+
 runcmd:
-  - mkdir -p /home/${admin_username}/library
-  - mkdir -p /home/${admin_username}/tvseries
-  - mkdir -p /home/${admin_username}/movies
-  - chown -R ${admin_username}:${admin_username} /home/${admin_username}
+  - mkdir -p ${volume_mount_path}/library
+  - mkdir -p ${volume_mount_path}/tvseries
+  - mkdir -p ${volume_mount_path}/movies
+  - chown -R ${admin_username}:${admin_username} ${volume_mount_path}
   - mv /tmp/docker-compose.yaml /home/${admin_username}/docker-compose.yaml || true
   - chown ${admin_username}:${admin_username} /home/${admin_username}/docker-compose.yaml || true
   - sudo -u ${admin_username} sudo docker compose -f /home/${admin_username}/docker-compose.yaml up -d

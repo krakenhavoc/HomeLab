@@ -11,7 +11,7 @@ services:
       - VERSION=docker
       - PLEX_CLAIM= #optional
     volumes:
-      - /home/plex/library:/config
-      - /home/plex/tvseries:/tv
-      - /home/plex/movies:/movies
+      - ${volume_mount_path}/library:/config
+      - ${volume_mount_path}/tvseries:/tv
+      - ${volume_mount_path}/movies:/movies
     restart: unless-stopped
