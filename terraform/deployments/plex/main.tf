@@ -1,21 +1,23 @@
 resource "proxmox_virtual_environment_file" "plex_cloudinit" {
-  provider     = pve
   content_type = "snippets"
   datastore_id = "snippets"
   node_name    = var.pve.host
 
   source_raw {
     data = templatefile("${path.module}/templates/setup-plex.yaml.tftpl", {
-      hostname       = "${var.plex_host.name_prefix}-${var.plex_host.env}",
-      admin_username = "plex"
-      docker_compose = indent(6, local.docker_compose)
+      hostname          = "${var.plex_host.name_prefix}-${var.plex_host.env}",
+      admin_username    = "plex"
+      docker_compose    = indent(6, local.docker_compose)
+      volume_mount_path = local.volume_mount_path
+      nfs_server        = var.nfs_server_ip
+      nfs_path          = var.nfs_server_path
     })
     file_name = "setup-plex-${var.plex_host.env}.yaml"
   }
 }
 
 module "plex_host" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.1"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
 
   vm_name                        = "${var.plex_host.name_prefix}-${var.plex_host.env}"
   vm_node_name                   = var.pve.host
@@ -31,4 +33,5 @@ module "plex_host" {
   vm_cloudinit_datastore_id      = var.vm_cloudinit_datastore_id
   vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.plex_cloudinit.id
   vm_network_bridge              = var.plex_host.network_bridge
+  vm_vlan_id                     = var.plex_host.vlan_id
 }
