@@ -7,18 +7,18 @@ permissions:
 on:
   push:
     paths:
-      - 'terraform/deployments/plex/**'
-      - '.github/workflows/plex.yaml'
-      - '.github/workflows/terraform-ci.yaml'
-      - '.github/workflows/terraform-cd.yaml'
+      - "terraform/deployments/plex/**"
+      - ".github/workflows/plex.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
     branches:
       - main
   pull_request:
     paths:
-      - 'terraform/deployments/plex/**'
-      - '.github/workflows/plex.yaml'
-      - '.github/workflows/terraform-ci.yaml'
-      - '.github/workflows/terraform-cd.yaml'
+      - "terraform/deployments/plex/**"
+      - ".github/workflows/plex.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
 
 env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
@@ -27,7 +27,7 @@ jobs:
   plex-ci:
     strategy:
       matrix:
-        environment: ["plex-dev"]
+        environment: ["plex-dev", "plex-prd"]
     uses: ./.github/workflows/terraform-ci.yaml
     with:
       working_directory: terraform/deployments/plex
@@ -43,7 +43,7 @@ jobs:
     needs: plex-ci
     strategy:
       matrix:
-        environment: ["plex-dev"]
+        environment: ["plex-dev", "plex-prd"]
     uses: ./.github/workflows/terraform-cd.yaml
     with:
       working_directory: terraform/deployments/plex

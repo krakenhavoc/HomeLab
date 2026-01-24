@@ -12,6 +12,7 @@ plex_host = {
   os_disk_size   = 30
   disk_interface = "virtio0"
   network_bridge = "vmbr0"
+  vlan_id        = 201
 }
 nfs_server_ip = "192.168.201.9"
 nfs_server_path = "/export/nfs/media"
