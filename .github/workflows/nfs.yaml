@@ -27,7 +27,7 @@ jobs:
   nfs-ci:
     strategy:
       matrix:
-        environment: ["nfs-dev"]
+        environment: ["nfs-dev", "nfs-prd"]
     uses: KrakenHavoc/HomeLab/.github/workflows/terraform-ci.yaml@main
     with:
       working_directory: terraform/deployments/nfs
@@ -44,7 +44,7 @@ jobs:
     needs: nfs-ci
     strategy:
       matrix:
-        environment: ["nfs-dev"]
+        environment: ["nfs-dev", "nfs-prd"]
     uses: KrakenHavoc/HomeLab/.github/workflows/terraform-cd.yaml@main
     with:
       working_directory: terraform/deployments/nfs
