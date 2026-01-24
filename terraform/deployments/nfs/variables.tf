@@ -25,7 +25,7 @@ variable "nfs_server" {
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, null)
     datastore_id   = optional(string, "local-lvm")
-    disk_size      = optional(string, "10G")
+    disk_size      = optional(number, 10)
   })
   default = {}
 }

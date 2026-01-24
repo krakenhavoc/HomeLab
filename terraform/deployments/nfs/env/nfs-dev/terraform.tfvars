@@ -9,5 +9,5 @@ nfs_server = {
   network_bridge = "vmbr0"
   vlan_id        = 201
   datastore_id   = "ssd_1641G_thin"
-  disk_size      = "10G"
-  }
+  disk_size      = 10
+}
