@@ -4,43 +4,46 @@ on:
   workflow_call:
     inputs:
       working_directory:
-        description: 'Working directory for Terraform commands'
+        description: "Working directory for Terraform commands"
         required: true
         type: string
       environment:
-        description: 'Environment name (lab, dev, prd, etc.)'
+        description: "Environment name (lab, dev, prd, etc.)"
         required: true
         type: string
       runner:
-        description: 'GitHub runner to use'
+        description: "GitHub runner to use"
         required: false
         type: string
-        default: 'ubuntu-latest'
+        default: "ubuntu-latest"
       enable_proxmox_ssh:
-        description: 'Start ssh-agent and add Proxmox key'
+        description: "Start ssh-agent and add Proxmox key"
         required: false
         type: boolean
         default: false
       terraform_version:
-        description: 'Terraform version to use'
+        description: "Terraform version to use"
         required: false
         type: string
-        default: '1.14.3'
+        default: "1.14.3"
       workspace:
-        description: 'Terraform Cloud workspace name'
+        description: "Terraform Cloud workspace name"
         required: false
         type: string
-        default: ''
+        default: ""
       plan_artifact_name:
-        description: 'Name of the plan artifact to download'
+        description: "Name of the plan artifact to download"
         required: true
         type: string
     secrets:
       hcp_api_token:
-        description: 'HCP Terraform Cloud API token'
+        description: "HCP Terraform Cloud API token"
         required: true
       proxmox_ve_api_token:
-        description: 'Proxmox VE API token for Proxmox Provider'
+        description: "Proxmox VE API token for Proxmox Provider"
+        required: false
+      proxmox_ve_password:
+        description: "Proxmox VE password for Proxmox Provider"
         required: false
 
 permissions:
@@ -56,6 +59,7 @@ jobs:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
       PROXMOX_VE_API_TOKEN: ${{ secrets.proxmox_ve_api_token }}
+      PROXMOX_VE_PASSWORD: ${{ secrets.proxmox_ve_password }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -77,7 +81,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3.1.2
