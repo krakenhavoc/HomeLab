@@ -10,22 +10,7 @@ variable "pve" {
   }
 }
 
-variable "clone_vm_id" {
-  description = "ID of the template VM to clone"
-  type        = number
-}
-
-variable "vm_disk_datastore_id" {
-  description = "Datastore ID for the VM disk"
-  type        = string
-}
-
-variable "vm_cloudinit_datastore_id" {
-  description = "Datastore ID for cloud-init snippets"
-  type        = string
-}
-
-variable "nfs_host" {
+variable "nfs_server" {
   description = "Configuration for the NFS host VM"
   type = object({
     env            = optional(string, "dev")
@@ -39,6 +24,9 @@ variable "nfs_host" {
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, null)
+    mount_path     = optional(string, "/mnt/nfs")
+    mount_volume   = optional(string, "local-lvm:vm-100-disk-0")
+    datastore_id   = optional(string, "local-lvm")
   })
   default = {}
 }
