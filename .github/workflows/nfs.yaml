@@ -21,7 +21,7 @@ on:
       - ".github/workflows/terraform-cd.yaml"
 
 env:
-  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PVE_ROOT_API_TOKEN }}
 
 jobs:
   nfs-ci:
