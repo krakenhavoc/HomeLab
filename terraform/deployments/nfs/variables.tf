@@ -3,10 +3,12 @@ variable "pve" {
   type = object({
     endpoint = string
     host     = string
+    username = string
   })
   default = {
     endpoint = "https://pve.labxp.io:8006"
     host     = "pve"
+    username = "root@pam"
   }
 }
 
