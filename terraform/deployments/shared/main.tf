@@ -14,9 +14,17 @@ resource "proxmox_virtual_environment_download_file" "windows_11_iso" {
 }
 
 resource "proxmox_virtual_environment_download_file" "virtio_drivers" {
-  node_name    = "pve"
+  node_name    = var.pve.host
   datastore_id = "local"
   content_type = "iso"
   url          = "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/latest-virtio/virtio-win.iso"
   file_name    = "virtio-win.iso"
+}
+
+resource "proxmox_virtual_environment_download_file" "noble_lxc_img" {
+  node_name    = var.pve.host
+  content_type = "vztmpl"
+  datastore_id = "local"
+  url          = "https://mirrors.servercentral.com/ubuntu-cloud-images/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64-root.tar.xz"
+  file_name    = "ubuntu-24.04-server-cloudimg-amd64-root.tar.xz"
 }
