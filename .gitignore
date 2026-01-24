@@ -1,7 +1,6 @@
 # Terraform
 *.tfstate
 *.tfstate.*
-*.tfvars
 .terraform/
 .terraform.lock.hcl
 crash.log
@@ -80,7 +79,6 @@ wheels/
 MANIFEST
 venv/
 ENV/
-env/
 
 # Node.js
 node_modules/

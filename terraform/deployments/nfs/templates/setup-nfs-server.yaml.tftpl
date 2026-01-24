@@ -1,0 +1,19 @@
+#cloud-config
+packages:
+  - nfs-kernel-server  # Install NFS server
+
+runcmd:
+  # 1. Create the directory to export
+  - mkdir -p /srv/nfs_share
+  - chown nobody:nogroup /srv/nfs_share
+  - chmod 777 /srv/nfs_share
+
+  # 2. Configure NFS exports
+  - echo "/srv/nfs_share  *(rw,sync,no_subtree_check,no_root_squash)" >> /etc/exports
+
+  # 3. Apply the export configuration
+  - exportfs -ra
+
+  # 4. Enable and start the NFS server
+  - systemctl enable nfs-server
+  - systemctl restart nfs-server
