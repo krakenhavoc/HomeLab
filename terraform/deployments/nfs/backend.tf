@@ -4,7 +4,7 @@ terraform {
     organization = "LabXPIO"
 
     workspaces {
-      tags = ["plex"]
+      tags = ["nfs"]
     }
   }
 }
