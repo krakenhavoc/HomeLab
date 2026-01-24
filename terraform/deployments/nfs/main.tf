@@ -3,7 +3,7 @@ resource "proxmox_virtual_environment_container" "nfs" {
 
   node_name = var.pve.host
 
-  unprivileged = true
+  unprivileged = false
 
   initialization {
     hostname = "${var.nfs_server.name_prefix}-${var.nfs_server.env}"
