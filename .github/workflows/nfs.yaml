@@ -38,7 +38,6 @@ jobs:
       terraform_vars: "-var=ssh_public_key='${{ vars.SSH_PUBLIC_KEY }}'"
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       proxmox_ve_password: ${{ secrets.PVE_ROOT_PASSWORD }}
 
   nfs-cd:
@@ -55,5 +54,4 @@ jobs:
       enable_proxmox_ssh: false
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       proxmox_ve_password: ${{ secrets.PVE_ROOT_PASSWORD }}
