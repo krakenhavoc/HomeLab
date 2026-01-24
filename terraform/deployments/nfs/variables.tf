@@ -24,6 +24,8 @@ variable "nfs_server" {
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, null)
+    ipv4_address   = optional(string, "dhcp")
+    ipv4_gateway   = optional(string, null)
     datastore_id   = optional(string, "local-lvm")
     disk_size      = optional(number, 10)
   })

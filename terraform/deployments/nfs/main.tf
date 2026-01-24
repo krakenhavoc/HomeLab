@@ -10,7 +10,8 @@ resource "proxmox_virtual_environment_container" "nfs" {
 
     ip_config {
       ipv4 {
-        address = "dhcp"
+        address = var.nfs_server.ipv4_address
+        gateway = var.nfs_server.ipv4_gateway
       }
     }
 
@@ -76,7 +77,7 @@ resource "proxmox_virtual_environment_container" "nfs" {
       type = "ssh"
       user = "root"
       # This targets the DHCP address assigned during initialization
-      host        = self.initialization[0].ip_config[0].ipv4[0].address == "dhcp" ? self.network_interface[0].name : self.initialization[0].ip_config[0].ipv4[0].address
+      host        = split("/", self.initialization[0].ip_config[0].ipv4[0].address)[0]
       private_key = file("~/.ssh/id_proxmox")
     }
   }
