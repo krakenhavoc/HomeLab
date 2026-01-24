@@ -56,3 +56,4 @@ jobs:
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+      proxmox_ve_password: ${{ secrets.PVE_ROOT_PASSWORD }}
