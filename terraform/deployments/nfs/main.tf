@@ -1,5 +1,5 @@
 resource "proxmox_virtual_environment_container" "nfs" {
-  description = "Managed by Terraform"
+  description = var.nfs_server.description
 
   node_name = var.pve.host
 
@@ -15,16 +15,10 @@ resource "proxmox_virtual_environment_container" "nfs" {
     }
 
     user_account {
-      # keys = [
-      #   trimspace(tls_private_key.ubuntu_container_key.public_key_openssh)
-      # ]
-      # password = random_password.ubuntu_container_password.result
+      keys = [
+        trimspace(var.ssh_public_key)
+      ]
     }
-  }
-
-  disk {
-    datastore_id = var.nfs_server.datastore_id
-    size         = 4
   }
 
   operating_system {
@@ -32,14 +26,24 @@ resource "proxmox_virtual_environment_container" "nfs" {
     type             = "ubuntu"
   }
 
-  mount_point {
-    volume = var.nfs_server.mount_volume
-    path   = var.nfs_server.mount_path
+  features {
+    nesting = true
+    mount   = ["nfs"]
   }
 
+  network_interface {
+    name    = "veth0"
+    bridge  = var.nfs_server.network_bridge
+    vlan_id = var.nfs_server.vlan_id
+  }
+
+  mount_point {
+    volume = local.volume
+    path   = local.mount_path
+  }
 
   startup {
-    order      = "3"
+    order      = "1"
     up_delay   = "60"
     down_delay = "60"
   }

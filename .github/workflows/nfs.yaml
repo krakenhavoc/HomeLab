@@ -1,0 +1,57 @@
+name: NFS CI/CD
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - "terraform/deployments/nfs/**"
+      - ".github/workflows/nfs.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "terraform/deployments/nfs/**"
+      - ".github/workflows/nfs.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+
+env:
+  PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+jobs:
+  nfs-ci:
+    strategy:
+      matrix:
+        environment: ["nfs-dev"]
+    uses: KrakenHavoc/HomeLab/.github/workflows/terraform-ci.yaml@main
+    with:
+      working_directory: terraform/deployments/nfs
+      var_file_path: env/${{ matrix.environment }}/terraform.tfvars
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      enable_proxmox_ssh: false
+      terraform_vars: "-var=ssh_public_key='${{ vars.SSH_PUBLIC_KEY }}'"
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+
+  nfs-cd:
+    needs: nfs-ci
+    strategy:
+      matrix:
+        environment: ["nfs-dev"]
+    uses: KrakenHavoc/HomeLab/.github/workflows/terraform-cd.yaml@main
+    with:
+      working_directory: terraform/deployments/nfs
+      environment: ${{ matrix.environment }}
+      runner: self-hosted
+      plan_artifact_name: tf-plan-${{ matrix.environment }}
+      enable_proxmox_ssh: false
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}

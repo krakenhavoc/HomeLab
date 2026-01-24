@@ -17,16 +17,18 @@ variable "nfs_server" {
     name_prefix    = optional(string, "nfs")
     description    = optional(string, "NFS Server")
     tags           = optional(list(string), ["nfs"])
-    bios           = optional(string, "ovmf")
     cpu_cores      = optional(number, 4)
     memory_mb      = optional(number, 4096)
-    os_disk_size   = optional(number, 30)
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, null)
-    mount_path     = optional(string, "/mnt/nfs")
-    mount_volume   = optional(string, "local-lvm:vm-100-disk-0")
     datastore_id   = optional(string, "local-lvm")
   })
   default = {}
+}
+
+variable "ssh_public_key" { # Passed via GitHub Vars in CI/CD
+  description = "Public SSH key for accessing the NFS server"
+  type        = string
+  default     = ""
 }
