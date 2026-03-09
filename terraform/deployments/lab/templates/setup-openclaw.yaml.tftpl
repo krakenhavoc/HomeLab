@@ -21,8 +21,9 @@ users:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
 
 runcmd:
-  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  - apt-get install -y nodejs
+  - curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+  - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+  - rm /tmp/node.tar.xz
   - npm install -g pnpm@10.23.0
   - git clone -b fork https://github.com/krakenhavoc/openclaw.git /opt/openclaw
   - cd /opt/openclaw && pnpm install
@@ -30,6 +31,60 @@ runcmd:
   - cd /opt/openclaw && pnpm ui:build
   - chown -R ${admin_username}:${admin_username} /opt/openclaw
   - mkdir -p /home/${admin_username}/.openclaw
+  - |
+    cat > /home/${admin_username}/.openclaw/openclaw.json <<EOF
+    {
+      "meta": {
+        "lastTouchedVersion": "2026.3.3",
+        "lastTouchedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "models": {
+        "providers": {
+          "azure-foundry": {
+            "baseUrl": "https://eus2-foundry.services.ai.azure.com",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "api": "openai-completions",
+            "models": []
+          },
+          "azure-gpt": {
+            "baseUrl": "https://eus2-foundry.cognitiveservices.azure.com/openai",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "api": "openai-responses",
+            "models": []
+          }
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "azure-gpt/gpt-5.3-chat"
+          },
+          "workspace": "/home/${admin_username}/.openclaw/workspace"
+        }
+      },
+      "tools": {
+        "exec": {
+          "host": "gateway",
+          "security": "full",
+          "ask": "off"
+        }
+      },
+      "commands": {
+        "native": "auto",
+        "nativeSkills": "auto",
+        "restart": true,
+        "ownerDisplay": "raw"
+      },
+      "gateway": {
+        "mode": "local",
+        "controlUi": {
+          "dangerouslyAllowHostHeaderOriginFallback": true,
+          "allowInsecureAuth": true
+        }
+      }
+    }
+    EOF
+  - echo "OPENCLAW_STATE_DIR=/home/${admin_username}/.openclaw" > /home/${admin_username}/.openclaw/.env
   - chown -R ${admin_username}:${admin_username} /home/${admin_username}/.openclaw
   - |
     cat > /etc/systemd/system/openclaw-gateway.service <<EOF
@@ -42,8 +97,8 @@ runcmd:
     Type=simple
     User=${admin_username}
     WorkingDirectory=/opt/openclaw
-    EnvironmentFile=/home/${admin_username}/.openclaw/.env
-    ExecStart=/usr/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789
+    EnvironmentFile=-/home/${admin_username}/.openclaw/.env
+    ExecStart=/usr/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789 --allow-unconfigured
     Restart=always
     RestartSec=5
     TimeoutStopSec=30
