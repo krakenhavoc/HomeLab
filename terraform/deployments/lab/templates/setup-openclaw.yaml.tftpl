@@ -45,13 +45,13 @@ runcmd:
         "providers": {
           "azure-foundry": {
             "baseUrl": "https://eus2-foundry.services.ai.azure.com",
-            "apiKey": "${AZURE_FOUNDRY_API_KEY}",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
             "api": "openai-completions",
             "models": []
           },
           "azure-gpt": {
             "baseUrl": "https://eus2-foundry.cognitiveservices.azure.com/openai",
-            "apiKey": "${AZURE_FOUNDRY_API_KEY}",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
             "api": "openai-responses",
             "models": []
           }
