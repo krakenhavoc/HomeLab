@@ -1,0 +1,66 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${openclaw_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - curl
+  - git
+  - openssl
+  - procps
+
+users:
+  - name: ${admin_username}
+    gecos: "OpenClaw Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+  - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  - apt-get install -y nodejs
+  - npm install -g pnpm@10.23.0
+  - git clone -b fork https://github.com/krakenhavoc/openclaw.git /opt/openclaw
+  - cd /opt/openclaw && pnpm install
+  - cd /opt/openclaw && pnpm build
+  - cd /opt/openclaw && pnpm ui:build
+  - chown -R ${admin_username}:${admin_username} /opt/openclaw
+  - mkdir -p /home/${admin_username}/.openclaw
+  - chown -R ${admin_username}:${admin_username} /home/${admin_username}/.openclaw
+  - |
+    cat > /etc/systemd/system/openclaw-gateway.service <<EOF
+    [Unit]
+    Description=OpenClaw Gateway
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    User=${admin_username}
+    WorkingDirectory=/opt/openclaw
+    EnvironmentFile=/home/${admin_username}/.openclaw/.env
+    ExecStart=/usr/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789
+    Restart=always
+    RestartSec=5
+    TimeoutStopSec=30
+    TimeoutStartSec=30
+    SuccessExitStatus=0 143
+    KillMode=control-group
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+  - systemctl daemon-reload
+  - systemctl enable openclaw-gateway
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+final_message: "${openclaw_hostname} is up. Populate /home/${admin_username}/.openclaw/.env and run: systemctl start openclaw-gateway"
