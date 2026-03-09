@@ -1,0 +1,125 @@
+#cloud-config
+preserve_hostname: false
+hostname: ${openclaw_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - curl
+  - git
+  - openssl
+  - procps
+
+users:
+  - name: ${admin_username}
+    gecos: "OpenClaw Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+  - curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz -o /tmp/node.tar.xz
+  - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
+  - rm /tmp/node.tar.xz
+  - npm install -g pnpm@10.23.0
+  - npm install -g @anthropic-ai/claude-code
+  - git clone -b fork https://github.com/krakenhavoc/openclaw.git /opt/openclaw
+  - cd /opt/openclaw && pnpm install
+  - cd /opt/openclaw && pnpm build
+  - cd /opt/openclaw && pnpm ui:build
+  - chown -R ${admin_username}:${admin_username} /opt/openclaw
+  - printf '#!/bin/bash\nexec /usr/local/bin/node /opt/openclaw/openclaw.mjs "$@"\n' > /usr/local/bin/openclaw
+  - chmod +x /usr/local/bin/openclaw
+  - mkdir -p /home/${admin_username}/.openclaw
+  - |
+    cat > /home/${admin_username}/.openclaw/openclaw.json <<'JSONEOF'
+    {
+      "meta": {
+        "lastTouchedVersion": "2026.3.3",
+        "lastTouchedAt": "2026-03-09T00:00:00.000Z"
+      },
+      "models": {
+        "providers": {
+          "azure-foundry": {
+            "baseUrl": "https://eus2-foundry.services.ai.azure.com",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "api": "openai-completions",
+            "models": []
+          },
+          "azure-gpt": {
+            "baseUrl": "https://eus2-foundry.cognitiveservices.azure.com/openai",
+            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "api": "openai-responses",
+            "models": []
+          }
+        }
+      },
+      "agents": {
+        "defaults": {
+          "model": {
+            "primary": "azure-gpt/gpt-5.3-chat"
+          },
+          "workspace": "/home/${admin_username}/.openclaw/workspace"
+        }
+      },
+      "tools": {
+        "exec": {
+          "host": "gateway",
+          "security": "full",
+          "ask": "off"
+        }
+      },
+      "commands": {
+        "native": "auto",
+        "nativeSkills": "auto",
+        "restart": true,
+        "ownerDisplay": "raw"
+      },
+      "gateway": {
+        "mode": "local",
+        "controlUi": {
+          "dangerouslyAllowHostHeaderOriginFallback": true,
+          "allowInsecureAuth": true
+        }
+      }
+    }
+    JSONEOF
+  - echo "OPENCLAW_STATE_DIR=/home/${admin_username}/.openclaw" > /home/${admin_username}/.openclaw/.env
+  - chown -R ${admin_username}:${admin_username} /home/${admin_username}/.openclaw
+  - |
+    cat > /etc/systemd/system/openclaw-gateway.service <<EOF
+    [Unit]
+    Description=OpenClaw Gateway
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=simple
+    User=${admin_username}
+    WorkingDirectory=/opt/openclaw
+    Environment=HOME=/home/${admin_username}
+    EnvironmentFile=-/home/${admin_username}/.openclaw/.env
+    ExecStart=/usr/local/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789
+    Restart=always
+    RestartSec=5
+    TimeoutStopSec=30
+    TimeoutStartSec=30
+    SuccessExitStatus=0 143
+    KillMode=control-group
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+  - systemctl daemon-reload
+  - systemctl enable openclaw-gateway
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+final_message: "${openclaw_hostname} is up. Add API keys to /home/${admin_username}/.openclaw/.env and run: systemctl start openclaw-gateway"

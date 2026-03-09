@@ -22,6 +22,24 @@ variable "vm_cloudinit_datastore_id" {
   default     = "ssd_1641G_thin"
 }
 
+variable "openclaw" {
+  description = "Object containing the OpenClaw configuration"
+  type = object({
+    name_prefix    = optional(string, "openclaw")
+    description    = optional(string, "OpenClaw Gateway - Managed by Terraform")
+    tags           = optional(list(string), ["openclaw"])
+    bios           = optional(string, "ovmf")
+    cpu_cores      = optional(number, 4)
+    memory_mb      = optional(number, 16384)
+    os_disk_size   = optional(number, 50)
+    disk_interface = optional(string, "virtio0")
+    network_bridge = optional(string, "vmbr0")
+    vlan_id        = optional(number, 200)
+    admin_username = optional(string, "krkn")
+  })
+  default = {}
+}
+
 variable "pwnbox" {
   description = "Object containing the Pwnbox configuration"
   type = object({
