@@ -25,14 +25,17 @@ runcmd:
   - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
   - rm /tmp/node.tar.xz
   - npm install -g pnpm@10.23.0
+  - npm install -g @anthropic-ai/claude-code
   - git clone -b fork https://github.com/krakenhavoc/openclaw.git /opt/openclaw
   - cd /opt/openclaw && pnpm install
   - cd /opt/openclaw && pnpm build
   - cd /opt/openclaw && pnpm ui:build
   - chown -R ${admin_username}:${admin_username} /opt/openclaw
+  - printf '#!/bin/bash\nexec /usr/local/bin/node /opt/openclaw/openclaw.mjs "$@"\n' > /usr/local/bin/openclaw
+  - chmod +x /usr/local/bin/openclaw
   - mkdir -p /home/${admin_username}/.openclaw
   - |
-    cat > /home/${admin_username}/.openclaw/openclaw.json <<EOF
+    cat > /home/${admin_username}/.openclaw/openclaw.json <<'JSONEOF'
     {
       "meta": {
         "lastTouchedVersion": "2026.3.3",
@@ -42,13 +45,13 @@ runcmd:
         "providers": {
           "azure-foundry": {
             "baseUrl": "https://eus2-foundry.services.ai.azure.com",
-            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "apiKey": "${AZURE_FOUNDRY_API_KEY}",
             "api": "openai-completions",
             "models": []
           },
           "azure-gpt": {
             "baseUrl": "https://eus2-foundry.cognitiveservices.azure.com/openai",
-            "apiKey": "$${AZURE_FOUNDRY_API_KEY}",
+            "apiKey": "${AZURE_FOUNDRY_API_KEY}",
             "api": "openai-responses",
             "models": []
           }
@@ -83,7 +86,7 @@ runcmd:
         }
       }
     }
-    EOF
+    JSONEOF
   - echo "OPENCLAW_STATE_DIR=/home/${admin_username}/.openclaw" > /home/${admin_username}/.openclaw/.env
   - chown -R ${admin_username}:${admin_username} /home/${admin_username}/.openclaw
   - |
@@ -97,8 +100,9 @@ runcmd:
     Type=simple
     User=${admin_username}
     WorkingDirectory=/opt/openclaw
+    Environment=HOME=/home/${admin_username}
     EnvironmentFile=-/home/${admin_username}/.openclaw/.env
-    ExecStart=/usr/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789 --allow-unconfigured
+    ExecStart=/usr/local/bin/node /opt/openclaw/openclaw.mjs gateway --bind lan --port 18789
     Restart=always
     RestartSec=5
     TimeoutStopSec=30
@@ -118,4 +122,4 @@ power_state:
   timeout: 30
   condition: true
 
-final_message: "${openclaw_hostname} is up. Populate /home/${admin_username}/.openclaw/.env and run: systemctl start openclaw-gateway"
+final_message: "${openclaw_hostname} is up. Add API keys to /home/${admin_username}/.openclaw/.env and run: systemctl start openclaw-gateway"
