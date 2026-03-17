@@ -67,3 +67,92 @@ module "pwnbox" {
   vm_network_bridge              = var.pwnbox.network_bridge
   vm_vlan_id                     = var.pwnbox.vlan_id
 }
+
+# -----------------------------------------------------------------------------
+# Windows 11 VM
+# -----------------------------------------------------------------------------
+# Uses a raw resource instead of the cloud-init module since Windows requires
+# ISO-based installation with UEFI, TPM 2.0, and VirtIO driver loading.
+# Post-apply steps:
+#   1. Attach virtio-win.iso as a second CD-ROM via Proxmox UI (Hardware > Add > CD/DVD)
+#   2. Boot the VM and install Windows via the Proxmox console
+#   3. During disk selection, load driver: vioscsi\w11\amd64 from the VirtIO CD
+#   4. After install, run virtio-win-gt-x64.msi from the VirtIO CD for all drivers + QEMU Guest Agent
+
+resource "proxmox_virtual_environment_vm" "windows11" {
+  provider = pve
+
+  name        = var.windows11.name_prefix
+  node_name   = var.pve.host
+  description = var.windows11.description
+  tags        = sort(concat(["terraform"], var.windows11.tags))
+  on_boot     = false
+  bios        = "ovmf"
+  machine     = "q35"
+
+  operating_system {
+    type = "win11"
+  }
+
+  cpu {
+    type    = "host"
+    cores   = var.windows11.cpu_cores
+    sockets = 1
+  }
+
+  memory {
+    dedicated = var.windows11.memory_mb
+    floating  = 0
+  }
+
+  tpm_state {
+    version      = "v2.0"
+    datastore_id = var.vm_disk_datastore_id
+  }
+
+  efi_disk {
+    datastore_id      = var.vm_disk_datastore_id
+    file_format       = "raw"
+    type              = "4m"
+    pre_enrolled_keys = true
+  }
+
+  # OS disk — VirtIO SCSI for best performance
+  disk {
+    interface    = "scsi0"
+    datastore_id = var.vm_disk_datastore_id
+    size         = var.windows11.os_disk_size
+    file_format  = "raw"
+    cache        = "writeback"
+    discard      = "on"
+    iothread     = true
+    ssd          = true
+  }
+
+  scsi_hardware = "virtio-scsi-single"
+
+  # Windows 11 installation ISO
+  cdrom {
+    file_id   = "local:iso/win11-latest.iso"
+    interface = "ide0"
+  }
+
+  agent {
+    enabled = true
+    type    = "virtio"
+    trim    = true
+  }
+
+  network_device {
+    model   = "virtio"
+    bridge  = var.windows11.network_bridge
+    vlan_id = var.windows11.vlan_id
+  }
+
+  vga {
+    type   = "virtio"
+    memory = 64
+  }
+
+  stop_on_destroy = true
+}
