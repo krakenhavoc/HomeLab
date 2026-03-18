@@ -98,6 +98,7 @@ resource "proxmox_virtual_environment_vm" "windows11" {
     type    = "host"
     cores   = var.windows11.cpu_cores
     sockets = 1
+    flags   = ["+vmx"]
   }
 
   memory {
