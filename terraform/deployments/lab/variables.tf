@@ -48,12 +48,27 @@ variable "pwnbox" {
     tags           = optional(list(string), ["ctf"])
     bios           = optional(string, "ovmf")
     cpu_cores      = optional(number, 4)
-    memory_mb      = optional(number, 8192)
+    memory_mb      = optional(number, 16384)
     os_disk_size   = optional(number, 50)
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, 200)
     admin_username = optional(string, "krkn")
+  })
+  default = {}
+}
+
+variable "windows11" {
+  description = "Object containing the Windows 11 VM configuration"
+  type = object({
+    name_prefix    = optional(string, "win11")
+    description    = optional(string, "Windows 11 - Managed by Terraform")
+    tags           = optional(list(string), ["windows"])
+    cpu_cores      = optional(number, 4)
+    memory_mb      = optional(number, 8192)
+    os_disk_size   = optional(number, 64)
+    network_bridge = optional(string, "vmbr0")
+    vlan_id        = optional(number, null)
   })
   default = {}
 }

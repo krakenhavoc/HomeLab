@@ -30,3 +30,13 @@ pwnbox = {
   vlan_id        = 200
   admin_username = "krkn"
 }
+windows11 = {
+  name_prefix    = "win11"
+  description    = "Windows 11 - Managed by Terraform"
+  tags           = ["windows"]
+  cpu_cores      = 4
+  memory_mb      = 16384
+  os_disk_size   = 64
+  network_bridge = "vmbr0"
+  vlan_id        = 99
+}
