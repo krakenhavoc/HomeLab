@@ -38,4 +38,5 @@ windows11 = {
   memory_mb      = 16384
   os_disk_size   = 64
   network_bridge = "vmbr0"
+  vlan_id        = 99
 }
