@@ -149,10 +149,13 @@ runcmd:
   - chown -R ${admin_username}:${admin_username} /opt/cmd_and_ctrl
 
   # --- Caddy (official repo) ---
+  # --force-confold is required because write_files already created
+  # /etc/caddy/Caddyfile; without it dpkg hangs on a conffile prompt and
+  # DEBIAN_FRONTEND=noninteractive does not suppress that specific prompt.
   - curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   - curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | tee /etc/apt/sources.list.d/caddy-stable.list
   - apt-get update
-  - DEBIAN_FRONTEND=noninteractive apt-get install -y caddy
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy
   - chown -R ${admin_username}:caddy /var/www/cmdctrl-client
   - chmod 0755 /var/www/cmdctrl-client
 
