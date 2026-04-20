@@ -69,6 +69,107 @@ module "pwnbox" {
 }
 
 # -----------------------------------------------------------------------------
+# cmd_and_ctrl game server
+# -----------------------------------------------------------------------------
+# Go server + Caddy + Cloudflare Tunnel, behind cmd.labxp.io.
+# Raw resource (not pm-cloudinit-vm module) because it needs a second data disk
+# for CMDCTRL_DATA_DIR (Scryfall dump + image cache).
+
+resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
+  provider     = pve
+  content_type = "snippets"
+  datastore_id = "snippets"
+  node_name    = var.pve.host
+
+  source_raw {
+    data = templatefile("${path.module}/templates/setup-cmd_and_ctrl.yaml.tftpl", {
+      hostname       = var.cmd_and_ctrl.name_prefix
+      admin_username = var.cmd_and_ctrl.admin_username
+      fqdn           = var.cmd_and_ctrl.fqdn
+      repo_url       = var.cmd_and_ctrl.repo_url
+      repo_ref       = var.cmd_and_ctrl.repo_ref
+      admin_token    = var.cmd_and_ctrl_admin_token
+      tunnel_token   = var.cmd_and_ctrl_tunnel_token
+    })
+    file_name = "setup-${var.cmd_and_ctrl.name_prefix}.yaml"
+  }
+}
+
+resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
+  provider = pve
+
+  name        = var.cmd_and_ctrl.name_prefix
+  node_name   = var.pve.host
+  description = var.cmd_and_ctrl.description
+  tags        = sort(concat(["terraform"], var.cmd_and_ctrl.tags))
+  bios        = var.cmd_and_ctrl.bios
+
+  clone {
+    vm_id = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
+    full  = true
+  }
+
+  agent {
+    enabled = true
+    trim    = true
+  }
+
+  cpu {
+    cores = var.cmd_and_ctrl.cpu_cores
+    type  = "x86-64-v2-AES"
+  }
+
+  memory {
+    dedicated = var.cmd_and_ctrl.memory_mb
+  }
+
+  # OS disk (cloned from template)
+  disk {
+    datastore_id = var.vm_disk_datastore_id
+    interface    = "virtio0"
+    iothread     = true
+    discard      = "on"
+    size         = var.cmd_and_ctrl.os_disk_size
+  }
+
+  # Data disk for CMDCTRL_DATA_DIR — Scryfall dump + image cache.
+  # cloud-init formats/mounts at /var/lib/cmd_and_ctrl.
+  disk {
+    datastore_id = var.vm_disk_datastore_id
+    interface    = "virtio1"
+    iothread     = true
+    discard      = "on"
+    size         = var.cmd_and_ctrl.data_disk_size
+    file_format  = "raw"
+  }
+
+  initialization {
+    datastore_id = var.vm_cloudinit_datastore_id
+    ip_config {
+      ipv4 {
+        address = "dhcp"
+      }
+    }
+    user_data_file_id = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit.id
+  }
+
+  network_device {
+    bridge  = var.cmd_and_ctrl.network_bridge
+    vlan_id = var.cmd_and_ctrl.vlan_id
+  }
+
+  serial_device {}
+
+  vga {
+    type = "std"
+  }
+
+  operating_system {
+    type = "l26"
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Windows 11 VM
 # -----------------------------------------------------------------------------
 # Uses a raw resource instead of the cloud-init module since Windows requires
