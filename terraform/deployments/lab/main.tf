@@ -86,8 +86,6 @@ resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
       hostname       = var.cmd_and_ctrl.name_prefix
       admin_username = var.cmd_and_ctrl.admin_username
       fqdn           = var.cmd_and_ctrl.fqdn
-      repo_url       = var.cmd_and_ctrl.repo_url
-      repo_ref       = var.cmd_and_ctrl.repo_ref
       admin_token    = var.cmd_and_ctrl_admin_token
       tunnel_token   = var.cmd_and_ctrl_tunnel_token
     })

@@ -1,4 +1,6 @@
 #cloud-config
+# Host prep only. Application artifacts (server binary, client dist, scripts)
+# are pushed by the cmd_and_ctrl repo's CD pipeline via SSH as ${admin_username}.
 preserve_hostname: false
 hostname: ${hostname}
 ssh_pwauth: false
@@ -7,13 +9,10 @@ package_upgrade: true
 packages:
   - qemu-guest-agent
   - curl
-  - git
-  - make
   - ca-certificates
-  - debian-keyring
-  - debian-archive-keyring
   - apt-transport-https
   - gnupg
+  - rsync
 
 users:
   - name: ${admin_username}
@@ -26,13 +25,15 @@ users:
   - name: cmdctrl
     system: true
     shell: /usr/sbin/nologin
-    home: /var/lib/cmd_and_ctrl
+    homedir: /var/lib/cmd_and_ctrl
+    no_create_home: true
 
 write_files:
-  # Env file for the server (root:cmdctrl 0640)
+  # Env file for the server. Created root:root first; chowned to root:cmdctrl
+  # in runcmd after the cmdctrl user exists.
   - path: /etc/cmd_and_ctrl/env
     permissions: "0640"
-    owner: root:cmdctrl
+    owner: root:root
     content: |
       CMDCTRL_ADMIN_TOKEN=${admin_token}
       CMDCTRL_ADDR=127.0.0.1:8080
@@ -140,20 +141,20 @@ runcmd:
     mkdir -p /var/lib/cmd_and_ctrl/data/scryfall /var/lib/cmd_and_ctrl/data/images
     chown -R cmdctrl:cmdctrl /var/lib/cmd_and_ctrl
 
-  # --- Toolchain: Go 1.23, Node 22 ---
-  - curl -fsSL https://go.dev/dl/go1.23.5.linux-amd64.tar.gz -o /tmp/go.tar.gz
-  - rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz
-  - rm /tmp/go.tar.gz
-  - ln -sf /usr/local/go/bin/go /usr/local/bin/go
-  - curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz -o /tmp/node.tar.xz
-  - tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
-  - rm /tmp/node.tar.xz
+  # --- Fix env file ownership now that cmdctrl user exists ---
+  - chown root:cmdctrl /etc/cmd_and_ctrl/env
+
+  # --- CD-writable paths. ${admin_username} rsyncs artifacts here. ---
+  - mkdir -p /opt/cmd_and_ctrl/server/bin /opt/cmd_and_ctrl/scripts /var/www/cmdctrl-client
+  - chown -R ${admin_username}:${admin_username} /opt/cmd_and_ctrl
 
   # --- Caddy (official repo) ---
   - curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   - curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | tee /etc/apt/sources.list.d/caddy-stable.list
   - apt-get update
   - DEBIAN_FRONTEND=noninteractive apt-get install -y caddy
+  - chown -R ${admin_username}:caddy /var/www/cmdctrl-client
+  - chmod 0755 /var/www/cmdctrl-client
 
   # --- cloudflared (official repo) ---
   - curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
@@ -161,20 +162,12 @@ runcmd:
   - apt-get update
   - DEBIAN_FRONTEND=noninteractive apt-get install -y cloudflared
 
-  # --- Clone and build cmd_and_ctrl ---
-  - git clone -b ${repo_ref} ${repo_url} /opt/cmd_and_ctrl
-  - cd /opt/cmd_and_ctrl/server && CGO_ENABLED=0 /usr/local/bin/go build -trimpath -ldflags="-s -w" -o bin/cmd_and_ctrl-server ./cmd/server
-  - cd /opt/cmd_and_ctrl/client && /usr/local/bin/npm install && /usr/local/bin/npm run build
-  - mkdir -p /var/www/cmdctrl-client
-  - cp -r /opt/cmd_and_ctrl/client/dist/. /var/www/cmdctrl-client/
-  - chown -R cmdctrl:cmdctrl /opt/cmd_and_ctrl
-  - chown -R caddy:caddy /var/www/cmdctrl-client
-  - chmod +x /opt/cmd_and_ctrl/scripts/scryfall-refresh.sh || true
-
   # --- Enable services ---
+  # cmd-and-ctrl.service and the scryfall timer will fail until CD pushes the
+  # binary and script. Restart=on-failure handles the retry loop.
   - systemctl daemon-reload
   - systemctl enable --now caddy
-  - systemctl enable --now cmd-and-ctrl.service
+  - systemctl enable cmd-and-ctrl.service
   - systemctl enable --now cmd-and-ctrl-scryfall.timer
   - cloudflared service install ${tunnel_token}
 
@@ -185,9 +178,10 @@ power_state:
   condition: true
 
 final_message: |
-  ${hostname} is up. Go server on 127.0.0.1:8080, Caddy on :80, cloudflared connector registered.
-  Manual post-config in Cloudflare Zero Trust dashboard:
-    Networks > Tunnels > <this tunnel> > Public Hostname > Add:
-      Hostname: ${fqdn}
-      Service:  http://localhost:80
-  (DNS CNAME is created automatically by the dashboard.)
+  ${hostname} host is ready. Caddy on :80, cloudflared connector registered.
+  Deploy artifacts from cmd_and_ctrl CD pipeline:
+    rsync server binary to /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-server
+    rsync client dist/ to /var/www/cmdctrl-client/
+    rsync scripts/ to /opt/cmd_and_ctrl/scripts/
+    sudo systemctl restart cmd-and-ctrl
+  One-time: add public hostname ${fqdn} -> http://localhost:80 in CF Zero Trust dashboard.

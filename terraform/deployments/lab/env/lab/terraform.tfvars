@@ -43,8 +43,6 @@ cmd_and_ctrl = {
   vlan_id        = 200
   admin_username = "krkn"
   fqdn           = "cmd.labxp.io"
-  repo_url       = "https://github.com/krakenhavoc/cmd_and_ctrl.git"
-  repo_ref       = "main"
 }
 windows11 = {
   name_prefix    = "win11"

@@ -73,8 +73,6 @@ variable "cmd_and_ctrl" {
     vlan_id        = optional(number, 200)
     admin_username = optional(string, "krkn")
     fqdn           = optional(string, "cmd.labxp.io")
-    repo_url       = optional(string, "https://github.com/krakenhavoc/cmd_and_ctrl.git")
-    repo_ref       = optional(string, "main")
   })
   default = {}
 }
