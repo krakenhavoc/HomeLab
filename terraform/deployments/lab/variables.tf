@@ -58,6 +58,37 @@ variable "pwnbox" {
   default = {}
 }
 
+variable "cmd_and_ctrl" {
+  description = "Object containing the cmd_and_ctrl game server configuration"
+  type = object({
+    name_prefix    = optional(string, "cmd-and-ctrl")
+    description    = optional(string, "cmd_and_ctrl game server - Managed by Terraform")
+    tags           = optional(list(string), ["cmd-and-ctrl", "gameserver"])
+    bios           = optional(string, "ovmf")
+    cpu_cores      = optional(number, 2)
+    memory_mb      = optional(number, 4096)
+    os_disk_size   = optional(number, 40)
+    data_disk_size = optional(number, 20)
+    network_bridge = optional(string, "vmbr0")
+    vlan_id        = optional(number, 200)
+    admin_username = optional(string, "krkn")
+    fqdn           = optional(string, "cmd.labxp.io")
+  })
+  default = {}
+}
+
+variable "cmd_and_ctrl_admin_token" {
+  description = "Admin token for cmd_and_ctrl server (CMDCTRL_ADMIN_TOKEN). 16+ chars."
+  type        = string
+  sensitive   = true
+}
+
+variable "cmd_and_ctrl_tunnel_token" {
+  description = "Cloudflare Tunnel token for cmd.labxp.io. Generated in Cloudflare Zero Trust dashboard."
+  type        = string
+  sensitive   = true
+}
+
 variable "windows11" {
   description = "Object containing the Windows 11 VM configuration"
   type = object({

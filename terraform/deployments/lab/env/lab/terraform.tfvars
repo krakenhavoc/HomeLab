@@ -30,6 +30,20 @@ pwnbox = {
   vlan_id        = 200
   admin_username = "krkn"
 }
+cmd_and_ctrl = {
+  name_prefix    = "cmd-and-ctrl"
+  description    = "cmd_and_ctrl game server - Managed by Terraform"
+  tags           = ["cmd-and-ctrl", "gameserver"]
+  bios           = "ovmf"
+  cpu_cores      = 2
+  memory_mb      = 4096
+  os_disk_size   = 40
+  data_disk_size = 20
+  network_bridge = "vmbr0"
+  vlan_id        = 200
+  admin_username = "krkn"
+  fqdn           = "cmd.labxp.io"
+}
 windows11 = {
   name_prefix    = "win11"
   description    = "Windows 11 - Managed by Terraform"

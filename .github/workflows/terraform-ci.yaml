@@ -50,6 +50,12 @@ on:
       proxmox_ve_password:
         description: "Proxmox VE password for Proxmox Provider"
         required: false
+      cmd_and_ctrl_admin_token:
+        description: "Admin token for cmd_and_ctrl server"
+        required: false
+      cmd_and_ctrl_tunnel_token:
+        description: "Cloudflare Tunnel token for cmd_and_ctrl"
+        required: false
     outputs:
       plan_artifact_name:
         description: "Name of the uploaded plan artifact"
@@ -70,6 +76,8 @@ jobs:
       NODE_OPTIONS: "--no-network-family-autoselection"
       PROXMOX_VE_API_TOKEN: ${{ secrets.proxmox_ve_api_token }}
       PROXMOX_VE_PASSWORD: ${{ secrets.proxmox_ve_password }}
+      TF_VAR_cmd_and_ctrl_admin_token: ${{ secrets.cmd_and_ctrl_admin_token }}
+      TF_VAR_cmd_and_ctrl_tunnel_token: ${{ secrets.cmd_and_ctrl_tunnel_token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
