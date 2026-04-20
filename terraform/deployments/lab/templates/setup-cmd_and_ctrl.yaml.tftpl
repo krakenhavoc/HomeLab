@@ -126,8 +126,9 @@ write_files:
 runcmd:
   # --- Data disk: format + mount at /var/lib/cmd_and_ctrl ---
   # OS disk is virtio0 (/dev/vda), data disk is virtio1 (/dev/vdb).
+  # Runs under /bin/sh (dash on Ubuntu) — no bash-only flags like `pipefail`.
   - |
-    set -euo pipefail
+    set -eu
     DATA_DEV=/dev/vdb
     if ! blkid "$DATA_DEV" >/dev/null 2>&1; then
       mkfs.ext4 -L cmdctrl-data "$DATA_DEV"
