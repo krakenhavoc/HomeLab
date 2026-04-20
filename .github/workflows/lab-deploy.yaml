@@ -35,12 +35,11 @@ jobs:
       environment: ${{ matrix.environment }}
       runner: self-hosted
       enable_proxmox_ssh: true
-      terraform_vars: >-
-        -var=cmd_and_ctrl_admin_token=${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
-        -var=cmd_and_ctrl_tunnel_token=${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+      cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
+      cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
 
   lab-cd:
     needs: lab-ci
