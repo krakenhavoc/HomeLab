@@ -88,6 +88,7 @@ resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
       fqdn           = var.cmd_and_ctrl.fqdn
       admin_token    = var.cmd_and_ctrl_admin_token
       tunnel_token   = var.cmd_and_ctrl_tunnel_token
+      github_token   = var.cmd_and_ctrl_github_token
     })
     file_name = "setup-${var.cmd_and_ctrl.name_prefix}.yaml"
   }
