@@ -40,6 +40,7 @@ jobs:
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
       cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
+      cmd_and_ctrl_github_token: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
 
   lab-cd:
     needs: lab-ci

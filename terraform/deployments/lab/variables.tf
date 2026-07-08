@@ -89,6 +89,24 @@ variable "cmd_and_ctrl_tunnel_token" {
   sensitive   = true
 }
 
+variable "cmd_and_ctrl_github_token" {
+  description = <<-EOT
+    Fine-grained GitHub PAT for the in-app bug-report button (cmd_and_ctrl
+    ADR 0017): Issues:write on krakenhavoc/cmd_and_ctrl only. Seeds the
+    first-boot env file in the cloud-init template so a rebuilt VM starts
+    with bug reporting live. Flows in as TF_VAR_cmd_and_ctrl_github_token
+    from the CMD_AND_CTRL_GITHUB_TOKEN environment secret (lab), same as
+    the admin/tunnel tokens. The steady-state copy on the host is synced
+    by the cmd_and_ctrl repo's CD pipeline from that repo's own
+    CMDCTRL_GITHUB_TOKEN Actions secret (managed by hand — deliberately
+    not Terraform; one secret didn't justify a github-provider
+    credential). Empty string (the default) writes no env line.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "windows11" {
   description = "Object containing the Windows 11 VM configuration"
   type = object({
