@@ -69,13 +69,98 @@ module "pwnbox" {
 }
 
 # -----------------------------------------------------------------------------
-# cmd_and_ctrl game server
+# cmd_and_ctrl game server — production and develop preview
 # -----------------------------------------------------------------------------
-# Go server + Caddy + Cloudflare Tunnel, behind cmd.labxp.io.
-# Raw resource (not pm-cloudinit-vm module) because it needs a second data disk
-# for CMDCTRL_DATA_DIR (Scryfall dump + image cache).
+# Two VMs from one definition, behind cmd.labxp.io and dev.cmd.labxp.io.
+#
+# They differ only in hostname, fqdn, tokens and CMDCTRL_ENV. Paths, service
+# name, service user and listen port are identical, so the cmd_and_ctrl CD
+# pipeline deploys to both with the same recipe and only the target host
+# changes. A preview environment whose deploy is shaped differently from the
+# production deploy it rehearses is not rehearsing anything.
+#
+# Raw resource (not the pm-cloudinit-vm module) because each needs a second
+# data disk for CMDCTRL_DATA_DIR (Scryfall dump + image cache).
+
+locals {
+  cmd_and_ctrl_environments = {
+    prod = var.cmd_and_ctrl
+    dev  = var.cmd_and_ctrl_dev
+  }
+
+  # Production's tunnel was created by hand in the Zero Trust dashboard and its
+  # token arrives as a secret; importing a tunnel that is currently serving
+  # traffic is a risk with no payoff. The develop tunnel is created below, so
+  # its token comes from the provider and needs no secret at all.
+  cmd_and_ctrl_tunnel_tokens = {
+    prod = var.cmd_and_ctrl_tunnel_token
+    dev  = data.cloudflare_zero_trust_tunnel_cloudflared_token.cmd_and_ctrl_dev.token
+  }
+
+  # Separate tokens on purpose: the preview environment exposes card spawning
+  # and seat swapping to any admin session, so sharing production's token would
+  # make a leak from the low-trust box a compromise of the live table.
+  cmd_and_ctrl_admin_tokens = {
+    prod = var.cmd_and_ctrl_admin_token
+    dev  = var.cmd_and_ctrl_dev_admin_token
+  }
+
+  # Only production files bug reports. The preview environment is left empty,
+  # which makes the template omit the env line entirely -- a low-trust box with
+  # Issues:write on the production repo is not a trade worth making for a
+  # button nobody uses in a preview.
+  cmd_and_ctrl_github_tokens = {
+    prod = var.cmd_and_ctrl_github_token
+    dev  = ""
+  }
+}
+
+# --- Cloudflare: develop tunnel, ingress and DNS -----------------------------
+# config_src = "cloudflare" is load-bearing. Left at its default the connector
+# expects a local config file and the ingress rules below are never applied,
+# which presents as a tunnel that is healthy and returns 502.
+
+resource "cloudflare_zero_trust_tunnel_cloudflared" "cmd_and_ctrl_dev" {
+  account_id = var.cloudflare_account_id
+  name       = var.cmd_and_ctrl_dev.name_prefix
+  config_src = "cloudflare"
+}
+
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "cmd_and_ctrl_dev" {
+  account_id = var.cloudflare_account_id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev.id
+
+  config = {
+    ingress = [
+      {
+        hostname = var.cmd_and_ctrl_dev.fqdn
+        # Caddy on the dev VM. It listens plain HTTP because Cloudflare
+        # terminates TLS at the edge.
+        service = "http://localhost:80"
+      },
+      # Cloudflare requires a catch-all rule with no hostname as the last entry.
+      {
+        service = "http_status:404"
+      },
+    ]
+  }
+}
+
+resource "cloudflare_dns_record" "cmd_and_ctrl_dev" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.cmd_and_ctrl_dev.fqdn
+  type    = "CNAME"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev.id}.cfargotunnel.com"
+  proxied = true
+  # Proxied records must use TTL 1 ("automatic"); Cloudflare rejects anything else.
+  ttl = 1
+}
+
+# --- Proxmox VMs -------------------------------------------------------------
 
 resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
+  for_each = local.cmd_and_ctrl_environments
+
   provider     = pve
   content_type = "snippets"
   datastore_id = "snippets"
@@ -83,25 +168,28 @@ resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
 
   source_raw {
     data = templatefile("${path.module}/templates/setup-cmd_and_ctrl.yaml.tftpl", {
-      hostname       = var.cmd_and_ctrl.name_prefix
-      admin_username = var.cmd_and_ctrl.admin_username
-      fqdn           = var.cmd_and_ctrl.fqdn
-      admin_token    = var.cmd_and_ctrl_admin_token
-      tunnel_token   = var.cmd_and_ctrl_tunnel_token
-      github_token   = var.cmd_and_ctrl_github_token
+      hostname       = each.value.name_prefix
+      admin_username = each.value.admin_username
+      fqdn           = each.value.fqdn
+      cmdctrl_env    = each.value.cmdctrl_env
+      admin_token    = local.cmd_and_ctrl_admin_tokens[each.key]
+      tunnel_token   = local.cmd_and_ctrl_tunnel_tokens[each.key]
+      github_token   = local.cmd_and_ctrl_github_tokens[each.key]
     })
-    file_name = "setup-${var.cmd_and_ctrl.name_prefix}.yaml"
+    file_name = "setup-${each.value.name_prefix}.yaml"
   }
 }
 
 resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
+  for_each = local.cmd_and_ctrl_environments
+
   provider = pve
 
-  name        = var.cmd_and_ctrl.name_prefix
+  name        = each.value.name_prefix
   node_name   = var.pve.host
-  description = var.cmd_and_ctrl.description
-  tags        = sort(concat(["terraform"], var.cmd_and_ctrl.tags))
-  bios        = var.cmd_and_ctrl.bios
+  description = each.value.description
+  tags        = sort(concat(["terraform"], each.value.tags))
+  bios        = each.value.bios
 
   clone {
     vm_id = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
@@ -114,12 +202,12 @@ resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
   }
 
   cpu {
-    cores = var.cmd_and_ctrl.cpu_cores
+    cores = each.value.cpu_cores
     type  = "x86-64-v2-AES"
   }
 
   memory {
-    dedicated = var.cmd_and_ctrl.memory_mb
+    dedicated = each.value.memory_mb
   }
 
   # OS disk (cloned from template)
@@ -128,7 +216,7 @@ resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
     interface    = "virtio0"
     iothread     = true
     discard      = "on"
-    size         = var.cmd_and_ctrl.os_disk_size
+    size         = each.value.os_disk_size
   }
 
   # Data disk for CMDCTRL_DATA_DIR — Scryfall dump + image cache.
@@ -138,7 +226,7 @@ resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
     interface    = "virtio1"
     iothread     = true
     discard      = "on"
-    size         = var.cmd_and_ctrl.data_disk_size
+    size         = each.value.data_disk_size
     file_format  = "raw"
   }
 
@@ -149,12 +237,12 @@ resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
         address = "dhcp"
       }
     }
-    user_data_file_id = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit.id
+    user_data_file_id = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit[each.key].id
   }
 
   network_device {
-    bridge  = var.cmd_and_ctrl.network_bridge
-    vlan_id = var.cmd_and_ctrl.vlan_id
+    bridge  = each.value.network_bridge
+    vlan_id = each.value.vlan_id
   }
 
   serial_device {}
@@ -166,6 +254,39 @@ resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
   operating_system {
     type = "l26"
   }
+
+  # Cloud-init is first-boot only, so a changed snippet is not a reason to
+  # rebuild a running VM -- and without this it is. Editing the template
+  # replaces proxmox_virtual_environment_file (source_raw forces replacement),
+  # which makes its id unknown at plan time even when the resulting id string
+  # is identical, which propagates into user_data_file_id here and forces the
+  # VM to be replaced. That destroyed the production VM and its data disk on
+  # 2026-09-10.
+  #
+  # The cost of ignoring it: a template edit no longer reaches an existing
+  # host. Changes to the env file or Caddyfile must be delivered by the
+  # cmd_and_ctrl CD pipeline, or the VM tainted deliberately to rebuild it.
+  lifecycle {
+    ignore_changes = [initialization]
+  }
+}
+
+# The single cmd_and_ctrl VM became a for_each over environments. These tell
+# Terraform the production VM and its cloud-init snippet moved address rather
+# than being destroyed and rebuilt.
+#
+# CHECK THE PLAN BEFORE APPLYING: it must report 0 to destroy. A plan that
+# wants to destroy proxmox_virtual_environment_vm.cmd_and_ctrl means a moved
+# block did not match, and applying it would take production down and lose the
+# data disk.
+moved {
+  from = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit
+  to   = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit["prod"]
+}
+
+moved {
+  from = proxmox_virtual_environment_vm.cmd_and_ctrl
+  to   = proxmox_virtual_environment_vm.cmd_and_ctrl["prod"]
 }
 
 # -----------------------------------------------------------------------------

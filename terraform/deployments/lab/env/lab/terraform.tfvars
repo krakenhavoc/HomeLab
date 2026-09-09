@@ -5,12 +5,12 @@ pve = {
 vm_disk_datastore_id      = "ssd_1641G_thin"
 vm_cloudinit_datastore_id = "ssd_1641G_thin"
 openclaw = {
-  name_prefix    = "openclaw"
-  description    = "OpenClaw Gateway - Managed by Terraform"
-  tags           = ["openclaw"]
-  bios           = "ovmf"
-  cpu_cores      = 4
-  memory_mb      = 16384
+  name_prefix = "openclaw"
+  description = "OpenClaw Gateway - Managed by Terraform"
+  tags        = ["openclaw"]
+  bios        = "ovmf"
+  cpu_cores   = 4
+  memory_mb   = 16384
   # Matches the disk's real size — it was grown to 100G out-of-band
   # and the config had drifted at 50.
   os_disk_size   = 100
