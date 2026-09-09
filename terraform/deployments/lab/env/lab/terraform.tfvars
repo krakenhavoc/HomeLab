@@ -45,6 +45,27 @@ cmd_and_ctrl = {
   vlan_id        = 200
   admin_username = "krkn"
   fqdn           = "cmd.labxp.io"
+  cmdctrl_env    = "prod"
+}
+# Develop preview. Same shape as production on purpose — it exists to rehearse
+# production, and a preview sized differently rehearses something else. The
+# memory figure is the one worth arguing with: two 4 GB game servers on this
+# host is ~4 GB more committed than before, and the Scryfall index is the bulk
+# of it. Drop to 3072 if the node is tight.
+cmd_and_ctrl_dev = {
+  name_prefix    = "cmd-and-ctrl-dev"
+  description    = "cmd_and_ctrl develop preview - Managed by Terraform"
+  tags           = ["cmd-and-ctrl", "gameserver", "dev"]
+  bios           = "ovmf"
+  cpu_cores      = 2
+  memory_mb      = 4096
+  os_disk_size   = 40
+  data_disk_size = 20
+  network_bridge = "vmbr0"
+  vlan_id        = 200
+  admin_username = "krkn"
+  fqdn           = "dev.cmd.labxp.io"
+  cmdctrl_env    = "dev"
 }
 windows11 = {
   name_prefix    = "win11"
