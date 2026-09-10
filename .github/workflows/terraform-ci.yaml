@@ -58,6 +58,17 @@ on:
         required: false
       cmd_and_ctrl_github_token:
         description: "GitHub PAT for the cmd_and_ctrl in-app bug-report button (cloud-init seed)"
+      cmd_and_ctrl_dev_admin_token:
+        description: "Admin token for the cmd_and_ctrl develop preview. Must differ from production's."
+        required: false
+      cloudflare_api_token:
+        description: "Cloudflare API token — Account:'Cloudflare One Connector: cloudflared':Edit + Zone:DNS:Edit on labxp.io"
+        required: false
+      cloudflare_account_id:
+        description: "Cloudflare account ID owning the Zero Trust tunnels"
+        required: false
+      cloudflare_zone_id:
+        description: "Cloudflare zone ID for labxp.io"
         required: false
     outputs:
       plan_artifact_name:
@@ -82,6 +93,16 @@ jobs:
       TF_VAR_cmd_and_ctrl_admin_token: ${{ secrets.cmd_and_ctrl_admin_token }}
       TF_VAR_cmd_and_ctrl_tunnel_token: ${{ secrets.cmd_and_ctrl_tunnel_token }}
       TF_VAR_cmd_and_ctrl_github_token: ${{ secrets.cmd_and_ctrl_github_token }}
+      TF_VAR_cmd_and_ctrl_dev_admin_token: ${{ secrets.cmd_and_ctrl_dev_admin_token }}
+      TF_VAR_cloudflare_api_token: ${{ secrets.cloudflare_api_token }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.cloudflare_account_id }}
+      TF_VAR_cloudflare_zone_id: ${{ secrets.cloudflare_zone_id }}
+      # Redundant fallback. providers.tf configures the Cloudflare provider from
+      # var.cloudflare_api_token, which the TF_VAR above already supplies, and
+      # the apply job reads the value recorded in the saved plan file. Set here
+      # only so the provider stays configured if providers.tf is ever changed to
+      # rely on the env var instead.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.cloudflare_api_token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
