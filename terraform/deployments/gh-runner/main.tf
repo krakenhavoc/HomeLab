@@ -86,6 +86,33 @@ resource "proxmox_virtual_environment_vm" "gh_runner" {
   }
 
   # explicit depends_on removed — `user_data_file_id` creates an implicit dependency
+
+  # Without this, adding one runner destroys and rebuilds every existing one.
+  #
+  # gh_registration_token is minted fresh on every workflow_dispatch and is
+  # interpolated into EVERY instance's cloud-init. A new token therefore changes
+  # source_raw.data on all of them; source_raw forces replacement of
+  # proxmox_virtual_environment_file, which makes its id unknown at plan time,
+  # which propagates into user_data_file_id here and forces the VM to be
+  # replaced. Going from 2 workers to 3 rebuilt gunner-0 and gunner-1 as
+  # collateral, killing whatever they were running.
+  #
+  # This is the same cascade that destroyed the production cmd_and_ctrl VM and
+  # its data disk on 2026-09-10. Runners are stateless so the stakes are far
+  # lower here, but it still cancels in-flight jobs and it is never what
+  # "add a runner" is meant to do.
+  #
+  # Cloud-init is first-boot only, so a changed template is not a reason to
+  # rebuild a running runner. The cost: a genuine template change (runner
+  # version bump, new repo registration) no longer reaches existing VMs. Roll
+  # those out deliberately with terraform-replace.yaml, one instance at a time:
+  #
+  #   gh workflow run terraform-replace.yaml \
+  #     -f replace_resource='proxmox_virtual_environment_vm.gh_runner["0"]' \
+  #     -f deployment_name=gh-runner -f environment=GH-Worker
+  lifecycle {
+    ignore_changes = [initialization]
+  }
 }
 
 # output "vm_ipv4_address" {

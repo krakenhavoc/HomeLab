@@ -81,9 +81,12 @@ jobs:
 
     - name: Terraform Apply
       working-directory: terraform/deployments/gh-runner
+      env:
+        VAR_FILE: ${{ inputs.is_controller && 'env/gh-controller.tfvars' || 'env/gh-worker.tfvars' }}
       run: |
-        if [ "${{ inputs.is_controller }}" = "true" ]; then
-          terraform apply -auto-approve -var-file=env/gh-controller.tfvars
-        else
-          terraform apply -auto-approve -var-file=env/gh-worker.tfvars
-        fi
+        set -eu
+        # Print the plan before applying. This applies with -auto-approve and no
+        # review gate, so the log is the only record of what it decided. Adding a
+        # runner used to rebuild the existing ones here without saying so.
+        terraform plan -var-file="$VAR_FILE" -no-color
+        terraform apply -auto-approve -var-file="$VAR_FILE"
