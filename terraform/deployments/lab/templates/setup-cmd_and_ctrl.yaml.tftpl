@@ -70,38 +70,42 @@ write_files:
       CMDCTRL_SECURE_COOKIES=1%{ if github_token != "" }
       CMDCTRL_GITHUB_TOKEN=${github_token}%{ endif }
 
-  # Caddyfile — static client + reverse proxy to Go server.
-  # HTTP-only: Cloudflare Tunnel terminates TLS at the edge and forwards
-  # plain HTTP to this origin, so Caddy does not need its own cert.
+  # Caddyfile — FIRST BOOT PLACEHOLDER ONLY.
   #
-  # The @api matcher is ONE `path` directive with many arguments: multiple
-  # arguments to a single matcher are OR'ed, whereas repeating the directive
-  # would AND them and match nothing. Keep it in sync with the routes
-  # registered in server/internal/lobby/http.go and client/vite.config.ts —
-  # a route missing here is silent, because the client gets index.html back,
-  # fails to parse it, and simply hides the feature.
+  # The real config lives in the cmd_and_ctrl repo at deploy/Caddyfile and is
+  # installed by that repo's CD job, which validates it and reloads Caddy. It
+  # belongs there because its route matcher mirrors the routes the Go server
+  # registers, so a new route and its proxy entry land in the same pull
+  # request.
   #
-  # Do NOT add `header_up Host`. Caddy forwards the original Host by default
-  # and the game server's WebSocket CheckOrigin compares the Origin header's
-  # host against the request Host; rewriting Host to the upstream 403s every
-  # /ws upgrade while ordinary HTTP keeps working.
+  # This file used to hold the real route list, and that is exactly how it
+  # went stale: nobody adding a route to the server ever opened a Terraform
+  # template, so /auth/*, /avatars/*, /bugreport* and /logout were never
+  # proxied. They fell through to file_server, the client got index.html back,
+  # JSON parsing failed, and Discord sign-in and bug reports looked absent
+  # rather than broken. On 2026-09-10 a VM rebuild made that live.
+  #
+  # Terraform cannot maintain the real file anyway: the VM carries
+  # lifecycle ignore_changes = [initialization], so changes here only ever
+  # reach a freshly built host.
+  #
+  # A deliberate 503 rather than a copy of the route list. A stale copy would
+  # serve a plausible-looking site that silently lacks features; this makes an
+  # undeployed host obviously undeployed. The first CD run replaces it.
+  #
+  # HTTP only: the Cloudflare tunnel terminates TLS at the edge, so Caddy must
+  # not try to obtain its own certificate.
   - path: /etc/caddy/Caddyfile
     permissions: "0644"
     owner: root:root
     content: |
       {
-        admin off
-        auto_https off
+      	admin off
+      	auto_https off
       }
 
       :80 {
-        encode zstd gzip
-
-        @api path /ws /healthz /config /me /logout /games /games/* /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/* /dev /dev/*
-        reverse_proxy @api 127.0.0.1:8080
-
-        root * /var/www/cmdctrl-client
-        file_server
+      	respond "cmd_and_ctrl: host provisioned, application not yet deployed. Run the cmd_and_ctrl CD pipeline against this host." 503
       }
 
   # systemd unit — Go server
