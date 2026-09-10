@@ -43,6 +43,13 @@ jobs:
 
   lab-cd:
     needs: lab-ci
+    # Apply ONLY on a merge to main. The gate inside terraform-cd.yaml@v0.2.0 is
+    # `!contains(inputs.environment, 'prd')`, and "lab" does not contain "prd",
+    # so without this the lab apply fired on every pull_request push -- an
+    # unreviewed apply against live infrastructure. On 2026-09-10 that destroyed
+    # the production cmd_and_ctrl VM from a PR. The called workflow is pinned at
+    # a tag and cannot be fixed from here, so the caller gates it.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
         environment: ["lab"]
