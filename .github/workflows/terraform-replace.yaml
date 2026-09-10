@@ -82,15 +82,23 @@ jobs:
 
     - name: Terraform Apply
       working-directory: terraform/deployments/${{ inputs.deployment_name }}
+      env:
+        # Passed through the environment rather than interpolated into the
+        # script body. Interpolating mangles a quoted index bracket --
+        # cmd_and_ctrl["dev"] reaches terraform as cmd_and_ctrl[dev], which it
+        # rejects with "Index brackets must contain ... a literal string" --
+        # and it also lets a dispatch input inject arbitrary shell.
+        REPLACE_RESOURCE: ${{ inputs.replace_resource }}
+        VAR_FILE: env/${{ inputs.environment }}/terraform.tfvars
       run: |
-        # Construct the replace flag if an input was provided
-        REPLACE_FLAG=""
-        if [ -n "${{ github.event.inputs.replace_resource }}" ]; then
-          REPLACE_FLAG="-replace=${{ github.event.inputs.replace_resource }}"
+        set -eu
+        # Build argv so the address survives word splitting intact.
+        if [ -n "$REPLACE_RESOURCE" ]; then
+          set -- -replace="$REPLACE_RESOURCE"
+        else
+          set --
         fi
-
-        # Print the plan first. This workflow applies without a review gate by
-        # design (it is a break-glass tool), so the log must at least record
-        # what it decided to do.
-        terraform plan $REPLACE_FLAG -var-file=env/${{ inputs.environment }}/terraform.tfvars -no-color
-        terraform apply -auto-approve $REPLACE_FLAG -var-file=env/${{ inputs.environment }}/terraform.tfvars
+        # Print the plan first. This applies without a review gate by design,
+        # being a break-glass tool, so the log must record what it decided.
+        terraform plan "$@" -var-file="$VAR_FILE" -no-color
+        terraform apply -auto-approve "$@" -var-file="$VAR_FILE"
