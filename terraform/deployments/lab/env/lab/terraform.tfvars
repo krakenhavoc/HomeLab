@@ -64,7 +64,7 @@ cmd_and_ctrl_dev = {
   network_bridge = "vmbr0"
   vlan_id        = 200
   admin_username = "krkn"
-  fqdn           = "dev.cmd.labxp.io"
+  fqdn           = "cmd-dev.labxp.io"
   cmdctrl_env    = "dev"
 }
 windows11 = {
