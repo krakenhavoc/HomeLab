@@ -11,7 +11,9 @@ openclaw = {
   bios           = "ovmf"
   cpu_cores      = 4
   memory_mb      = 16384
-  os_disk_size   = 50
+  # Matches the disk's real size — it was grown to 100G out-of-band
+  # and the config had drifted at 50.
+  os_disk_size   = 100
   disk_interface = "virtio0"
   network_bridge = "vmbr0"
   vlan_id        = 200

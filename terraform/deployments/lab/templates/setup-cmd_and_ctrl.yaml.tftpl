@@ -38,7 +38,8 @@ write_files:
       CMDCTRL_ADMIN_TOKEN=${admin_token}
       CMDCTRL_ADDR=127.0.0.1:8080
       CMDCTRL_DATA_DIR=/var/lib/cmd_and_ctrl/data
-      CMDCTRL_ALLOWED_ORIGINS=${fqdn}
+      CMDCTRL_ALLOWED_ORIGINS=${fqdn}%{ if github_token != "" }
+      CMDCTRL_GITHUB_TOKEN=${github_token}%{ endif }
 
   # Caddyfile — static client + reverse proxy to Go server.
   # HTTP-only: Cloudflare Tunnel terminates TLS at the edge and forwards
