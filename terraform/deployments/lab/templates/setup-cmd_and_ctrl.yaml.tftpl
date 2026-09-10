@@ -1,6 +1,12 @@
 #cloud-config
 # Host prep only. Application artifacts (server binary, client dist, scripts)
 # are pushed by the cmd_and_ctrl repo's CD pipeline via SSH as ${admin_username}.
+#
+# One template, two VMs. Production and the develop preview differ only in
+# hostname, fqdn, tokens, and CMDCTRL_ENV — same paths, same service name,
+# same user, same port. That is deliberate: CD then deploys to both with an
+# identical recipe and only the target host changes, so a dev deploy cannot
+# accidentally be shaped differently from the prod one it is rehearsing.
 preserve_hostname: false
 hostname: ${hostname}
 ssh_pwauth: false
@@ -31,19 +37,54 @@ users:
 write_files:
   # Env file for the server. Created root:root first; chowned to root:cmdctrl
   # in runcmd after the cmdctrl user exists.
+  #
+  # CMDCTRL_ENV is the single gate for every dev-only feature (cmd_and_ctrl
+  # ADR 0023). Written explicitly on BOTH environments rather than relying on
+  # the prod default, so the file always states which deployment it is. CD
+  # rewrites this key on every deploy, so a hand edit cannot outlive a restart.
+  #
+  # CMDCTRL_PUBLIC_BASE_URL and the Discord three-tuple are provisioned by the
+  # cmd_and_ctrl CD pipeline, not here.
+  #
+  # CMDCTRL_GITHUB_TOKEN is seeded here only when a token is supplied, so a
+  # rebuilt VM boots with the bug-report button live instead of waiting for the
+  # next CD run. CD still owns the steady-state value and overwrites it. Left
+  # empty the line is not written at all, which is what the develop preview
+  # does -- it has no business filing issues against the production repo.
   - path: /etc/cmd_and_ctrl/env
     permissions: "0640"
     owner: root:root
     content: |
+      CMDCTRL_ENV=${cmdctrl_env}
       CMDCTRL_ADMIN_TOKEN=${admin_token}
       CMDCTRL_ADDR=127.0.0.1:8080
       CMDCTRL_DATA_DIR=/var/lib/cmd_and_ctrl/data
-      CMDCTRL_ALLOWED_ORIGINS=${fqdn}%{ if github_token != "" }
+      CMDCTRL_ALLOWED_ORIGINS=${fqdn}
+      # Cloudflare terminates TLS at the edge and cloudflared forwards plain
+      # HTTP to Caddy, so every request reaches the Go server from 127.0.0.1.
+      # Without this the per-IP rate limiters key every client in the world to
+      # the same bucket — see the avatar limiter note in lobby/http.go.
+      CMDCTRL_TRUST_FORWARDED=1
+      # The browser's connection IS https (Cloudflare edge), even though this
+      # origin speaks http, so session cookies should carry Secure.
+      CMDCTRL_SECURE_COOKIES=1%{ if github_token != "" }
       CMDCTRL_GITHUB_TOKEN=${github_token}%{ endif }
 
   # Caddyfile — static client + reverse proxy to Go server.
   # HTTP-only: Cloudflare Tunnel terminates TLS at the edge and forwards
   # plain HTTP to this origin, so Caddy does not need its own cert.
+  #
+  # The @api matcher is ONE `path` directive with many arguments: multiple
+  # arguments to a single matcher are OR'ed, whereas repeating the directive
+  # would AND them and match nothing. Keep it in sync with the routes
+  # registered in server/internal/lobby/http.go and client/vite.config.ts —
+  # a route missing here is silent, because the client gets index.html back,
+  # fails to parse it, and simply hides the feature.
+  #
+  # Do NOT add `header_up Host`. Caddy forwards the original Host by default
+  # and the game server's WebSocket CheckOrigin compares the Origin header's
+  # host against the request Host; rewriting Host to the upstream 403s every
+  # /ws upgrade while ordinary HTTP keeps working.
   - path: /etc/caddy/Caddyfile
     permissions: "0644"
     owner: root:root
@@ -55,14 +96,12 @@ write_files:
 
       :80 {
         encode zstd gzip
+
+        @api path /ws /healthz /config /me /logout /games /games/* /cards/* /admin/* /auth/* /avatars/* /bugreport /bugreport/* /dev /dev/*
+        reverse_proxy @api 127.0.0.1:8080
+
         root * /var/www/cmdctrl-client
         file_server
-        reverse_proxy /ws        127.0.0.1:8080
-        reverse_proxy /healthz   127.0.0.1:8080
-        reverse_proxy /games*    127.0.0.1:8080
-        reverse_proxy /cards/*   127.0.0.1:8080
-        reverse_proxy /admin/*   127.0.0.1:8080
-        reverse_proxy /me        127.0.0.1:8080
       }
 
   # systemd unit — Go server
@@ -70,7 +109,7 @@ write_files:
     permissions: "0644"
     content: |
       [Unit]
-      Description=cmd_and_ctrl game server
+      Description=cmd_and_ctrl game server (${cmdctrl_env})
       After=network-online.target var-lib-cmd_and_ctrl.mount
       Wants=network-online.target
       RequiresMountsFor=/var/lib/cmd_and_ctrl
@@ -129,6 +168,10 @@ runcmd:
   # --- Data disk: format + mount at /var/lib/cmd_and_ctrl ---
   # OS disk is virtio0 (/dev/vda), data disk is virtio1 (/dev/vdb).
   # Runs under /bin/sh (dash on Ubuntu) — no bash-only flags like `pipefail`.
+  # No shell brace-expansion anywhere in here. This file is a Terraform
+  # template, so a bare dollar-brace sequence is interpolated away at plan
+  # time; shell variables are referenced as "$DATA_DEV", without braces.
+  # (Terraform caught this comment itself doing it on the first validate.)
   - |
     set -eu
     DATA_DEV=/dev/vdb
@@ -182,10 +225,10 @@ power_state:
   condition: true
 
 final_message: |
-  ${hostname} host is ready. Caddy on :80, cloudflared connector registered.
+  ${hostname} host is ready (${cmdctrl_env}). Caddy on :80, cloudflared connector registered.
   Deploy artifacts from cmd_and_ctrl CD pipeline:
     rsync server binary to /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-server
     rsync client dist/ to /var/www/cmdctrl-client/
     rsync scripts/ to /opt/cmd_and_ctrl/scripts/
     sudo systemctl restart cmd-and-ctrl
-  One-time: add public hostname ${fqdn} -> http://localhost:80 in CF Zero Trust dashboard.
+  Public hostname ${fqdn} is managed by Terraform (cloudflare_zero_trust_tunnel_cloudflared_config).
