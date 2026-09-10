@@ -103,7 +103,7 @@ variable "cmd_and_ctrl_dev" {
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, 200)
     admin_username = optional(string, "krkn")
-    fqdn           = optional(string, "dev.cmd.labxp.io")
+    fqdn           = optional(string, "cmd-dev.labxp.io")
     cmdctrl_env    = optional(string, "dev")
   })
   default = {}

@@ -71,7 +71,14 @@ module "pwnbox" {
 # -----------------------------------------------------------------------------
 # cmd_and_ctrl game server — production and develop preview
 # -----------------------------------------------------------------------------
-# Two VMs from one definition, behind cmd.labxp.io and dev.cmd.labxp.io.
+# Two VMs from one definition, behind cmd.labxp.io and cmd-dev.labxp.io.
+#
+# Both hostnames are deliberately ONE label under the zone. Cloudflare
+# Universal SSL issues only labxp.io + *.labxp.io, and a wildcard matches a
+# single label, so a nested name like dev.cmd.labxp.io has no certificate and
+# fails the TLS handshake outright -- no HTTP, no useful error at the edge.
+# Covering a nested name needs Advanced Certificate Manager. Keep new
+# hostnames flat unless someone buys it.
 #
 # They differ only in hostname, fqdn, tokens and CMDCTRL_ENV. Paths, service
 # name, service user and listen port are identical, so the cmd_and_ctrl CD
