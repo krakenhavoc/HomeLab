@@ -42,6 +42,13 @@ jobs:
 
   nfs-cd:
     needs: nfs-ci
+    # Apply ONLY on a merge to main. terraform-cd gates on
+    # `!contains(inputs.environment, 'prd')`, which is always true for a
+    # non-prd environment, so without this the apply ran on every
+    # pull_request push -- an unreviewed plan applied to live
+    # infrastructure. That destroyed the production cmd_and_ctrl VM from an
+    # open PR on 2026-09-10. Plan still runs on PRs; only apply is gated.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
         environment: ["nfs-dev", "nfs-prd"]
