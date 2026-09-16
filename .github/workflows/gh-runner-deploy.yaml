@@ -23,34 +23,29 @@ env:
   TF_VAR_proxmox_private_key: ${{ secrets.PROXMOX_PRIVATE_KEY }}
 
 jobs:
-  generate-token:
-    runs-on: ubuntu-latest
-    outputs:
-      registration_token: ${{ steps.registration.outputs.token }}
+  deploy:
+    runs-on: ${{ inputs.is_controller && 'worker' || 'controller' }}
+    env:
+      NODE_OPTIONS: "--no-network-family-autoselection"
 
     steps:
+      # Minted in this job and masked: a job output is not a secret, so passing
+      # it between jobs printed a live token into this public repo's logs.
       - name: Generate GitHub Runner Registration Token
-        id: registration
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           TOKEN=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.GH_PAT }}" \
+            -H "Authorization: Bearer $GH_PAT" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners/registration-token \
             | jq -r .token)
 
-          # Verify it's not empty before setting output
           if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "Token generation failed"; exit 1; fi
 
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+          echo "::add-mask::$TOKEN"
+          echo "TF_VAR_gh_registration_token=$TOKEN" >> "$GITHUB_ENV"
 
-  deploy:
-    runs-on: ${{ inputs.is_controller && 'worker' || 'controller' }}
-    needs: generate-token
-    env:
-      NODE_OPTIONS: "--no-network-family-autoselection"
-      TF_VAR_gh_registration_token: ${{ needs.generate-token.outputs.registration_token }}
-
-    steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
