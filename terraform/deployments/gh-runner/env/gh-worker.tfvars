@@ -1,6 +1,10 @@
 # GitHub Actions Runner Workers Configuration
 # Deploy multiple worker instances for running GitHub Actions jobs
 
+# Instances are named by index (gunner-0 .. gunner-N-1). Only ever increase
+# this; lowering it destroys the highest-numbered runners.
+instance_count = 4
+
 deployment_tag = "gh-worker"
 
 gh_runner = {

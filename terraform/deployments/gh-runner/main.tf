@@ -17,6 +17,13 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
     })
     file_name = "setup-${each.value.name}.yaml"
   }
+
+  # The registration token is regenerated on every workflow run and only matters
+  # at first boot. source_raw is ForceNew, so without this every run would
+  # replace the snippet and, through user_data_file_id, every existing runner VM.
+  lifecycle {
+    ignore_changes = [source_raw]
+  }
 }
 
 resource "proxmox_virtual_environment_vm" "gh_runner" {
@@ -86,6 +93,12 @@ resource "proxmox_virtual_environment_vm" "gh_runner" {
   }
 
   # explicit depends_on removed — `user_data_file_id` creates an implicit dependency
+
+  # Both are ForceNew; a rebuilt template or re-rendered snippet must not
+  # recreate runners that are already registered.
+  lifecycle {
+    ignore_changes = [clone, initialization]
+  }
 }
 
 # output "vm_ipv4_address" {
