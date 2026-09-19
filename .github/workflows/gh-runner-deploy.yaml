@@ -53,13 +53,17 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          TOKEN=$(curl -s -X POST \
+          RESP=$(curl -s -w '\n%{http_code}' -X POST \
             -H "Authorization: Bearer $GH_PAT" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/krakenhavoc/cmd_and_ctrl/actions/runners/registration-token \
-            | jq -r .token)
+            https://api.github.com/repos/krakenhavoc/cmd_and_ctrl/actions/runners/registration-token)
+          CODE=$(echo "$RESP" | tail -n1)
+          TOKEN=$(echo "$RESP" | sed '$d' | jq -r '.token // empty')
 
-          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "cmd_and_ctrl token generation failed"; exit 1; fi
+          if [ -z "$TOKEN" ]; then
+            echo "::error::cmd_and_ctrl token generation failed: HTTP $CODE $(echo "$RESP" | sed '$d' | jq -r '.message // empty')"
+            exit 1
+          fi
 
           echo "::add-mask::$TOKEN"
           echo "TF_VAR_cmd_and_ctrl_registration_token=$TOKEN" >> "$GITHUB_ENV"
