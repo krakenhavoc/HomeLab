@@ -9,11 +9,13 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
     data = templatefile("${path.module}/setup-gh-runner.yaml.tftpl", {
       gh_runner_admin_username = var.gh_runner.admin_username
       gh_registration_token    = var.gh_registration_token
-      gh_runner_hostname       = each.value.name
-      proxmox_host             = var.pve.host
-      proxmox_private_key      = indent(4, var.proxmox_private_key)
-      deployment_tag           = local.deployment_tag
-      labels_flag              = local.deployment_tag == "gh-controller" ? "--labels self-hosted,linux,controller" : "--labels self-hosted,linux,worker"
+      # Empty unless this deployment also serves cmd_and_ctrl.
+      cmd_and_ctrl_registration_token = var.register_cmd_and_ctrl ? var.cmd_and_ctrl_registration_token : ""
+      gh_runner_hostname              = each.value.name
+      proxmox_host                    = var.pve.host
+      proxmox_private_key             = indent(4, var.proxmox_private_key)
+      deployment_tag                  = local.deployment_tag
+      labels_flag                     = local.deployment_tag == "gh-controller" ? "--labels self-hosted,linux,controller" : "--labels self-hosted,linux,worker"
     })
     file_name = "setup-${each.value.name}.yaml"
   }
