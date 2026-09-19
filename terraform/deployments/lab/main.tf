@@ -297,6 +297,61 @@ moved {
 }
 
 # -----------------------------------------------------------------------------
+# cmd_and_ctrl off-node backups (Cloudflare R2)
+# -----------------------------------------------------------------------------
+# One bucket per environment. This repo only provisions the bucket.
+# krakenhavoc/cmd_and_ctrl#1031 owns everything that writes to it: the nightly
+# restic job on each VM, the credentials, and the restore runbook. See
+# HomeLab#58.
+#
+# No API tokens here. The Terraform Cloudflare token is scoped to tunnel and
+# DNS only (see cloudflare_api_token's description) and cannot mint tokens
+# even if it were granted R2 permission. The owner creates one bucket-scoped
+# R2 API token per environment by hand in the dashboard, after apply, and
+# hands them to cmd_and_ctrl#1031.
+resource "cloudflare_r2_bucket" "cmd_and_ctrl_backup" {
+  for_each = local.cmd_and_ctrl_environments
+
+  account_id = var.cloudflare_account_id
+  name       = "cmd-and-ctrl-backup-${each.key}"
+
+  # The free tier (10 GB-month, this backup is ~1-2 GB) only covers Standard.
+  storage_class = "Standard"
+}
+
+# No object lifecycle EXPIRY rules on this bucket, deliberately. Retention is
+# restic's `forget --prune`, run by cmd_and_ctrl#1031 -- restic tracks which
+# pack files its snapshots still reference, and an R2 rule that expires
+# objects by age has no such knowledge. It would delete pack files a snapshot
+# still needs and corrupt the repository.
+#
+# The one rule below only cleans up abandoned multipart uploads (a failed or
+# interrupted upload that never completed); it never touches a completed
+# object, so it does not participate in retention at all.
+resource "cloudflare_r2_bucket_lifecycle" "cmd_and_ctrl_backup" {
+  for_each = local.cmd_and_ctrl_environments
+
+  account_id  = var.cloudflare_account_id
+  bucket_name = cloudflare_r2_bucket.cmd_and_ctrl_backup[each.key].name
+
+  rules = [
+    {
+      id      = "abort-incomplete-multipart-uploads"
+      enabled = true
+      conditions = {
+        prefix = ""
+      }
+      abort_multipart_uploads_transition = {
+        condition = {
+          type    = "Age"
+          max_age = 7 * 24 * 60 * 60 # 7 days, in seconds
+        }
+      }
+    }
+  ]
+}
+
+# -----------------------------------------------------------------------------
 # Windows 11 VM
 # -----------------------------------------------------------------------------
 # Uses a raw resource instead of the cloud-init module since Windows requires

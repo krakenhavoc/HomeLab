@@ -19,6 +19,10 @@ packages:
   - apt-transport-https
   - gnupg
   - rsync
+  # Off-node backups to Cloudflare R2. The job, credentials and restore
+  # runbook are owned by cmd_and_ctrl#1031; this only ensures the binary is
+  # present on a freshly built host.
+  - restic
 
 users:
   - name: ${admin_username}
