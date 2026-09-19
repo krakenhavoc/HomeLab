@@ -50,3 +50,20 @@ variable "deployment_tag" {
   type        = string
   default     = null
 }
+
+variable "register_cmd_and_ctrl" {
+  description = "Also register each new runner with krakenhavoc/cmd_and_ctrl"
+  type        = bool
+  default     = false
+}
+
+variable "cmd_and_ctrl_registration_token" {
+  description = "Registration token for krakenhavoc/cmd_and_ctrl; required when register_cmd_and_ctrl is true"
+  type        = string
+  sensitive   = true
+  default     = ""
+  validation {
+    condition     = !var.register_cmd_and_ctrl || var.cmd_and_ctrl_registration_token != ""
+    error_message = "register_cmd_and_ctrl is true but cmd_and_ctrl_registration_token is empty."
+  }
+}

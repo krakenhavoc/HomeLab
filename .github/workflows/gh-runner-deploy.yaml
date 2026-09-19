@@ -46,6 +46,24 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "TF_VAR_gh_registration_token=$TOKEN" >> "$GITHUB_ENV"
 
+      # Workers also register with cmd_and_ctrl (register_cmd_and_ctrl in
+      # gh-worker.tfvars). GH_PAT needs Administration: write on that repo too.
+      - name: Generate cmd_and_ctrl Runner Registration Token
+        if: ${{ !inputs.is_controller }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          TOKEN=$(curl -s -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/krakenhavoc/cmd_and_ctrl/actions/runners/registration-token \
+            | jq -r .token)
+
+          if [ "$TOKEN" == "null" ] || [ -z "$TOKEN" ]; then echo "cmd_and_ctrl token generation failed"; exit 1; fi
+
+          echo "::add-mask::$TOKEN"
+          echo "TF_VAR_cmd_and_ctrl_registration_token=$TOKEN" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -100,16 +118,23 @@ jobs:
           fi
 
           # config.sh runs with --replace, so a new VM sharing a registered name
-          # (e.g. from state drift) would silently take over that runner.
-          REGISTERED=$(curl -sf \
-            -H "Authorization: Bearer $GH_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners?per_page=100" \
-            | jq -r '.runners[].name')
-          if [ -z "$REGISTERED" ]; then
-            echo "::error::Could not list registered runners; refusing to apply."
-            exit 1
-          fi
+          # (e.g. from state drift) would silently take over that runner, in
+          # either repo it registers with.
+          REPOS="HomeLab"
+          if [ "${{ inputs.is_controller }}" != "true" ]; then REPOS="$REPOS cmd_and_ctrl"; fi
+          REGISTERED=""
+          for repo in $REPOS; do
+            NAMES=$(curl -sf \
+              -H "Authorization: Bearer $GH_PAT" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/krakenhavoc/$repo/actions/runners?per_page=100" \
+              | jq -r '.runners[].name')
+            if [ -z "$NAMES" ]; then
+              echo "::error::Could not list runners registered with $repo; refusing to apply."
+              exit 1
+            fi
+            REGISTERED=$(printf '%s\n%s' "$REGISTERED" "$NAMES" | sed '/^$/d' | sort -u)
+          done
           NEW_VMS=$(jq -r '.resource_changes[] | select(.type == "proxmox_virtual_environment_vm" and (.change.actions | index("create"))) | .change.after.name' plan.json)
 
           echo "Registered runners:"; echo "$REGISTERED" | sed 's/^/  /'
@@ -117,7 +142,7 @@ jobs:
 
           for name in $NEW_VMS; do
             if echo "$REGISTERED" | grep -qx "$name"; then
-              echo "::error::$name is already registered with GitHub; refusing to apply."
+              echo "::error::$name is already registered ($REPOS); refusing to apply."
               exit 1
             fi
           done

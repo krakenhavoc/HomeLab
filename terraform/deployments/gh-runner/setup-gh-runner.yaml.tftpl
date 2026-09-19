@@ -7,6 +7,11 @@ package_upgrade: true
 packages:
   - qemu-guest-agent
   - unzip
+  - build-essential
+  - ca-certificates
+  - curl
+  - jq
+  - rsync
 
 power_state:
   mode: reboot
@@ -45,6 +50,21 @@ runcmd:
     chown gh-runner:gh-runner /home/gh-runner/.ssh/known_hosts
     echo "==> Proxmox host added to known_hosts."
 
+    # The runner's own identity for SSH-based deploys (cmd_and_ctrl CD).
+    # Its public key must be added to the target hosts' authorized_keys.
+    sudo -u ${gh_runner_admin_username} ssh-keygen -t ed25519 -N "" -C "${gh_runner_admin_username}@${gh_runner_hostname}" -f /home/${gh_runner_admin_username}/.ssh/id_ed25519
+
+  - |
+    echo "==> Installing Docker..."
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update -qq
+    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    usermod -aG docker ${gh_runner_admin_username}
+    echo "==> Docker installed."
+
   - |
     echo "==> Creating /opt/actions-runner directory..."
     /bin/mkdir -p /opt/actions-runner
@@ -82,5 +102,24 @@ runcmd:
     echo \"==> Service installed, starting...\"
     cd /opt/actions-runner && ./svc.sh start
     echo "==> Service started successfully."
+%{ if cmd_and_ctrl_registration_token != "" ~}
+
+  # A runner is registered to a single repo, so cmd_and_ctrl gets its own
+  # runner install and service on the same VM. Default labels only: its
+  # workflows target plain `self-hosted`.
+  - |
+    echo "==> Configuring cmd_and_ctrl runner..."
+    /bin/mkdir -p /opt/actions-runner-cmdctrl
+    /usr/bin/tar -xzf /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -C /opt/actions-runner-cmdctrl
+    /bin/chown -R ${gh_runner_admin_username}:${gh_runner_admin_username} /opt/actions-runner-cmdctrl
+    TOKEN="${cmd_and_ctrl_registration_token}"
+    sudo -u ${gh_runner_admin_username} /opt/actions-runner-cmdctrl/config.sh \
+      --url https://github.com/krakenhavoc/cmd_and_ctrl \
+      --token "$TOKEN" \
+      --unattended --replace
+    cd /opt/actions-runner-cmdctrl && ./svc.sh install ${gh_runner_admin_username}
+    cd /opt/actions-runner-cmdctrl && ./svc.sh start
+    echo "==> cmd_and_ctrl runner started."
+%{ endif ~}
 
 final_message: "GitHub Runner for ${gh_runner_hostname} is up."
