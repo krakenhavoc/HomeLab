@@ -4,6 +4,14 @@
 
 This document outlines the backup strategy for the homelab environment, including what data is backed up, backup schedules, retention policies, and disaster recovery procedures.
 
+## cmd_and_ctrl (implemented)
+
+The only backup that actually exists today. `terraform/deployments/lab` provisions a Cloudflare R2 bucket per cmd_and_ctrl environment (prod, dev) for off-node backups of the VM's data disk (HomeLab#58). The nightly job that writes to those buckets -- `restic`, run from each VM by the cmd_and_ctrl CD pipeline, with its credentials and its restore runbook -- lives in that repo, not here: see [cmd_and_ctrl#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031) and that repo's restore runbook.
+
+Retention is restic's `forget --prune`, not an R2 lifecycle rule: an R2 rule that expires objects by age has no notion of which pack files a restic snapshot still needs, and would corrupt the repository.
+
+Everything below this section describes a target state (Proxmox Backup Server, TrueNAS, Docker volume/database backup scripts, and the rest) that is not implemented anywhere in this lab today.
+
 ## Backup Philosophy
 
 The backup strategy follows the **3-2-1 rule**:
