@@ -43,17 +43,10 @@ variable "openclaw" {
 variable "openclaw_2" {
   description = "Object containing the second OpenClaw host (upstream npm install, Codex provider)"
   type = object({
-    name_prefix = optional(string, "openclaw-2")
-    description = optional(string, "OpenClaw (upstream install, Codex) - Managed by Terraform")
-    tags        = optional(list(string), ["openclaw"])
-    bios        = optional(string, "ovmf")
-    # Sized off upstream's own guidance, not off the original openclaw box.
-    # That box is 4c/16G because it builds the fork from source on the VM
-    # (pnpm install + build + ui:build). This one installs a published npm
-    # package, so it never compiles anything. Upstream documents the gateway
-    # running on a 1 GB DigitalOcean droplet; 4 GB leaves room for the Codex
-    # app-server alongside it without committing another 16 GB on a node that
-    # already carries two game servers and a Windows VM.
+    name_prefix    = optional(string, "openclaw-2")
+    description    = optional(string, "OpenClaw (upstream install, Codex) - Managed by Terraform")
+    tags           = optional(list(string), ["openclaw"])
+    bios           = optional(string, "ovmf")
     cpu_cores      = optional(number, 2)
     memory_mb      = optional(number, 4096)
     os_disk_size   = optional(number, 40)
