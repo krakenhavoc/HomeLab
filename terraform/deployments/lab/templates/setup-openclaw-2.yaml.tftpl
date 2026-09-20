@@ -146,9 +146,11 @@ final_message: |
   1. SSH in:
        ssh ${admin_username}@${openclaw_hostname}
 
-  2. Sign in to Codex. Use the device-code flow -- the default flow wants a
+  2. Sign in to Codex. `--provider openai` defaults to ChatGPT/Codex account
+     login; the older `openai-codex` spelling still works but the CLI warns
+     it is legacy. Use the device-code flow -- the default flow wants a
      localhost browser callback, which does not exist on a headless VM:
-       openclaw models auth login --provider openai-codex --device-code
+       openclaw models auth login --provider openai --device-code
 
   3. Check it took:
        openclaw gateway status
