@@ -33,6 +33,64 @@ module "openclaw" {
   vm_vlan_id                     = var.openclaw.vlan_id
 }
 
+# -----------------------------------------------------------------------------
+# openclaw-2 — upstream install, Codex provider
+# -----------------------------------------------------------------------------
+# A second OpenClaw host that exists to try the upstream install path against
+# the original. The `openclaw` VM above builds krakenhavoc/openclaw@fork from
+# source on the box; this one runs https://openclaw.ai/install.sh, which is
+# Node 24 plus `npm i -g openclaw@latest`. Different provider too: Codex
+# (native app-server runtime, `openai/gpt-5.5`) rather than Azure Foundry.
+#
+# Like every other VM built from pm-cloudinit-vm, editing this snippet
+# REPLACES THE VM. source_raw forces the file resource to be replaced, which
+# makes its id unknown at plan time, which propagates into
+# vm_cloudinit_user_data_file_id and rebuilds the guest -- the failure mode
+# documented on the cmd_and_ctrl resource below. That resource works around it
+# with `lifecycle { ignore_changes = [initialization] }`; a module call cannot,
+# since lifecycle blocks are not inputs.
+#
+# For this box that is the intended trade, not a hazard to route around: it is
+# a trial install, and rebuilding it from an edited snippet is the point. Just
+# know that a rebuild discards the Codex OAuth login, which is a manual
+# device-code step (see the template's final_message) and not reproducible
+# from Terraform. CHECK THE PLAN before applying an unrelated change.
+
+resource "proxmox_virtual_environment_file" "openclaw_2_cloudinit" {
+  provider     = pve
+  content_type = "snippets"
+  datastore_id = "snippets"
+  node_name    = var.pve.host
+
+  source_raw {
+    data = templatefile("${path.module}/templates/setup-openclaw-2.yaml.tftpl", {
+      openclaw_hostname = var.openclaw_2.name_prefix
+      admin_username    = var.openclaw_2.admin_username
+    })
+    file_name = "setup-${var.openclaw_2.name_prefix}.yaml"
+  }
+}
+
+module "openclaw_2" {
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
+
+  vm_name                        = var.openclaw_2.name_prefix
+  vm_node_name                   = var.pve.host
+  vm_description                 = var.openclaw_2.description
+  vm_tags                        = var.openclaw_2.tags
+  vm_bios                        = var.openclaw_2.bios
+  clone_vm_id                    = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
+  vm_cpu_cores                   = var.openclaw_2.cpu_cores
+  vm_memory_mb                   = var.openclaw_2.memory_mb
+  vm_disk_datastore_id           = var.vm_disk_datastore_id
+  vm_disk_interface              = var.openclaw_2.disk_interface
+  vm_disk_size                   = var.openclaw_2.os_disk_size
+  vm_cloudinit_datastore_id      = var.vm_cloudinit_datastore_id
+  vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.openclaw_2_cloudinit.id
+  vm_network_bridge              = var.openclaw_2.network_bridge
+  vm_vlan_id                     = var.openclaw_2.vlan_id
+}
+
 resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
   provider     = pve
   content_type = "snippets"

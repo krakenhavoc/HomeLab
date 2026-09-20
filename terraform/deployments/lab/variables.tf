@@ -40,6 +40,24 @@ variable "openclaw" {
   default = {}
 }
 
+variable "openclaw_2" {
+  description = "Object containing the second OpenClaw host (upstream npm install, Codex provider)"
+  type = object({
+    name_prefix    = optional(string, "openclaw-2")
+    description    = optional(string, "OpenClaw (upstream install, Codex) - Managed by Terraform")
+    tags           = optional(list(string), ["openclaw"])
+    bios           = optional(string, "ovmf")
+    cpu_cores      = optional(number, 2)
+    memory_mb      = optional(number, 4096)
+    os_disk_size   = optional(number, 40)
+    disk_interface = optional(string, "virtio0")
+    network_bridge = optional(string, "vmbr0")
+    vlan_id        = optional(number, 200)
+    admin_username = optional(string, "krkn")
+  })
+  default = {}
+}
+
 variable "pwnbox" {
   description = "Object containing the Pwnbox configuration"
   type = object({
