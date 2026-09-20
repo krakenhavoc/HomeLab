@@ -48,10 +48,15 @@ HomeLab/
 │   └── infrastructure/          # Infrastructure architecture diagrams
 ├── terraform/                   # Infrastructure as Code (Terraform)
 │   ├── deployments/             # Deployment configurations
-│   │   └── home-lab/            # Home lab deployment (K8s cluster)
+│   │   ├── lab/                 # Lab VMs (openclaw, pwnbox, cmd_and_ctrl, win11)
+│   │   ├── frontends/           # Private frontends (RedLib)
+│   │   ├── gh-runner/           # Self-hosted GitHub Actions runners
+│   │   ├── nfs/                 # NFS server
+│   │   ├── plex/                # Plex media host
+│   │   └── shared/              # Shared images and LXC templates
 │   └── modules/                 # Reusable Terraform modules
 │       └── compute/             # Compute resource modules
-│           └── pve-cloudinit-vm/  # Proxmox cloud-init VM module
+│           └── pm-cloudinit-vm/   # Proxmox cloud-init VM module
 ├── ansible/                     # Configuration management
 │   ├── playbooks/               # Ansible playbooks
 │   ├── roles/                   # Custom roles
@@ -96,30 +101,25 @@ HomeLab/
    - Start with [Architecture Overview](docs/overview.md)
    - Follow the [Runbook](docs/runbook.md) for deployment steps
 
-3. **Deploy Kubernetes cluster:**
+3. **Plan a deployment locally:**
    ```bash
-   # Navigate to terraform deployment
-   cd terraform/deployments/home-lab
+   # Pick a deployment under terraform/deployments/
+   cd terraform/deployments/lab
 
-   # Initialize Terraform
+   # Initialize Terraform (state lives in Terraform Cloud, org LabXPIO)
    terraform init
 
-   # Review planned changes
-   terraform plan
-
-   # Apply configuration
-   terraform apply
+   # Review planned changes against the environment's tfvars
+   terraform plan -var-file=env/lab/terraform.tfvars
    ```
 
-4. **Access your cluster:**
-   ```bash
-   # SSH to master node
-   ssh root@k8s-master-1
+4. **Apply through CI, not locally:**
 
-   # Check cluster status
-   kubectl get nodes
-   kubectl get pods -A
-   ```
+   Each deployment has a workflow that plans on pull requests and applies only
+   on a merge to `main` (see `.github/workflows/`). Applying by hand bypasses
+   that gate — it is how the production `cmd_and_ctrl` VM was destroyed on
+   2026-09-10. Use `terraform-replace.yaml` for a deliberate single-resource
+   rebuild.
 
 ### Docker Example
 
