@@ -6,21 +6,21 @@ on:
   workflow_dispatch:
     inputs:
       replace_resource:
-        description: 'Resource address to recreate (e.g. module.vpc.aws_instance.web)'
+        description: "Resource address to recreate (e.g. module.vpc.aws_instance.web)"
         required: true
-        default: ''
+        default: ""
       deployment_name:
-        description: "Deployment name (e.g. home-lab, frontends, plex, etc)"
+        description: "Deployment name (e.g. lab, frontends, plex, etc)"
         required: true
-        default: ''
+        default: ""
       environment:
         description: "Hashicorp workspace tag for resource's state"
         required: true
-        default: ''
+        default: ""
       terraform_version:
         description: "Terraform version. Must satisfy the target module's required_version."
         required: false
-        default: '1.14.3'
+        default: "1.14.3"
 env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
@@ -29,76 +29,76 @@ jobs:
     runs-on: self-hosted
     environment: ${{ inputs.environment }}
     env:
-        TF_WORKSPACE: ${{ inputs.environment }}
-        NODE_OPTIONS: "--no-network-family-autoselection"
-        # Same variables terraform-ci's plan job passes. Without these the
-        # apply below dies on "No value for required variable" before it can
-        # replace anything -- this workflow could not run against the lab
-        # deployment at all.
-        PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
-        TF_VAR_cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
-        TF_VAR_cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
-        TF_VAR_cmd_and_ctrl_github_token: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
-        TF_VAR_cmd_and_ctrl_dev_admin_token: ${{ secrets.CMD_AND_CTRL_DEV_ADMIN_TOKEN }}
-        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_WORKSPACE: ${{ inputs.environment }}
+      NODE_OPTIONS: "--no-network-family-autoselection"
+      # Same variables terraform-ci's plan job passes. Without these the
+      # apply below dies on "No value for required variable" before it can
+      # replace anything -- this workflow could not run against the lab
+      # deployment at all.
+      PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
+      TF_VAR_cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
+      TF_VAR_cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
+      TF_VAR_cmd_and_ctrl_github_token: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
+      TF_VAR_cmd_and_ctrl_dev_admin_token: ${{ secrets.CMD_AND_CTRL_DEV_ADMIN_TOKEN }}
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
+      - name: Checkout code
+        uses: actions/checkout@v6
 
-    # bpg/proxmox reaches the node over SSH for snippet uploads and disk
-    # operations. Without the agent the replace fails partway through.
-    - name: Set up SSH for Proxmox Provider
-      run: |
-        eval "$(ssh-agent -s)"
-        ssh-add ~/.ssh/id_proxmox
-        echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
-        echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
+      # bpg/proxmox reaches the node over SSH for snippet uploads and disk
+      # operations. Without the agent the replace fails partway through.
+      - name: Set up SSH for Proxmox Provider
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_proxmox
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> $GITHUB_ENV
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '20'
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
 
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3.1.2
-      with:
-        # Unpinned, setup-terraform installs the latest release, which fails
-        # "Unsupported Terraform Core version" against a module pinning
-        # required_version = "~> 1.14.3".
-        terraform_version: ${{ inputs.terraform_version }}
-        cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          # Unpinned, setup-terraform installs the latest release, which fails
+          # "Unsupported Terraform Core version" against a module pinning
+          # required_version = "~> 1.14.3".
+          terraform_version: ${{ inputs.terraform_version }}
+          cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-    - name: Terraform Init
-      working-directory: terraform/deployments/${{ inputs.deployment_name }}
-      run: terraform init -input=false
+      - name: Terraform Init
+        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        run: terraform init -input=false
 
-    - name: Terraform Validate
-      working-directory: terraform/deployments/${{ inputs.deployment_name }}
-      run: terraform validate
+      - name: Terraform Validate
+        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        run: terraform validate
 
-    - name: Terraform Apply
-      working-directory: terraform/deployments/${{ inputs.deployment_name }}
-      env:
-        # Passed through the environment rather than interpolated into the
-        # script body. Interpolating mangles a quoted index bracket --
-        # cmd_and_ctrl["dev"] reaches terraform as cmd_and_ctrl[dev], which it
-        # rejects with "Index brackets must contain ... a literal string" --
-        # and it also lets a dispatch input inject arbitrary shell.
-        REPLACE_RESOURCE: ${{ inputs.replace_resource }}
-        VAR_FILE: env/${{ inputs.environment }}/terraform.tfvars
-      run: |
-        set -eu
-        # Build argv so the address survives word splitting intact.
-        if [ -n "$REPLACE_RESOURCE" ]; then
-          set -- -replace="$REPLACE_RESOURCE"
-        else
-          set --
-        fi
-        # Print the plan first. This applies without a review gate by design,
-        # being a break-glass tool, so the log must record what it decided.
-        terraform plan "$@" -var-file="$VAR_FILE" -no-color
-        terraform apply -auto-approve "$@" -var-file="$VAR_FILE"
+      - name: Terraform Apply
+        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        env:
+          # Passed through the environment rather than interpolated into the
+          # script body. Interpolating mangles a quoted index bracket --
+          # cmd_and_ctrl["dev"] reaches terraform as cmd_and_ctrl[dev], which it
+          # rejects with "Index brackets must contain ... a literal string" --
+          # and it also lets a dispatch input inject arbitrary shell.
+          REPLACE_RESOURCE: ${{ inputs.replace_resource }}
+          VAR_FILE: env/${{ inputs.environment }}/terraform.tfvars
+        run: |
+          set -eu
+          # Build argv so the address survives word splitting intact.
+          if [ -n "$REPLACE_RESOURCE" ]; then
+            set -- -replace="$REPLACE_RESOURCE"
+          else
+            set --
+          fi
+          # Print the plan first. This applies without a review gate by design,
+          # being a break-glass tool, so the log must record what it decided.
+          terraform plan "$@" -var-file="$VAR_FILE" -no-color
+          terraform apply -auto-approve "$@" -var-file="$VAR_FILE"
