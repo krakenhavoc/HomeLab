@@ -1,0 +1,162 @@
+#cloud-config
+# Second OpenClaw host, built the upstream way rather than from the fork.
+#
+# The original `openclaw` VM clones krakenhavoc/openclaw@fork into /opt and
+# runs pnpm install/build/ui:build on the box, which is why it is sized at
+# 16 GB. This one uses the documented installer
+# (https://openclaw.ai/install.sh), which installs Node 24 and then
+# `npm i -g openclaw@latest` -- no source build, so it needs a fraction of
+# the resources.
+#
+# Provider is Codex: the bundled `codex` plugin runs embedded agent turns
+# through the native Codex app-server runtime, with `openai/gpt-5.5` as the
+# canonical model ref. Do NOT write `openai-codex/*` model refs here -- that
+# namespace is the legacy auth/profile prefix and `openclaw doctor --fix`
+# rewrites those refs back to `openai/*`.
+#
+# Codex auth is NOT seeded here, because it cannot be: it is a ChatGPT
+# subscription OAuth flow, so there is no credential to bake into a snippet.
+# Finish the install by hand once, per the final_message below.
+preserve_hostname: false
+hostname: ${openclaw_hostname}
+ssh_pwauth: false
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - curl
+  - git
+  - openssl
+  - ca-certificates
+
+users:
+  - name: ${admin_username}
+    gecos: "OpenClaw Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+write_files:
+  # Kept as a file rather than inlined into runcmd so it survives on the box:
+  # cloud-init only runs it on first boot, but it stays readable next to
+  # /var/log/cloud-init-output.log when a step needs to be re-run by hand.
+  - path: /usr/local/sbin/openclaw-provision.sh
+    permissions: "0750"
+    owner: root:root
+    content: |
+      #!/bin/bash
+      set -euxo pipefail
+
+      ADMIN="${admin_username}"
+      STATE_DIR="/home/$${ADMIN}/.openclaw"
+
+      # --- 1. Standard install ------------------------------------------------
+      # Run as the admin user, not root. The gateway runs as this user and
+      # keeps its state in ~/.openclaw, and install.sh escalates with sudo on
+      # its own for the apt/NodeSource steps (the admin user has NOPASSWD
+      # sudo above). Running the whole thing as root would put the state dir
+      # in /root and leave the service user with no config.
+      #
+      # --no-onboard because onboarding is an interactive wizard and there is
+      # no TTY here; the config it would write is written explicitly below.
+      runuser -l "$${ADMIN}" -c \
+        'curl -fsSL --proto "=https" --tlsv1.2 https://openclaw.ai/install.sh | bash -s -- --no-onboard --no-prompt'
+
+      # --- 2. Config ----------------------------------------------------------
+      install -d -o "$${ADMIN}" -g "$${ADMIN}" -m 0700 "$${STATE_DIR}"
+      install -d -o "$${ADMIN}" -g "$${ADMIN}" -m 0700 "$${STATE_DIR}/workspace"
+
+      # Generated on the box, never in Terraform state. A gateway bound
+      # anywhere other than loopback refuses to start without an auth path,
+      # and token auth is the documented baseline.
+      GATEWAY_TOKEN="$(openssl rand -hex 32)"
+
+      # This is upstream's "hardened baseline": local mode, loopback bind,
+      # token auth. Deliberately absent:
+      #   - gateway.controlUi.allowInsecureAuth
+      #   - gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback
+      # Both are set on the original openclaw box and both are flagged by
+      # `openclaw security audit`.
+      #
+      # Also deliberately absent: a tools.exec block. Upstream's default for a
+      # trusted single-operator gateway is security="full", ask="off", and the
+      # security docs call that intentional UX rather than a footgun. Omitting
+      # the block takes that default instead of restating it.
+      cat > "$${STATE_DIR}/openclaw.json" <<JSONEOF
+      {
+        "gateway": {
+          "mode": "local",
+          "bind": "loopback",
+          "port": 18789,
+          "auth": {
+            "mode": "token",
+            "token": "$${GATEWAY_TOKEN}"
+          }
+        },
+        "plugins": {
+          "entries": {
+            "codex": {
+              "enabled": true
+            }
+          }
+        },
+        "agents": {
+          "defaults": {
+            "model": {
+              "primary": "openai/gpt-5.5"
+            },
+            "workspace": "$${STATE_DIR}/workspace"
+          }
+        }
+      }
+      JSONEOF
+      chown "$${ADMIN}:$${ADMIN}" "$${STATE_DIR}/openclaw.json"
+      chmod 0600 "$${STATE_DIR}/openclaw.json"
+
+      # --- 3. Gateway service -------------------------------------------------
+      # `openclaw gateway install` writes a systemd *user* unit. A user unit on
+      # a headless box only starts at boot if the user lingers, so enable that
+      # first -- without it the gateway comes up only while an SSH session is
+      # open and dies with the last one.
+      loginctl enable-linger "$${ADMIN}"
+
+      # systemctl --user needs XDG_RUNTIME_DIR, which a runuser shell does not
+      # set. enable-linger above is what creates /run/user/<uid>.
+      ADMIN_UID="$(id -u "$${ADMIN}")"
+      runuser -l "$${ADMIN}" -c \
+        "XDG_RUNTIME_DIR=/run/user/$${ADMIN_UID} openclaw gateway install"
+
+runcmd:
+  # Proxmox needs this to report the VM's address back to the node; the
+  # package alone does not enable it.
+  - systemctl enable --now qemu-guest-agent
+  - /usr/local/sbin/openclaw-provision.sh
+
+power_state:
+  mode: reboot
+  message: "Rebooting after cloud-init final stage"
+  timeout: 30
+  condition: true
+
+final_message: |
+  ${openclaw_hostname} is up, but has no Codex credentials yet.
+
+  1. SSH in:
+       ssh ${admin_username}@${openclaw_hostname}
+
+  2. Sign in to Codex. Use the device-code flow -- the default flow wants a
+     localhost browser callback, which does not exist on a headless VM:
+       openclaw models auth login --provider openai-codex --device-code
+
+  3. Check it took:
+       openclaw gateway status
+       openclaw models list --provider openai
+       openclaw security audit
+
+  The gateway binds loopback, so reach the Control UI from your workstation
+  over a tunnel rather than exposing the port:
+       ssh -N -L 18789:127.0.0.1:18789 ${admin_username}@${openclaw_hostname}
+  then open http://127.0.0.1:18789/ and authenticate with the token in
+  /home/${admin_username}/.openclaw/openclaw.json (gateway.auth.token).

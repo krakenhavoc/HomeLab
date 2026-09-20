@@ -19,6 +19,23 @@ openclaw = {
   vlan_id        = 200
   admin_username = "krkn"
 }
+# Second OpenClaw host: upstream installer (npm) instead of the fork source
+# build, Codex instead of Azure Foundry. Sized off upstream's guidance rather
+# than the original box -- nothing is compiled on this VM, so the 16 GB the
+# fork build needs buys nothing here. See variables.tf for the reasoning.
+openclaw_2 = {
+  name_prefix    = "openclaw-2"
+  description    = "OpenClaw (upstream install, Codex) - Managed by Terraform"
+  tags           = ["openclaw"]
+  bios           = "ovmf"
+  cpu_cores      = 2
+  memory_mb      = 4096
+  os_disk_size   = 40
+  disk_interface = "virtio0"
+  network_bridge = "vmbr0"
+  vlan_id        = 200
+  admin_username = "krkn"
+}
 pwnbox = {
   name_prefix    = "pwnbox"
   description    = "CTF Pwnbox - Managed by Terraform"
