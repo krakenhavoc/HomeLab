@@ -1,0 +1,91 @@
+name: Caddy Cloudflare CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/caddy-cloudflare/**"
+      - ".github/workflows/docker-caddy-cloudflare.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docker/caddy-cloudflare/**"
+      - ".github/workflows/docker-caddy-cloudflare.yaml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image name
+        id: image
+        run: echo "name=$(echo ${{ github.repository }}/caddy-cloudflare | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch,prefix=
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/caddy-cloudflare
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Always load into the local daemon, on pushes as well as PRs, so the
+          # verification step below runs against the exact image this build
+          # produced without a round trip through the registry. Single-platform
+          # build, so load and push can both be satisfied.
+          load: true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, steps.image.outputs.name) || '' }}
+
+      # The point of this image is one plugin, and a build that silently drops
+      # it still succeeds, still pushes, and still starts -- it just fails
+      # later at certificate issuance with "unknown DNS provider", on the host,
+      # where the feedback loop is hours long instead of seconds. Assert the
+      # module is present before the tag is trusted.
+      #
+      # On a pull_request the image is only loaded locally (never pushed), so
+      # this runs against the image this build actually produced either way.
+      - name: Verify the Cloudflare DNS module is compiled in
+        run: |
+          set -euo pipefail
+          IMAGE="$(echo '${{ steps.meta.outputs.tags }}' | head -n1)"
+          echo "Checking ${IMAGE} for dns.providers.cloudflare"
+          docker run --rm "${IMAGE}" caddy list-modules | tee /tmp/modules.txt
+          grep -qx 'dns.providers.cloudflare' /tmp/modules.txt
+
+      - name: Image digest
+        if: github.event_name != 'pull_request'
+        run: echo "Image digest:${{ steps.build-and-push.outputs.digest }}"

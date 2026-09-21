@@ -1,8 +1,9 @@
 # Gateway: Portal and Internal Reverse Proxy
 
-Status: **plan — not yet implemented.** Nothing in this document has been
-applied. It exists to be argued with before any of it reaches live
-infrastructure.
+Status: **partially built, nothing applied.** Phase 1 (the custom Caddy image)
+is implemented and its build is verified. Phase 0 (pinning `pfe`'s address) is
+wired but deliberately inert — it needs a module tag and one remaining network
+fact. Nothing in this document has touched live infrastructure.
 
 A single entry point to the lab: an attractive splash page listing every
 internal service, and a reverse proxy in front of it so everything is reached
@@ -51,7 +52,7 @@ its cloud-init and already runs `docker compose`.
         │  Pi-hole answers with pfe's address
         ↓
   ┌────────────────────────────────────────────────┐
-  │  pfe  (VLAN 201, static)                       │
+  │  pfe  192.168.201.14  (VLAN 201, gw .1)        │
   │                                                │
   │   caddy  :80 :443    ← the only published ports│
   │     │                                          │
@@ -253,22 +254,35 @@ central reverse proxy, but it should be **per-destination-and-port rules, never
 
 | Secret | Scope | Used by |
 |--------|-------|---------|
-| `CF_DNS_API_TOKEN` | `Zone:Zone:Read` + `Zone:DNS:Edit`, `labxp.io` only | Caddy, for DNS-01 |
+| `CF_DNS_API_TOKEN` | existing repo `cloudflare_api_token` — **decided** | Caddy, for DNS-01 |
 | Proxmox API token | read-only | Homepage widget |
 | Plex token | — | Homepage widget |
 | Pi-hole app password | — | Homepage widget |
 
-`CF_DNS_API_TOKEN` must be a **new, separate token**, not the existing
-`cloudflare_api_token` used by the `lab` deployment. That one also carries
-`Cloudflare One Connector: cloudflared: Edit`, which would let anything with
-filesystem access on `pfe` create and reconfigure tunnels in the account.
+**Decided:** reuse the existing `cloudflare_api_token` rather than minting a
+dedicated DNS-01 token. It already holds `Zone:DNS:Edit` on `labxp.io`, which
+is what the challenge needs.
 
-Note the honest limitation: Cloudflare scopes tokens per *zone*, not per
-*record*. Even a minimal DNS-01 token can edit any record in `labxp.io`,
-including `cmd.labxp.io`. That is inherent to DNS-01 on a shared zone. Keeping
-the token off the public internet and out of the repo is the mitigation; a
-delegated `_acme-challenge` CNAME into a throwaway zone would close it
-properly and is not worth the complexity here.
+Two caveats recorded rather than solved:
+
+- That token *also* carries `Cloudflare One Connector: cloudflared: Edit`.
+  Filesystem access on `pfe` therefore grants tunnel create/reconfigure on the
+  whole account, not just DNS writes — a wider blast radius than DNS-01 needs.
+  Swapping to a scoped token later is a one-line change to the env file.
+- **Verify it carries `Zone:Zone:Read`.** `caddy-dns/cloudflare` resolves the
+  zone ID with `GET /zones?name=labxp.io`, which needs `Zone:Read` on top of
+  `DNS:Edit`. Cloudflare's "Edit zone DNS" template includes it, so this is
+  probably already true — but if it is not, the failure arrives at certificate
+  issuance as an empty zone lookup rather than as a permission error, which is
+  a confusing hour.
+
+The token is a `lab` deployment variable today, so it also needs plumbing into
+`frontends` as a new variable plus a GitHub environment secret.
+
+Cloudflare scopes tokens per *zone*, not per *record*, so any DNS-01 token
+here can edit `cmd.labxp.io` as well. That is inherent to DNS-01 on a shared
+zone; a delegated `_acme-challenge` CNAME into a throwaway zone would close it
+properly and is not worth the complexity.
 
 All of these follow the existing path: GitHub environment secret → `TF_VAR_*`
 → `templatefile` → env file on the host, exactly as the `cmd_and_ctrl` tokens
@@ -278,11 +292,24 @@ do today.
 
 Each phase is independently reviewable and leaves the lab working.
 
-**Phase 0 — Pin `pfe`'s address.** Every DNS record points here, so the address
-cannot be a DHCP lease. Tag the `pm-cloudinit-vm` module `v0.3.0` (static
-addressing is already merged to `main` but unreleased — deployments pin
-`v0.2.0`), bump the `frontends` module ref, and set `ipv4_address`,
-`ipv4_gateway` and `dns_servers` in `env/frontends-dev/terraform.tfvars`.
+**Phase 0 — Pin `pfe`'s address.** *Wired, inert, blocked.* Every DNS record
+points here, so the address cannot be a DHCP lease. The variables, validations
+and pass-through are written; `192.168.201.14/24` and gateway `192.168.201.1`
+are recorded in `env/frontends-dev/terraform.tfvars`.
+
+Two things still gate it:
+
+- **The module tag.** Static addressing is merged to `main` but unreleased —
+  every deployment pins `v0.2.0`. Tagging `v0.3.0` is a release against live
+  deployments, so it is deliberately left as an explicit decision rather than
+  something done in passing.
+- **`dns_servers`.** See item 3 under
+  [facts required](#facts-required-before-implementation).
+
+The pass-through lines in `main.tf` are commented rather than set to `null`
+on purpose: Terraform rejects an argument the pinned module version does not
+declare *regardless of its value*, so `vm_ipv4_address = null` against
+`v0.2.0` still turns CI red.
 
 Do this **first**, before any certificates or config exist on the box.
 Applying a static address rewrites the cloud-init drive and the provider
@@ -295,9 +322,16 @@ The alternative — a DHCP reservation on OPNsense keyed to `pfe`'s current MAC
 draws a new MAC. Given the box is disposable *right now*, doing it properly is
 cheaper now than it will ever be again.
 
-**Phase 1 — Custom Caddy image.** `docker/caddy-cloudflare/Dockerfile` plus a
-workflow mirroring `docker-get-win-url.yaml`. Verifiable on its own: the image
-builds and `caddy list-modules` shows `dns.providers.cloudflare`.
+**Phase 1 — Custom Caddy image. ✅ Done.**
+`docker/caddy-cloudflare/Dockerfile` plus `.github/workflows/docker-caddy-cloudflare.yaml`,
+mirroring the existing `docker-get-win-url.yaml` pattern. Built locally against
+Caddy v2.11.4 and confirmed: `caddy list-modules` lists
+`dns.providers.cloudflare`.
+
+The workflow asserts that module is present on every build rather than
+trusting the build to have included it. A build that silently drops the plugin
+still succeeds, still pushes and still starts — it fails hours later at
+certificate issuance, on the host, with `unknown DNS provider`.
 
 **Phase 2 — Config delivery.** The `frontends-config` CD job and the
 `config/` directory layout, shipping the current RedLib setup unchanged. This
@@ -325,14 +359,15 @@ from inside this repository, and guessing any of them causes a failure that
 does not point back at this file. An IP conflict in particular presents as
 intermittent, unattributable packet loss on *two* hosts.
 
-1. **`pfe` static address** — a free VLAN 201 address **outside the DHCP
-   pool**, in CIDR form (e.g. `192.168.201.20/24`). Verify the pool range on
-   the router; do not infer it from what other VMs happen to have been leased.
-2. **VLAN 201 gateway** — bare address, no prefix.
-3. **Both Pi-hole addresses.**
+1. ~~**`pfe` static address**~~ — **`192.168.201.14/24`**, supplied and
+   confirmed outside the VLAN 201 DHCP pool.
+2. ~~**VLAN 201 gateway**~~ — **`192.168.201.1`**, supplied.
+3. **Both Pi-hole addresses.** *Still blocking.* This is the last thing
+   stopping Phase 0: the static address cannot be applied without resolvers,
+   because dropping the DHCP lease drops its nameservers too.
 4. **ACME contact email** for Let's Encrypt.
-5. **A new Cloudflare API token** — `Zone:Zone:Read` + `Zone:DNS:Edit`,
-   scoped to `labxp.io` alone.
+5. ~~**A new Cloudflare API token**~~ — decided: reuse the repo's existing
+   `cloudflare_api_token`. See [Secrets](#secrets) for the two caveats.
 6. **The upstream list** — which services get a name, and each one's address
    and port. Candidates: Proxmox, Plex (prd and dev), RedLib, OpenClaw,
    OpenClaw-2, `cmd-and-ctrl` (prod and dev preview), the Windows 11 VM,
@@ -340,6 +375,15 @@ intermittent, unattributable packet loss on *two* hosts.
 7. **Which client VLAN(s)** you browse from, for the inbound firewall rule.
 8. **Confirmation of the portal hostname** — `lab.labxp.io` is the proposal;
    `home.` or `portal.` work equally well.
+
+A note on item 3: `pfe` does not strictly *need* Pi-hole specifically. It
+needs to resolve public names for ACME, the Cloudflare API and image pulls,
+and the Caddyfile addresses its upstreams by IP. Public resolvers would work.
+Pi-hole is the right answer anyway — it matches how every other pinned host in
+the lab is configured, and it keeps the gateway's own outbound traffic
+filtered — but if the addresses are inconvenient to dig out, `1.1.1.1` and
+`9.9.9.9` would unblock Phase 0 today and can be changed later without a
+rebuild.
 
 ## Risks and trade-offs
 
