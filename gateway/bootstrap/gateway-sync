@@ -34,6 +34,39 @@ if [[ ! -d "${SRC_DIR}" ]]; then
   exit 1
 fi
 
+# --- Self-update -------------------------------------------------------------
+# This script is installed to /usr/local/bin by cloud-init, which runs exactly
+# once. Without this block, fixing the sync itself means rebuilding the VM --
+# and rebuilding to fix the thing whose whole purpose is to avoid rebuilding
+# is a trap worth closing permanently.
+#
+# mv, not install, over the live path: rename is atomic and allocates a new
+# inode, so the bash process currently executing this file keeps reading the
+# old one through its open descriptor. Writing the destination in place would
+# let bash read half of one version and half of another, since it reads
+# scripts incrementally rather than all at once.
+#
+# The new version takes effect on the NEXT run, a minute later. Deliberately
+# not re-exec'd: a self-replacing script that immediately runs its replacement
+# turns one bad commit into a crash loop with no interval to push a fix in.
+if ! cmp -s "${SRC_DIR}/bootstrap/gateway-sync" /usr/local/bin/gateway-sync; then
+  install -m 0755 "${SRC_DIR}/bootstrap/gateway-sync" /usr/local/bin/.gateway-sync.new
+  mv /usr/local/bin/.gateway-sync.new /usr/local/bin/gateway-sync
+  log "gateway-sync updated; the next run will use it"
+fi
+
+units_changed=0
+for f in gateway-sync.service gateway-sync.timer; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
+    install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
+    units_changed=1
+    log "${f} updated"
+  fi
+done
+if [[ "${units_changed}" -eq 1 ]]; then
+  systemctl daemon-reload
+fi
+
 # --- Validate BEFORE anything becomes live -----------------------------------
 # An invalid Caddyfile does not degrade the gateway, it stops it: Caddy
 # refuses to start and every internal name goes dark at once. Checking the
@@ -68,5 +101,37 @@ cd "${LIVE_DIR}"
 # rather than lingering and still holding its port.
 docker compose pull --quiet
 docker compose up -d --remove-orphans
+
+# --- Reload Caddy ------------------------------------------------------------
+# `docker compose up -d` is NOT enough on its own, and assuming it was cost a
+# long debugging session. Compose compares the service DEFINITION -- image,
+# env, ports, volume mappings -- and the Caddyfile is a bind mount, so editing
+# it changes no part of that definition. Compose sees an up-to-date container
+# and does nothing. Caddy, meanwhile, reads its Caddyfile exactly once at
+# startup.
+#
+# The result is a config change that lands on disk, reports success, and never
+# reaches the running process. It is invisible in the worst way: the file on
+# the host is correct, git is correct, the sync logs a clean run, and the
+# gateway keeps serving the previous config indefinitely. New sites never get
+# certificates because Caddy does not know they exist, which presents as a TLS
+# handshake failure rather than as anything resembling a stale config.
+#
+# `caddy reload` is graceful -- it swaps config without dropping connections
+# and without restarting the container, so the certificate store in the
+# caddy_data volume is untouched.
+if docker ps --format '{{.Names}}' | grep -qx caddy; then
+  if docker exec caddy caddy reload \
+      --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null; then
+    log "caddy reloaded"
+  else
+    # The incoming Caddyfile was validated above, so a failure here is not a
+    # bad config -- it is the admin API being unreachable or the container
+    # being unhealthy. Restarting is the honest fallback; the alternative is
+    # continuing to serve a config nobody can see.
+    log "WARNING: caddy reload failed; restarting the container"
+    docker compose restart caddy
+  fi
+fi
 
 log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD)"
