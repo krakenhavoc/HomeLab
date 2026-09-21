@@ -1,0 +1,25 @@
+---
+# Header widgets. See https://gethomepage.dev/widgets/
+#
+# Deliberately minimal. The service widgets that pull live stats from Proxmox,
+# Plex and Pi-hole each need an API token, and those are real credentials that
+# would have to be seeded into /etc/gateway from Terraform rather than kept
+# here -- this file is in a public repository. Resource and search need none.
+
+- resources:
+    backend: resources
+    expanded: true
+    cpu: true
+    memory: true
+    disk: /
+
+- search:
+    provider: duckduckgo
+    target: _blank
+
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hourCycle: h23

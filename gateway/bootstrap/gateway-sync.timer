@@ -1,0 +1,20 @@
+[Unit]
+Description=Poll the HomeLab repo for gateway config changes
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/docs/gateway.md
+
+[Timer]
+# Two minutes after boot, then every minute. A push reaches the gateway in
+# about a minute, which is fast enough to iterate on a Caddyfile without
+# feeling like a deploy, and cheap: a shallow fetch against an unchanged
+# branch is a few hundred bytes and the reconcile is a no-op.
+OnBootSec=2min
+OnUnitActiveSec=1min
+
+# Without this every gateway in the fleet would fetch on the same second.
+# There is one host today; it costs nothing to not build that in.
+RandomizedDelaySec=15s
+
+Persistent=true
+
+[Install]
+WantedBy=timers.target

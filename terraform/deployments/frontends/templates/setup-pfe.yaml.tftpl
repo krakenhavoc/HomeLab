@@ -1,4 +1,21 @@
 #cloud-config
+# First-boot bootstrap for the lab gateway host. See docs/gateway.md.
+#
+# THIS FILE DELIBERATELY CONTAINS NO GATEWAY CONFIG. It installs Docker,
+# writes the one secret the stack needs, clones the repo and hands over to
+# gateway-sync. The Caddyfile, compose file and portal config live in
+# gateway/ in the repository and reach the host from there.
+#
+# The reason is structural, not stylistic: pm-cloudinit-vm has no
+# lifecycle.ignore_changes on `initialization`, so editing this template
+# replaces the VM. That is the mechanism that destroyed the cmd_and_ctrl VM
+# and its data disk on 2026-09-10. A reverse proxy's config changes weekly,
+# and every one of those edits would rebuild the host and discard Caddy's
+# certificate store -- with Let's Encrypt allowing 5 duplicate certificates
+# per week, a few afternoons of that ends with no working TLS.
+#
+# So: things that change when the MACHINE changes go here. Things that change
+# when the SERVICE changes go in gateway/.
 preserve_hostname: false
 hostname: ${hostname}
 
@@ -13,41 +30,52 @@ packages:
   - qemu-guest-agent
   - docker-ce
   - docker-ce-cli
+  - docker-compose-plugin
+  - git
+  - rsync
 
 users:
   - name: ${admin_username}
     gecos: "PFE Admin"
-    groups: sudo
+    groups: sudo, docker
     shell: /bin/bash
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
 
 write_files:
-  - path: /tmp/docker-compose.yaml
+  # The only secret on the box. Kept out of the repository, which is public,
+  # and out of gateway/ for the same reason.
+  #
+  # 0600 root:root: every process that needs it is a container Docker starts
+  # as root, so nothing is gained by widening it.
+  - path: /etc/gateway/caddy.env
     owner: root:root
-    permissions: '0644'
+    permissions: '0600'
     content: |
-      ${docker_compose}
-  - path: /tmp/redlib-env
-    owner: root:root
-    permissions: '0644'
-    content: |
-      ${redlib_env}
-
+      CF_DNS_API_TOKEN=${cloudflare_api_token}
 
 runcmd:
+  - systemctl enable --now qemu-guest-agent
   - systemctl enable --now docker
-  - mv /tmp/docker-compose.yaml /home/${admin_username}/docker-compose.yaml || true
-  - mv /tmp/redlib-env /home/${admin_username}/.env || true
-  - chown ${admin_username}:${admin_username} /home/${admin_username}/.env || true
-  - chown ${admin_username}:${admin_username} /home/${admin_username}/docker-compose.yaml || true
-  - sudo -u ${admin_username} sudo docker compose -f /home/${admin_username}/docker-compose.yaml up -d
 
-final_message: "${hostname} is up."
+  # Shallow clone: this is a config cache, not a working copy, and nothing on
+  # the host ever needs the history.
+  - mkdir -p /opt/gateway
+  - git clone --depth 1 --branch main https://github.com/krakenhavoc/HomeLab.git /opt/gateway/repo
 
-power_state:
-  mode: reboot
-  message: "Rebooting after cloud-init final stage"
-  timeout: 30
-  condition: true
+  - install -m 0755 /opt/gateway/repo/gateway/bootstrap/gateway-sync /usr/local/bin/gateway-sync
+  - install -m 0644 /opt/gateway/repo/gateway/bootstrap/gateway-sync.service /etc/systemd/system/gateway-sync.service
+  - install -m 0644 /opt/gateway/repo/gateway/bootstrap/gateway-sync.timer /etc/systemd/system/gateway-sync.timer
+  - systemctl daemon-reload
+
+  # Run the reconcile once synchronously so the host comes up already
+  # serving, rather than waiting for the timer's first tick. Everything after
+  # this -- every Caddyfile edit, every new service -- arrives via the timer.
+  - systemctl enable --now gateway-sync.timer
+  - systemctl start gateway-sync.service
+
+final_message: |
+  ${hostname} is up at ${ipv4_address}.
+  Gateway config is delivered by gateway-sync from the HomeLab repo, not from
+  cloud-init. Portal: https://lab.labxp.io

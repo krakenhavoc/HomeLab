@@ -141,14 +141,26 @@ So the split is:
   directories, write the env file, start the stack once. It is the same
   approach `cmd_and_ctrl` takes, where cloud-init writes a Caddyfile
   explicitly labelled `FIRST BOOT PLACEHOLDER ONLY`.
-- **ongoing config is delivered by CD** — a `frontends-config` GitHub Actions
-  job on the self-hosted runner (already inside the network) that copies
-  `terraform/deployments/frontends/config/` to the host over SSH, validates it
-  with `caddy validate`, and runs `docker compose up -d` plus a Caddy reload.
-  Config changes then ship in seconds and touch Terraform not at all.
+- **ongoing config is pulled from this repo** — `gateway-sync`, a systemd
+  timer on `pfe`, fetches `gateway/` every minute, validates the incoming
+  Caddyfile against the running Caddy, copies it to `/opt/gateway/live/` and
+  runs `docker compose up -d`. Push to `main` and the gateway follows within
+  the minute.
 
-The repository keeps the source of truth either way; what changes is that
-Terraform stops being the delivery mechanism for a file that changes weekly.
+Pull rather than push, which was the original sketch. Pushing would have
+meant a CD job SSHing from the runner into the apps VLAN, which needs a key
+on the runner, an inbound path to `pfe`, and a reason for CI to hold
+credentials for a host it otherwise never touches. The repository is public,
+so pulling needs none of that: no key, no inbound path, nothing for CI to
+hold. The cost is a minute of latency and a fetch that is a few hundred bytes
+when nothing changed.
+
+The validation step matters more than it looks. An invalid Caddyfile does not
+degrade the gateway, it stops it — Caddy refuses to start and every internal
+name goes dark at once. Checking the incoming file with the Caddy that is
+already running turns that into a log line and a no-op.
+
+Terraform keeps the VM and the one secret. `gateway/` keeps everything else.
 
 ## TLS without exposing anything
 
@@ -333,9 +345,9 @@ trusting the build to have included it. A build that silently drops the plugin
 still succeeds, still pushes and still starts — it fails hours later at
 certificate issuance, on the host, with `unknown DNS provider`.
 
-**Phase 2 — Config delivery.** The `frontends-config` CD job and the
-`config/` directory layout, shipping the current RedLib setup unchanged. This
-proves the delivery path before anything depends on it.
+**Phase 2 — Config delivery. ✅ Done.** `gateway/` plus `gateway-sync` and
+its systemd timer. Shellchecked; the compose file passes `docker compose
+config`.
 
 **Phase 3 — Caddy and TLS, one upstream.** Stand up Caddy in front of RedLib
 only, at `redlib.labxp.io`. This is the phase that proves DNS-01, the token,

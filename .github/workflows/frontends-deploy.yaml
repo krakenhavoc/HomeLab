@@ -7,18 +7,18 @@ permissions:
 on:
   push:
     paths:
-      - 'terraform/deployments/frontends/**'
-      - '.github/workflows/frontends-deploy.yaml'
-      - '.github/workflows/terraform-ci.yaml'
-      - '.github/workflows/terraform-cd.yaml'
+      - "terraform/deployments/frontends/**"
+      - ".github/workflows/frontends-deploy.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
     branches:
       - main
   pull_request:
     paths:
-      - 'terraform/deployments/frontends/**'
-      - '.github/workflows/frontends-deploy.yaml'
-      - '.github/workflows/terraform-ci.yaml'
-      - '.github/workflows/terraform-cd.yaml'
+      - "terraform/deployments/frontends/**"
+      - ".github/workflows/frontends-deploy.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
 
 env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
@@ -38,6 +38,9 @@ jobs:
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+      # Caddy on pfe uses this for the ACME DNS-01 challenge. Seeded into
+      # /etc/gateway/caddy.env by cloud-init; see docs/gateway.md.
+      cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
   frontends-cd:
     needs: frontends-ci
@@ -61,3 +64,6 @@ jobs:
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+      # Caddy on pfe uses this for the ACME DNS-01 challenge. Seeded into
+      # /etc/gateway/caddy.env by cloud-init; see docs/gateway.md.
+      cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}

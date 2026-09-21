@@ -1,0 +1,71 @@
+# Lab gateway. Terminates TLS for internal service names and proxies to the
+# services behind it. See docs/gateway.md.
+#
+# Certificates are real Let's Encrypt certificates obtained with the DNS-01
+# challenge against the labxp.io zone. DNS-01 proves control of a name by
+# writing a TXT record rather than by answering an inbound request, which is
+# why every name below works in a browser with a normal padlock while the lab
+# accepts no inbound connection from the internet and no internal CA root is
+# installed on any device.
+#
+# TO ADD A SERVICE: copy a block, point it at the upstream, add the matching
+# A record to BOTH Pi-holes (192.168.10.11 and .12) pointing at
+# 192.168.201.14, and open the firewall from pfe to the upstream. Then push --
+# gateway-sync picks it up within the minute. No Terraform, no VM rebuild.
+{
+	# Recommended, currently unset: an ACME account with no contact address
+	# gets no expiry or account warnings from Let's Encrypt. Add one line:
+	#   email you@example.com
+	# Left out rather than guessed; a wrong address is worse than none.
+
+	# Staging CA for testing. Let's Encrypt allows 5 duplicate certificates
+	# per week, and a loop that keeps failing after issuance burns that fast.
+	# Uncomment while debugging issuance, then remove -- staging certs are
+	# not trusted by browsers.
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# Shared TLS configuration. Every site below imports it.
+(tls_cloudflare) {
+	tls {
+		dns cloudflare {env.CF_DNS_API_TOKEN}
+
+		# Pin propagation checks to public resolvers. Caddy confirms its
+		# _acme-challenge TXT record is visible before asking Let's Encrypt
+		# to validate; left on the system resolver that check would go to
+		# Pi-hole, which holds local overrides for these very names, and a
+		# split-horizon answer makes the check fail or hang.
+		resolvers 1.1.1.1 9.9.9.9
+	}
+}
+
+# --- The portal -------------------------------------------------------------
+lab.labxp.io {
+	import tls_cloudflare
+	reverse_proxy homepage:3000
+}
+
+# --- Private frontends ------------------------------------------------------
+redlib.labxp.io {
+	import tls_cloudflare
+	reverse_proxy redlib:8080
+}
+
+# --- Infrastructure ---------------------------------------------------------
+# Deliberately NOT pve.labxp.io. That name is the Proxmox API endpoint the
+# bpg/proxmox provider talks to from CI; repointing it would put every
+# Terraform run in this repository through Caddy, and a proxy hiccup would
+# become a CI outage across every deployment. This is a second name for
+# browser access only.
+#
+# Proxmox serves its own self-signed certificate on 8006, so the hop from
+# Caddy to it cannot be verified. That hop stays inside the lab; the hop the
+# browser makes is the one that is properly secured.
+proxmox.labxp.io {
+	import tls_cloudflare
+	reverse_proxy https://pve.labxp.io:8006 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}

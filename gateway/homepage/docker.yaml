@@ -1,0 +1,11 @@
+---
+# Docker connection for Homepage's container widgets. Points at the read-only
+# socket proxy rather than the Docker socket itself -- see the dockerproxy
+# service in docker-compose.yaml for why.
+#
+# Present even though no service currently declares a `server:`/`container:`
+# pair: Homepage creates any config file it does not find, and a file it
+# created is a file this repo no longer controls.
+my-docker:
+  host: dockerproxy
+  port: 2375

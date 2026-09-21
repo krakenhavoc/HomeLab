@@ -1,0 +1,62 @@
+---
+# The portal's links. See https://gethomepage.dev/configs/services/
+#
+# Two kinds of entry live here, and the difference matters:
+#
+#   * Names ending in .labxp.io that Caddy serves (proxmox, redlib, and the
+#     portal itself). These have real certificates and resolve through
+#     Pi-hole to 192.168.201.14.
+#
+#   * Direct http://IP:port links to things not yet behind the proxy. They
+#     work, they just show the usual browser warnings and depend on the
+#     address staying put. Moving one behind the proxy is a Caddyfile block,
+#     two Pi-hole records and a firewall rule -- see gateway/README.md.
+#
+# siteMonitor drives the status dot. It is a plain reachability check from
+# the Homepage container, so it needs the firewall to allow pfe -> target.
+
+- Infrastructure:
+    - Proxmox:
+        href: https://proxmox.labxp.io
+        siteMonitor: https://proxmox.labxp.io
+        description: Hypervisor — VMs, storage, console
+        icon: proxmox.png
+
+    - Pi-hole (primary):
+        href: http://192.168.10.11/admin
+        siteMonitor: http://192.168.10.11
+        description: DNS and ad filtering — 192.168.10.11
+        icon: pi-hole.png
+
+    - Pi-hole (secondary):
+        href: http://192.168.10.12/admin
+        siteMonitor: http://192.168.10.12
+        description: DNS and ad filtering — 192.168.10.12
+        icon: pi-hole.png
+
+- Applications:
+    - RedLib:
+        href: https://redlib.labxp.io
+        siteMonitor: https://redlib.labxp.io
+        description: Private Reddit frontend
+        icon: redlib.png
+
+    - Plex:
+        # Not proxied yet — needs the host's address. Give it one and it
+        # becomes plex.labxp.io like the rest.
+        href: https://app.plex.tv
+        description: Media server
+        icon: plex.png
+
+- Lab:
+    - cmd_and_ctrl:
+        href: https://cmd.labxp.io
+        siteMonitor: https://cmd.labxp.io
+        description: Game server — production
+        icon: mdi-cards-playing-outline
+
+    - cmd_and_ctrl (develop):
+        href: https://cmd-dev.labxp.io
+        siteMonitor: https://cmd-dev.labxp.io
+        description: Game server — develop preview
+        icon: mdi-cards-playing-outline

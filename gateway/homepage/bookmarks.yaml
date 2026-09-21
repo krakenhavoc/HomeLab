@@ -1,0 +1,19 @@
+---
+# Bookmarks render as a compact row under the services. See
+# https://gethomepage.dev/configs/bookmarks/
+
+- Repositories:
+    - HomeLab:
+        - abbr: HL
+          href: https://github.com/krakenhavoc/HomeLab
+    - cmd_and_ctrl:
+        - abbr: CC
+          href: https://github.com/krakenhavoc/cmd_and_ctrl
+
+- Dashboards:
+    - Cloudflare:
+        - abbr: CF
+          href: https://dash.cloudflare.com
+    - Terraform Cloud:
+        - abbr: TF
+          href: https://app.terraform.io/app/LabXPIO
