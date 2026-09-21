@@ -58,6 +58,13 @@ services:
       # find. gateway-sync copies this directory out of the git checkout
       # first, so those writes never dirty the repo.
       - ./homepage:/app/config
+      # Static files Homepage serves at a URL, which is NOT the config
+      # directory -- it serves /app/public, so an image referenced as
+      # /assets/... has to be mounted here rather than dropped in config/.
+      # Referencing it from config/images returns 404, which is how this was
+      # found. Mounted at /assets rather than /images so it does not shadow
+      # the images Homepage ships with.
+      - ./assets:/app/public/assets:ro
     networks:
       - gateway
     security_opt:

@@ -5,29 +5,69 @@ description: Home lab services
 
 startUrl: https://labxp.io
 
-# Dark by default, and the theme switcher stays available in the header.
 theme: dark
 color: slate
-headerStyle: boxed
 
-# Groups render in this order regardless of the order in services.yaml, so
-# the things worth reaching first sit at the top.
+# clean, not boxed. With a background behind them, boxed header chips fight the
+# cards for attention; clean lets the service cards be the only framed things
+# on the page.
+headerStyle: clean
+
+# Backdrop lives in this repo as an SVG (gateway/assets/backdrop.svg) rather
+# than a photo: a few hundred bytes, diffs as text, no binary to carry, and it
+# scales to any display. Blurred and dimmed hard on purpose -- it is depth
+# behind the cards, not something to look at. Raise opacity if it reads flat.
+#
+# /assets, NOT /images. Homepage serves static files from /app/public inside
+# the container, which is a different place from the config directory --
+# dropping the file in config/images and referencing /images/... returns 404.
+# docker-compose.yaml mounts gateway/assets there. /assets rather than
+# /images so the mount does not shadow the images Homepage ships itself.
+background:
+  image: /assets/backdrop.svg
+  blur: sm
+  brightness: 75
+  opacity: 40
+
+# Frosted cards. This is what makes the backdrop read as depth instead of as a
+# picture sitting behind unrelated boxes.
+cardBlur: sm
+
+# Four groups instead of three, and sized to their contents. The old layout
+# declared 3 columns for every group while holding 3, 2 and 4 services, so two
+# of the three rows had a ragged gap. Each group now states the number it
+# actually has.
 layout:
   Infrastructure:
     style: row
     columns: 3
-  Applications:
+    icon: mdi-server-network
+  Media:
+    style: row
+    columns: 2
+    icon: mdi-play-circle-outline
+  Automation:
     style: row
     columns: 3
-  Lab:
+    icon: mdi-home-automation
+  Games:
     style: row
-    columns: 3
+    columns: 2
+    icon: mdi-cards-playing-outline
 
-# Status dots come from siteMonitor entries in services.yaml.
+# Cards in a row end up the same height regardless of description length, so
+# the grid stays on a baseline instead of stair-stepping.
+useEqualHeights: true
+
+# A dot, not a response time. Latency to a LAN service is noise that changes
+# on every poll; the only question this portal answers is up or down.
 statusStyle: dot
 
-# Nothing here is secret, but the portal is the front door to the lab and
-# there is no reason for it to appear in a search index if it is ever
-# reachable from somewhere unexpected.
-disableCollapse: false
+quicklaunch:
+  provider: duckduckgo
+  searchDescriptions: true
+  showSearchSuggestions: true
+  hideVisitURL: false
+
 hideVersion: true
+disableCollapse: false

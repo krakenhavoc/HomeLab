@@ -1,19 +1,16 @@
 ---
 # The portal's links. See https://gethomepage.dev/configs/services/
 #
-# Two kinds of entry live here, and the difference matters:
+# Descriptions say what a thing is FOR, not where it lives. Addresses used to
+# be in here and are deliberately gone: the point of the gateway is that
+# nobody needs to know an IP, and repeating them on every card both undoes
+# that and dates the page the moment a host moves.
 #
-#   * Names ending in .labxp.io that Caddy serves (proxmox, redlib, and the
-#     portal itself). These have real certificates and resolve through
-#     Pi-hole to 192.168.201.14.
-#
-#   * Direct http://IP:port links to things not yet behind the proxy. They
-#     work, they just show the usual browser warnings and depend on the
-#     address staying put. Moving one behind the proxy is a Caddyfile block,
-#     two Pi-hole records and a firewall rule -- see gateway/README.md.
-#
-# siteMonitor drives the status dot. It is a plain reachability check from
-# the Homepage container, so it needs the firewall to allow pfe -> target.
+# siteMonitor drives the status dot. It is a plain reachability check from the
+# Homepage container, so it needs the firewall to allow pfe -> target. Several
+# point at a path rather than the root, because a service's root is rarely its
+# health endpoint -- RedLib answers / with 404 by design and Plex with 401, so
+# monitoring / on either reports a working service as down.
 
 - Infrastructure:
     - Proxmox:
@@ -22,59 +19,58 @@
         description: Hypervisor — VMs, storage, console
         icon: proxmox.png
 
-    - Pi-hole (dns01):
+    - Pi-hole:
         href: https://dns01.labxp.io
         siteMonitor: https://dns01.labxp.io
-        description: DNS and ad filtering — 192.168.10.11
+        description: DNS and ad filtering — primary
         icon: pi-hole.png
 
-    - Pi-hole (dns02):
+    - Pi-hole (secondary):
         href: https://dns02.labxp.io
         siteMonitor: https://dns02.labxp.io
-        description: DNS and ad filtering — 192.168.10.12
+        description: DNS and ad filtering — failover
         icon: pi-hole.png
 
-- Applications:
+- Media:
+    - Plex:
+        # /web is the UI; the bare root serves the API.
+        href: https://plex.labxp.io/web
+        # /identity is unauthenticated by design -- it is what Plex clients
+        # use to discover a server before they have credentials for it.
+        siteMonitor: https://plex.labxp.io/identity
+        description: Films and television
+        icon: plex.png
+
     - RedLib:
         href: https://redlib.labxp.io
-        # /settings, not /. RedLib answers its root with 404 by design -- it
-        # has no landing page -- so monitoring / reports a working service as
-        # down. /settings is a real page and is what the container's own
-        # healthcheck uses.
+        # /settings, not /. RedLib has no landing page and answers / with 404.
         siteMonitor: https://redlib.labxp.io/settings
         description: Private Reddit frontend
         icon: redlib.png
 
-    - Plex:
-        # /web is the UI; the bare root serves the API, which answers 401.
-        href: https://plex.labxp.io/web
-        # /identity, not /. Plex answers its root with 401 unless the request
-        # carries a token, so monitoring / reports a healthy server as down.
-        # /identity is unauthenticated by design -- it is what Plex clients
-        # use to discover a server before they have credentials for it.
-        siteMonitor: https://plex.labxp.io/identity
-        description: Media server — 192.168.10.10
-        icon: plex.png
-
-- Lab:
+- Automation:
     - Home Assistant:
         href: https://hom01.labxp.io
         siteMonitor: https://hom01.labxp.io
-        description: Home automation — 192.168.1.15:8123
+        description: Home automation and sensors
         icon: home-assistant.png
 
     - OpenClaw:
         href: https://orca.labxp.io
         siteMonitor: https://orca.labxp.io
-        description: Gateway, default profile — :18789
+        description: Agent gateway — default profile
         icon: mdi-robot-outline
 
     - OpenClaw (work):
         href: https://workai.labxp.io
         siteMonitor: https://workai.labxp.io
-        description: Gateway, work profile — :19789
-        icon: mdi-robot-outline
+        # A different glyph from the default profile on purpose. Two identical
+        # robot icons side by side made the only difference between them the
+        # word in brackets.
+        description: Agent gateway — work profile
+        icon: mdi-robot-industrial
 
+- Games:
     - cmd_and_ctrl:
         href: https://cmd.labxp.io
         siteMonitor: https://cmd.labxp.io
