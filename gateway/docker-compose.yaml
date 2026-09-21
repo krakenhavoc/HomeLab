@@ -53,6 +53,18 @@ services:
       # list the BROWSER-facing hostname -- not the container name, not the
       # proxy's IP. Never set it to "*".
       HOMEPAGE_ALLOWED_HOSTS: labxp.io
+    # Widget credentials, as HOMEPAGE_VAR_* names. Written once by cloud-init
+    # from a single Terraform variable and absent from this repo, which is
+    # public.
+    #
+    # required: false is load-bearing. A missing env_file is normally a hard
+    # error that stops the whole service, and this file does not exist on a
+    # host built before it was introduced -- so without this, shipping widgets
+    # would take the portal down on the very host it was meant to improve.
+    # Absent, the widgets render an API error and everything else still works.
+    env_file:
+      - path: /etc/gateway/homepage.env
+        required: false
     volumes:
       # Read-write on purpose: Homepage creates any config file it does not
       # find. gateway-sync copies this directory out of the git checkout

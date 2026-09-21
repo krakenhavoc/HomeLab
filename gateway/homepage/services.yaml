@@ -11,6 +11,23 @@
 # point at a path rather than the root, because a service's root is rarely its
 # health endpoint -- RedLib answers / with 404 by design and Plex with 401, so
 # monitoring / on either reports a working service as down.
+#
+# WIDGETS AND SECRETS
+# Every {{HOMEPAGE_VAR_x}} below is read from the environment, never from this
+# file -- this repository is public. They arrive via /etc/gateway/homepage.env,
+# written once by cloud-init from a single Terraform variable. Until that file
+# has values the affected cards show an API error rather than statistics; the
+# card, link and status dot still work.
+#
+# Verified empirically that {{HOMEPAGE_VAR_x}} is the substitution Homepage
+# honours. The documentation also shows ${x}, which silently does not expand
+# and renders the literal text instead.
+#
+# Widget URLs point at gateway names where the upstream serves a self-signed
+# certificate (Proxmox, Pi-hole), because Caddy already fronts those with a
+# real one and Homepage will not talk to an untrusted certificate. Where the
+# upstream speaks plain HTTP (Plex, Home Assistant) they go direct, which is
+# one hop fewer and avoids the Host rewriting the proxy does.
 
 - Infrastructure:
     - Proxmox:
@@ -18,16 +35,40 @@
         siteMonitor: https://proxmox.labxp.io
         description: Hypervisor — VMs, storage, console
         icon: proxmox.png
+        widget:
+          type: proxmox
+          url: https://proxmox.labxp.io
+          # username is the token ID in "user@realm!tokenname" form, and
+          # password is the token secret -- not an account password.
+          username: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_ID}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET}}"
+          fields: ["vms", "lxc", "resources.cpu", "resources.mem"]
 
     - Pi-hole:
         href: https://dns01.labxp.io
         siteMonitor: https://dns01.labxp.io
+        widget:
+          type: pihole
+          url: https://dns01.labxp.io
+          # v6 replaced the old API token with an app password, generated in
+          # Settings -> Web interface / API.
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE1_KEY}}"
+          fields: ["queries", "blocked", "blocked_percent"]
         description: DNS and ad filtering — primary
         icon: pi-hole.png
 
     - Pi-hole (secondary):
         href: https://dns02.labxp.io
         siteMonitor: https://dns02.labxp.io
+        widget:
+          type: pihole
+          url: https://dns02.labxp.io
+          # v6 replaced the old API token with an app password, generated in
+          # Settings -> Web interface / API.
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE2_KEY}}"
+          fields: ["queries", "blocked", "blocked_percent"]
         description: DNS and ad filtering — failover
         icon: pi-hole.png
 
@@ -40,6 +81,13 @@
         siteMonitor: https://plex.labxp.io/identity
         description: Films and television
         icon: plex.png
+        widget:
+          type: plex
+          # Direct, not through the gateway: Plex speaks plain HTTP here, so
+          # there is no certificate to trust and no Host rewriting involved.
+          url: http://192.168.10.10:32400
+          key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+          fields: ["streams", "movies", "tv"]
 
     - RedLib:
         href: https://redlib.labxp.io
@@ -54,6 +102,13 @@
         siteMonitor: https://hom01.labxp.io
         description: Home automation and sensors
         icon: home-assistant.png
+        widget:
+          type: homeassistant
+          url: http://192.168.1.15:8123
+          # A long-lived access token from the user's profile page, not a
+          # password and not the onboarding token.
+          key: "{{HOMEPAGE_VAR_HASS_TOKEN}}"
+          fields: ["people_home", "lights_on", "switches_on"]
 
     - OpenClaw:
         href: https://orca.labxp.io

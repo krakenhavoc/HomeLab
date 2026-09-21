@@ -17,6 +17,10 @@ resource "proxmox_virtual_environment_file" "pfe_host_cloudinit" {
       # The only secret this host holds. Everything else the gateway needs
       # lives in gateway/ in this repository, which is public.
       cloudflare_api_token = var.cloudflare_api_token
+
+      # HOMEPAGE_VAR_* lines for the portal's service widgets. Empty is valid
+      # and normal -- the widgets just show an API error until it is filled.
+      homepage_widget_env = var.homepage_widget_env
     })
     file_name = "setup-pfe-${var.pfe_host.env}.yaml"
   }

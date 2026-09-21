@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Portal backdrop. An SVG rather than a photo on purpose: a couple of
-  kilobytes, diffs as text, needs no binary in the repo, and scales to any
-  display without a second asset. Homepage blurs and dims it (settings.yaml),
-  so detail would be wasted anyway; the job here is depth, not imagery.
+  Portal backdrop.
 
-  Deep navy base with a cyan and a violet bloom, kept low contrast so service
-  cards stay legible on top of it.
+  WANT YOUR OWN WALLPAPER? Drop any jpg/png/webp into gateway/assets/ and point
+  settings.yaml at it. That is the single biggest change you can make to how
+  this page feels, and it is a one line edit:
+
+      background:
+        image: /assets/your-wallpaper.jpg
+
+  Keep it under 500 KB or the large file pre-commit hook rejects it; a 1920px
+  wide webp at quality 80 is usually 150 to 300 KB. Homepage blurs and dims
+  whatever it gets, so resolution matters far less than composition.
+
+  Until then this file is the default: layered radial blooms over a deep navy
+  base, built to look like a painterly wash once blurred rather than like a
+  flat gradient. Cool field with warm accents low and right, which is roughly
+  the shape of the dusk palettes these dashboards tend to use.
+
+  It is an SVG rather than an image because it is a couple of kilobytes, diffs
+  as text, and scales to any display without a second asset.
 
   Note for editors: no double hyphen anywhere in these comments. SVG has to
   parse as XML, and XML forbids it inside a comment. A browser will still
@@ -15,32 +28,74 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"
      preserveAspectRatio="xMidYMid slice" width="1600" height="900">
   <defs>
-    <radialGradient id="cyan" cx="16%" cy="4%" r="72%">
-      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34"/>
-      <stop offset="55%" stop-color="#0ea5e9" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    <!-- Cool field: the page sits in this. -->
+    <linearGradient id="base" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0%" stop-color="#0d1b2e"/>
+      <stop offset="45%" stop-color="#0b1524"/>
+      <stop offset="100%" stop-color="#070d18"/>
+    </linearGradient>
+
+    <radialGradient id="teal" cx="12%" cy="10%" r="66%">
+      <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.42"/>
+      <stop offset="45%" stop-color="#0891b2" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#0b1524" stop-opacity="0"/>
     </radialGradient>
 
-    <radialGradient id="violet" cx="88%" cy="10%" r="66%">
-      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.30"/>
-      <stop offset="60%" stop-color="#6366f1" stop-opacity="0.09"/>
-      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    <radialGradient id="indigo" cx="74%" cy="2%" r="62%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.34"/>
+      <stop offset="55%" stop-color="#4f46e5" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#0b1524" stop-opacity="0"/>
     </radialGradient>
 
-    <radialGradient id="teal" cx="52%" cy="104%" r="64%">
-      <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.20"/>
-      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    <!-- Warm accents. These are what stop it reading as a blue wash. -->
+    <radialGradient id="coral" cx="82%" cy="86%" r="58%">
+      <stop offset="0%" stop-color="#fb7185" stop-opacity="0.34"/>
+      <stop offset="50%" stop-color="#e11d48" stop-opacity="0.13"/>
+      <stop offset="100%" stop-color="#0b1524" stop-opacity="0"/>
     </radialGradient>
+
+    <radialGradient id="amber" cx="34%" cy="98%" r="52%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.22"/>
+      <stop offset="55%" stop-color="#f97316" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#0b1524" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="violet" cx="50%" cy="46%" r="46%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#0b1524" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Soft light streaks: structure for the blur to smear, so the result
+         reads as brushwork instead of as concentric circles. -->
+    <linearGradient id="streak" x1="0" y1="0" x2="1" y2="0.3">
+      <stop offset="0%" stop-color="#e2e8f0" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#e2e8f0" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0"/>
+    </linearGradient>
 
     <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.18"/>
+      <stop offset="45%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.42"/>
     </linearGradient>
   </defs>
 
-  <rect width="1600" height="900" fill="#0b1220"/>
-  <rect width="1600" height="900" fill="url(#cyan)"/>
-  <rect width="1600" height="900" fill="url(#violet)"/>
+  <rect width="1600" height="900" fill="url(#base)"/>
+
   <rect width="1600" height="900" fill="url(#teal)"/>
+  <rect width="1600" height="900" fill="url(#indigo)"/>
+  <rect width="1600" height="900" fill="url(#coral)"/>
+  <rect width="1600" height="900" fill="url(#amber)"/>
+  <rect width="1600" height="900" fill="url(#violet)"/>
+
+  <g opacity="0.85">
+    <ellipse cx="420" cy="300" rx="700" ry="90" fill="url(#streak)"
+             transform="rotate(-14 420 300)"/>
+    <ellipse cx="1120" cy="560" rx="620" ry="70" fill="url(#streak)"
+             transform="rotate(-8 1120 560)"/>
+    <ellipse cx="760" cy="760" rx="560" ry="60" fill="url(#streak)"
+             transform="rotate(-18 760 760)"/>
+  </g>
+
   <rect width="1600" height="900" fill="url(#vignette)"/>
 </svg>
