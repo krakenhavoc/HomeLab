@@ -423,11 +423,17 @@ moved {
 # restic job on each VM, the credentials, and the restore runbook. See
 # HomeLab#58.
 #
-# No API tokens here. The Terraform Cloudflare token is scoped to tunnel and
-# DNS only (see cloudflare_api_token's description) and cannot mint tokens
-# even if it were granted R2 permission. The owner creates one bucket-scoped
-# R2 API token per environment by hand in the dashboard, after apply, and
-# hands them to cmd_and_ctrl#1031.
+# No R2 *data* API tokens minted here. The Terraform Cloudflare token does
+# hold Workers R2 Storage: Edit -- it has to, it created these buckets -- but
+# bucket-scoped tokens for reading and writing objects are a separate thing it
+# cannot mint. The owner creates one of those per environment by hand in the
+# dashboard, after apply, and hands them to cmd_and_ctrl#1031.
+#
+# This comment used to say the token was "scoped to tunnel and DNS only and
+# cannot mint tokens even if it were granted R2 permission", matching an
+# equally wrong claim in cloudflare_api_token's description. Both understated
+# the token, and the correction matters: reissuing it from the old text
+# produces a token that cannot manage these buckets.
 resource "cloudflare_r2_bucket" "cmd_and_ctrl_backup" {
   for_each = local.cmd_and_ctrl_environments
 

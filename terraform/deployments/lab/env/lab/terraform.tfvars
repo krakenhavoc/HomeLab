@@ -43,11 +43,17 @@ openclaw = {
 # 4 GB was oversubscribed. The host was raised to 16 GB out-of-band; this
 # value follows that change so a later apply does not revert it.
 openclaw_2 = {
-  name_prefix    = "openclaw-2"
-  description    = "OpenClaw (upstream install, Codex) - Managed by Terraform"
-  tags           = ["openclaw"]
-  bios           = "ovmf"
-  cpu_cores      = 2
+  name_prefix = "openclaw-2"
+  description = "OpenClaw (upstream install, Codex) - Managed by Terraform"
+  tags        = ["openclaw"]
+  bios        = "ovmf"
+  # Matches the host's real core count — it was raised to 8 out-of-band, the
+  # same way the memory below was raised to 16 GB, and the config had drifted
+  # at 2. Following the change rather than reverting it: the pending plan
+  # wanted `cores = 8 -> 2`, and applying that would have cut the box to a
+  # quarter of its CPU while it runs two Gateway instances plus their Codex
+  # and Claude Code child processes.
+  cpu_cores      = 8
   memory_mb      = 16384
   os_disk_size   = 40
   disk_interface = "virtio0"

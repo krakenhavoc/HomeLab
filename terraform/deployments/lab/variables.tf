@@ -252,11 +252,41 @@ variable "cmd_and_ctrl_tunnel_token" {
 
 variable "cloudflare_api_token" {
   description = <<-EOT
-    Cloudflare API token used to manage the develop tunnel, its ingress config
-    and its DNS record. Two permissions, nothing broader:
+    Cloudflare API token used to manage the develop tunnel, its ingress
+    config, its DNS record, and the cmd_and_ctrl R2 backup buckets. Four
+    permissions:
 
       Account : Cloudflare One Connector: cloudflared : Edit
-      Zone    : DNS : Edit   (on labxp.io only)
+      Account : Workers R2 Storage : Edit
+      Zone    : DNS : Edit    (on labxp.io only)
+      Zone    : Zone : Read   (on labxp.io only)
+
+    THE R2 PERMISSION IS NOT OPTIONAL and this block used to claim it was --
+    it read "two permissions, nothing broader", naming only cloudflared and
+    DNS. That was wrong from the moment cloudflare_r2_bucket landed
+    (HomeLab#58): the buckets were created by this token on 2026-09-19, which
+    is only possible with R2 write. Anyone reissuing the token from the old
+    description would have produced an under-scoped token, watched R2 fail,
+    and had no reason to suspect the documentation.
+
+    Zone:Read is listed because the "Edit zone DNS" template in the dashboard
+    includes it and because anything doing an ACME DNS-01 challenge against
+    this zone needs it to resolve the zone ID from its name (see
+    docs/gateway.md). Harmless if the tunnel and DNS work without it.
+
+    SET NO EXPIRY, or set a long one and put the date in a calendar. On
+    2026-09-21 the lab pipeline failed on three Cloudflare 401s with code
+    10000 while the GitHub secret had not been touched since 2026-09-10 and
+    the same token had applied cleanly on the 19th and 20th. Nothing in the
+    repo changed; the credential died underneath it. An expiring token takes
+    the whole lab deployment down with it, because a Cloudflare auth failure
+    fails the plan and therefore blocks every Proxmox change in this root
+    module too.
+
+    Note the status code when diagnosing: 401 code 10000 is an invalid,
+    revoked or expired token. 403 code 10000 is a token that authenticates
+    but lacks a permission -- or a correctly permissioned token scoped to a
+    different account (see Account Resources below).
 
     The account permission was called "Cloudflare Tunnel" and tokens holding
     it still work, but new tokens are issued under the Cloudflare One
