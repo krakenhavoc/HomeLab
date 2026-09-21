@@ -89,14 +89,33 @@ proxmox.labxp.io {
 # so send the bare hostname there rather than making everyone remember the
 # path. Both are proxied separately on purpose: reaching one when the other
 # is rebooting is the entire reason there are two.
+#
+# HTTPS upstream, not plain HTTP. Pi-hole serves TLS itself and answers :80
+# with a 308 to the HTTPS URL, so proxying to :80 produced a redirect loop
+# dressed up as a working page -- Caddy returned the 308 to the browser,
+# which came back to Caddy, which asked Pi-hole again.
+#
+# The certificate it presents is self-signed and carries its own name, not
+# dns01.labxp.io, so this hop cannot be verified and skipping verification is
+# the only option short of trusting Pi-hole's CA on the gateway. That hop
+# stays inside the lab between two hosts it owns; the hop the browser makes,
+# which is the one worth protecting, is properly secured.
 dns01.labxp.io {
 	import tls_cloudflare
 	redir / /admin
-	reverse_proxy 192.168.10.11:80
+	reverse_proxy https://192.168.10.11 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
 }
 
 dns02.labxp.io {
 	import tls_cloudflare
 	redir / /admin
-	reverse_proxy 192.168.10.12:80
+	reverse_proxy https://192.168.10.12 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
 }
