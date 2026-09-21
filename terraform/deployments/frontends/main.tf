@@ -23,7 +23,7 @@ resource "proxmox_virtual_environment_file" "pfe_host_cloudinit" {
 }
 
 # pfe is the lab gateway: Caddy terminates TLS for every internal name and
-# proxies to the service behind it, with a Homepage portal at lab.labxp.io.
+# proxies to the service behind it, with a Homepage portal at the labxp.io apex.
 # See docs/gateway.md for the design and gateway/ for the runtime config.
 module "pfe_host" {
   source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.3.0"

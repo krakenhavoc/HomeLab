@@ -110,7 +110,7 @@ privileged container on the host, which is root on `pfe` by another name.
 
 Homepage v1.0 made this environment variable mandatory for any access that is
 not `localhost`. Behind a reverse proxy it must list the **browser-facing**
-hostname (`lab.labxp.io`), not the container name or the proxy's IP. Getting
+hostname (`labxp.io`), not the container name or the proxy's IP. Getting
 it wrong does not fail loudly — it presents as a blank page or
 `Host validation failed`, and it is the single most common way this
 deployment will fail on first try. Do not set it to `*`.
@@ -194,7 +194,7 @@ Sketch:
     }
 }
 
-lab.labxp.io {
+labxp.io {
     import cloudflare_tls
     reverse_proxy homepage:3000
 }
@@ -236,10 +236,35 @@ resolve only inside the network; from outside they are `NXDOMAIN`. DNS-01 is
 unaffected, because that writes short-lived `_acme-challenge` TXT records via
 the Cloudflare API rather than needing the A records to be public.
 
-A blanket `address=/labxp.io/<pfe-ip>` dnsmasq entry would save typing and is
-the wrong move — it would capture `cmd.labxp.io` (a live public service) and
-`pve.labxp.io` (the Terraform endpoint) along with everything else. Explicit
-per-name records only.
+**Use plain host records, never a dnsmasq wildcard.** This is not a style
+preference now that the portal is on the apex. A Pi-hole "Local DNS Record"
+for `labxp.io` matches that exact name and nothing else. A dnsmasq
+`address=/labxp.io/192.168.201.14` line matches the apex *and every subdomain
+under it* — it would swallow `cmd.labxp.io` (a live public service),
+`pve.labxp.io` (the endpoint every Terraform run in this repo uses) and
+`cmd-dev.labxp.io` in one go, and the failure would look like the gateway
+serving the wrong site rather than like a DNS entry.
+
+The apex override has one accepted consequence even when done correctly:
+anything published at `labxp.io` itself on the public internet is unreachable
+from inside the lab, because both Pi-holes now answer that name with
+192.168.201.14. Subdomains are untouched.
+
+The records needed, all pointing at `192.168.201.14`, on **both** Pi-holes:
+
+| Name | Serves |
+|------|--------|
+| `labxp.io` | the portal |
+| `redlib.labxp.io` | RedLib |
+| `plex.labxp.io` | Plex (192.168.10.10:32400) |
+| `proxmox.labxp.io` | Proxmox web UI |
+| `dns01.labxp.io` | Pi-hole 192.168.10.11 |
+| `dns02.labxp.io` | Pi-hole 192.168.10.12 |
+
+`dns01` and `dns02` pointing at the gateway rather than at the Pi-holes
+themselves looks circular and is not: DNS queries reach a resolver by address,
+never by name, so a Pi-hole answering its own web hostname with the gateway's
+address does not affect its ability to resolve.
 
 The record list should live in this repo as a plain file so it is reproducible
 and reviewable, rather than existing only as clicks in two Pi-hole UIs.
@@ -354,7 +379,7 @@ only, at `redlib.labxp.io`. This is the phase that proves DNS-01, the token,
 the Pi-hole records and the firewall rules all work, against a service whose
 failure costs nothing.
 
-**Phase 4 — Homepage.** The portal itself at `lab.labxp.io`, with links to
+**Phase 4 — Homepage.** The portal itself at the `labxp.io` apex, with links to
 every service and widgets for Proxmox, Plex and Pi-hole.
 
 **Phase 5 — Remaining upstreams.** Proxmox, Plex, the OpenClaw hosts,
@@ -384,8 +409,7 @@ intermittent, unattributable packet loss on *two* hosts.
    OpenClaw-2, `cmd-and-ctrl` (prod and dev preview), the Windows 11 VM,
    Pi-hole itself.
 7. **Which client VLAN(s)** you browse from, for the inbound firewall rule.
-8. **Confirmation of the portal hostname** — `lab.labxp.io` is the proposal;
-   `home.` or `portal.` work equally well.
+8. ~~**Confirmation of the portal hostname**~~ — the `labxp.io` apex.
 
 Both Pi-holes sit on VLAN 10 while `pfe` is on VLAN 201, so the outbound
 firewall rule set below must include `pfe → 192.168.10.11/12:53` (UDP and

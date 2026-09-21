@@ -22,15 +22,15 @@
         description: Hypervisor — VMs, storage, console
         icon: proxmox.png
 
-    - Pi-hole (primary):
-        href: http://192.168.10.11/admin
-        siteMonitor: http://192.168.10.11
+    - Pi-hole (dns01):
+        href: https://dns01.labxp.io
+        siteMonitor: https://dns01.labxp.io
         description: DNS and ad filtering — 192.168.10.11
         icon: pi-hole.png
 
-    - Pi-hole (secondary):
-        href: http://192.168.10.12/admin
-        siteMonitor: http://192.168.10.12
+    - Pi-hole (dns02):
+        href: https://dns02.labxp.io
+        siteMonitor: https://dns02.labxp.io
         description: DNS and ad filtering — 192.168.10.12
         icon: pi-hole.png
 
@@ -42,10 +42,9 @@
         icon: redlib.png
 
     - Plex:
-        # Not proxied yet — needs the host's address. Give it one and it
-        # becomes plex.labxp.io like the rest.
-        href: https://app.plex.tv
-        description: Media server
+        href: https://plex.labxp.io
+        siteMonitor: https://plex.labxp.io
+        description: Media server — 192.168.10.10
         icon: plex.png
 
 - Lab:

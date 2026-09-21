@@ -44,7 +44,7 @@ services:
       # first deploy shows a blank page or "Host validation failed". It must
       # list the BROWSER-facing hostname -- not the container name, not the
       # proxy's IP. Never set it to "*".
-      HOMEPAGE_ALLOWED_HOSTS: lab.labxp.io
+      HOMEPAGE_ALLOWED_HOSTS: labxp.io
     volumes:
       # Read-write on purpose: Homepage creates any config file it does not
       # find. gateway-sync copies this directory out of the git checkout

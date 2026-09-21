@@ -38,9 +38,14 @@ Four steps, none of them Terraform:
    }
    ```
 
-2. **DNS** — an A record on **both** Pi-holes (192.168.10.11 and .12) for
-   `plex.labxp.io` → `192.168.201.14`. Both, not one: a single entry means the
-   name stops resolving whenever that Pi-hole reboots.
+2. **DNS** — a **plain host record** on **both** Pi-holes (192.168.10.11 and
+   .12) for `plex.labxp.io` → `192.168.201.14`. Both, not one: a single entry
+   means the name stops resolving whenever that Pi-hole reboots.
+
+   Never a dnsmasq `address=/labxp.io/192.168.201.14` line. That matches every
+   subdomain, so it would swallow `cmd.labxp.io` (live and public) and
+   `pve.labxp.io` (the endpoint every Terraform run here uses). A host record
+   matches the exact name only.
 
 3. **Firewall** — allow `pfe` → the upstream's address and port. `pfe` is on
    VLAN 201 and most targets are not, so this is an inter-VLAN rule. Keep it
@@ -68,8 +73,9 @@ file on the host and `docker compose restart caddy`.
 ## Troubleshooting
 
 **Blank page or "Host validation failed"** — `HOMEPAGE_ALLOWED_HOSTS` in
-`docker-compose.yaml` must list the browser-facing hostname. Mandatory since
-Homepage v1.0 and the most common first-deploy failure.
+`docker-compose.yaml` must list the browser-facing hostname (`labxp.io`), not
+the container name or the proxy's address. Mandatory since Homepage v1.0 and
+the most common first-deploy failure.
 
 **Certificate never issues** — check the Cloudflare token first:
 
@@ -94,3 +100,11 @@ error and leaves the previous config serving.
 **Everything is down** — Caddy is the only container binding ports, so a Caddy
 failure takes every name with it. Services remain reachable at their
 `IP:port`; the gateway is a convenience layer, not a dependency.
+
+## The apex
+
+The portal is served at `labxp.io` itself, not a subdomain. Both Pi-holes
+answer that exact name with `192.168.201.14`, which means **anything published
+at the apex on the public internet is unreachable from inside the lab**. That
+is accepted, not overlooked. Subdomains are unaffected — `cmd.labxp.io` still
+resolves publicly — as long as the Pi-hole entries stay plain host records.

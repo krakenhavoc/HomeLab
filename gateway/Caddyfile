@@ -40,7 +40,14 @@
 }
 
 # --- The portal -------------------------------------------------------------
-lab.labxp.io {
+# The apex, not a subdomain. That is a deliberate choice with one consequence
+# worth knowing: both Pi-holes answer labxp.io with this host's address, so
+# anything published at the apex on the public internet is unreachable from
+# inside the lab. Subdomains are unaffected -- cmd.labxp.io still resolves
+# publicly -- PROVIDED the Pi-hole entries are plain host records for the
+# exact name. See gateway/README.md; a dnsmasq `address=/labxp.io/...` line
+# would match every subdomain and take cmd.labxp.io down with it.
+labxp.io {
 	import tls_cloudflare
 	reverse_proxy homepage:3000
 }
@@ -49,6 +56,14 @@ lab.labxp.io {
 redlib.labxp.io {
 	import tls_cloudflare
 	reverse_proxy redlib:8080
+}
+
+plex.labxp.io {
+	import tls_cloudflare
+	# Plex speaks plain HTTP on 32400 and redirects / to /web itself.
+	# Websockets (used by the dashboard and playback state) need no special
+	# handling -- Caddy proxies them transparently.
+	reverse_proxy 192.168.10.10:32400
 }
 
 # --- Infrastructure ---------------------------------------------------------
@@ -68,4 +83,20 @@ proxmox.labxp.io {
 			tls_insecure_skip_verify
 		}
 	}
+}
+
+# Pi-hole's UI lives under /admin and its root serves a blocked-domain page,
+# so send the bare hostname there rather than making everyone remember the
+# path. Both are proxied separately on purpose: reaching one when the other
+# is rebooting is the entire reason there are two.
+dns01.labxp.io {
+	import tls_cloudflare
+	redir / /admin
+	reverse_proxy 192.168.10.11:80
+}
+
+dns02.labxp.io {
+	import tls_cloudflare
+	redir / /admin
+	reverse_proxy 192.168.10.12:80
 }

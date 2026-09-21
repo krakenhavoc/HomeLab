@@ -3,7 +3,7 @@
 title: LabXP
 description: Home lab services
 
-startUrl: https://lab.labxp.io
+startUrl: https://labxp.io
 
 # Dark by default, and the theme switcher stays available in the header.
 theme: dark
