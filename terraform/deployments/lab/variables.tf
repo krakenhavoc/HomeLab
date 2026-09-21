@@ -274,19 +274,35 @@ variable "cloudflare_api_token" {
     this zone needs it to resolve the zone ID from its name (see
     docs/gateway.md). Harmless if the tunnel and DNS work without it.
 
-    SET NO EXPIRY, or set a long one and put the date in a calendar. On
-    2026-09-21 the lab pipeline failed on three Cloudflare 401s with code
-    10000 while the GitHub secret had not been touched since 2026-09-10 and
-    the same token had applied cleanly on the 19th and 20th. Nothing in the
-    repo changed; the credential died underneath it. An expiring token takes
-    the whole lab deployment down with it, because a Cloudflare auth failure
-    fails the plan and therefore blocks every Proxmox change in this root
-    module too.
+    CHECK CLIENT IP ADDRESS FILTERING BEFORE ANYTHING ELSE when this token
+    starts returning 401. On 2026-09-21 the whole lab pipeline failed on
+    three Cloudflare 401s with code 10000 while the GitHub secret had not
+    been touched since 2026-09-10 and the same token had applied cleanly on
+    the 19th and 20th. The token was valid, correctly scoped and not
+    expired. Its IP filter no longer matched: the plan runs on the
+    self-hosted runner inside this network, so every Cloudflare call carries
+    the lab's WAN address, and that address changes on its own.
+
+    This is the failure mode to expect here, and it is not self-announcing.
+    The token looks fine in the dashboard, `/user/tokens/verify` answers from
+    a different machine may look fine too, and nothing in the repo changed.
+    Only calls from the runner fail. Re-check the filter after any ISP lease
+    change, router replacement or WAN reconfiguration.
+
+    Expiry is worth avoiding for the same reason but was NOT the cause here;
+    an earlier version of this note claimed it was, which would have sent the
+    next person to reissue a token that was never the problem.
+
+    Either way the blast radius is the whole deployment, not just Cloudflare:
+    an auth failure fails the plan, which blocks every Proxmox change in this
+    root module too.
 
     Note the status code when diagnosing: 401 code 10000 is an invalid,
-    revoked or expired token. 403 code 10000 is a token that authenticates
-    but lacks a permission -- or a correctly permissioned token scoped to a
-    different account (see Account Resources below).
+    revoked or expired token -- OR a valid one whose client IP filter
+    excludes the caller, which is indistinguishable from the response alone.
+    403 code 10000 is a token that authenticates but lacks a permission, or a
+    correctly permissioned token scoped to a different account (see Account
+    Resources below).
 
     The account permission was called "Cloudflare Tunnel" and tokens holding
     it still work, but new tokens are issued under the Cloudflare One
