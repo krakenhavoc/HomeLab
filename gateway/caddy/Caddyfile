@@ -99,6 +99,18 @@ plex.labxp.io {
 	# lab between two hosts it owns; the browser's hop keeps its real
 	# Let's Encrypt certificate.
 	reverse_proxy https://192.168.10.10:32400 {
+		# Send the browser's hostname, not the upstream's. Naming the upstream
+		# with a scheme makes Caddy rewrite Host to the dial address, and Plex
+		# builds redirects from Host -- so /web answered
+		#   302 -> https://192.168.10.10:32400/web/index.html
+		# which is correct HTTPS and still useless: it sends the browser at an
+		# address that bypasses the gateway, has no matching certificate, and is
+		# unreachable from any VLAN but Plex's own.
+		#
+		# Verified against Plex directly: the same request with
+		# `Host: plex.labxp.io` answers https://plex.labxp.io/web/index.html.
+		header_up Host {host}
+
 		transport http {
 			tls_insecure_skip_verify
 		}
