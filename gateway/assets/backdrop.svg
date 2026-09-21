@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Portal backdrop. An SVG rather than a photo on purpose: a couple of
+  kilobytes, diffs as text, needs no binary in the repo, and scales to any
+  display without a second asset. Homepage blurs and dims it (settings.yaml),
+  so detail would be wasted anyway; the job here is depth, not imagery.
+
+  Deep navy base with a cyan and a violet bloom, kept low contrast so service
+  cards stay legible on top of it.
+
+  Note for editors: no double hyphen anywhere in these comments. SVG has to
+  parse as XML, and XML forbids it inside a comment. A browser will still
+  serve the file, so the only symptom is a background that never appears.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"
+     preserveAspectRatio="xMidYMid slice" width="1600" height="900">
+  <defs>
+    <radialGradient id="cyan" cx="16%" cy="4%" r="72%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.34"/>
+      <stop offset="55%" stop-color="#0ea5e9" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="violet" cx="88%" cy="10%" r="66%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#6366f1" stop-opacity="0.09"/>
+      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="teal" cx="52%" cy="104%" r="64%">
+      <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#0b1220" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="vignette" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="#0b1220"/>
+  <rect width="1600" height="900" fill="url(#cyan)"/>
+  <rect width="1600" height="900" fill="url(#violet)"/>
+  <rect width="1600" height="900" fill="url(#teal)"/>
+  <rect width="1600" height="900" fill="url(#vignette)"/>
+</svg>

@@ -4,9 +4,11 @@
 # Deliberately minimal. The service widgets that pull live stats from Proxmox,
 # Plex and Pi-hole each need an API token, and those are real credentials that
 # would have to be seeded into /etc/gateway from Terraform rather than kept
-# here -- this file is in a public repository. Resource and search need none.
+# here -- this file is in a public repository. Resource, search and datetime
+# need none.
 
 - resources:
+    label: pfe
     backend: resources
     expanded: true
     cpu: true
@@ -15,6 +17,7 @@
 
 - search:
     provider: duckduckgo
+    focus: false
     target: _blank
 
 - datetime:
