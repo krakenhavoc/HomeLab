@@ -36,6 +36,19 @@ variable "openclaw" {
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, 200)
     admin_username = optional(string, "krkn")
+
+    # This host is deliberately powered off and deliberately does not
+    # autostart. Both default to true to match the module and the provider,
+    # so the value that matters is the false set in env/lab/terraform.tfvars.
+    #
+    # Until the module ref in main.tf reaches v0.3.0 these are declared and
+    # unused, and the lab plan keeps reporting
+    #   started = false -> true
+    #   on_boot = false -> true
+    # on openclaw, because with the attributes unwritten the provider assumes
+    # a VM is meant to be running. The next successful apply boots it.
+    started = optional(bool, true)
+    on_boot = optional(bool, true)
   })
   default = {}
 }

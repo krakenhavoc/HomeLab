@@ -18,6 +18,19 @@ openclaw = {
   network_bridge = "vmbr0"
   vlan_id        = 200
   admin_username = "krkn"
+
+  # --- Powered off on purpose: COMMENTED UNTIL MODULE v0.3.0 ----------------
+  # openclaw is shut down deliberately and is not meant to come back on its
+  # own. Both values are decided; they stay commented only because the module
+  # ref in main.tf is still v0.2.0, which does not declare vm_started or
+  # vm_on_boot. See the block at the openclaw module call.
+  #
+  # on_boot is set alongside started, not instead of it. started=false with
+  # on_boot left true means the host is off now and returns by itself after
+  # the next node reboot, which is not "powered off" in any useful sense.
+  #
+  # started = false
+  # on_boot = false
 }
 # Second OpenClaw host: upstream installer (npm) instead of the fork source
 # build, Codex instead of Azure Foundry. Nothing is compiled on this VM, so it

@@ -31,6 +31,33 @@ module "openclaw" {
   vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.openclaw_cloudinit.id
   vm_network_bridge              = var.openclaw.network_bridge
   vm_vlan_id                     = var.openclaw.vlan_id
+
+  # --- Power state: INERT UNTIL THE REF ABOVE IS v0.3.0 ----------------------
+  # openclaw is powered off on purpose and is not meant to autostart. It
+  # cannot say so today: v0.2.0 of the module does not declare vm_started or
+  # vm_on_boot, and Terraform rejects an argument the pinned version does not
+  # declare regardless of its value, so these stay commented rather than being
+  # passed as true.
+  #
+  # Until they are uncommented the lab plan keeps showing, on openclaw:
+  #   ~ on_boot = false -> true
+  #   ~ started = false -> true
+  # That is not drift to be ignored. With the attributes unwritten the
+  # provider assumes the guest is meant to be running, so the next successful
+  # apply starts openclaw and enables autostart -- an apply that was almost
+  # certainly about something else.
+  #
+  # To turn on: merge this PR, tag v0.3.0 on main, bump the ref above, then
+  # uncomment the two lines below and the two values in
+  # env/lab/terraform.tfvars.
+  #
+  # ORDER MATTERS. Do that before the Cloudflare token is rotated, not after.
+  # The lab plan currently fails on three Cloudflare 401s, which means lab CD
+  # cannot apply anything at all -- so nothing boots openclaw while these
+  # lines are still commented. Restoring the token re-arms the apply.
+  #
+  # vm_started = var.openclaw.started
+  # vm_on_boot = var.openclaw.on_boot
 }
 
 # -----------------------------------------------------------------------------

@@ -444,3 +444,66 @@ run "invalid_mac_address" {
     var.vm_mac_address,
   ]
 }
+
+# The power-state defaults are the whole safety property of adding these two
+# attributes: every existing consumer leaves them unset, and unset has to keep
+# meaning "running, autostarts" or the next apply bounces five VMs that nobody
+# touched. Assert the default rather than trusting it.
+run "default_power_state_is_running" {
+  command = plan
+
+  variables {
+    vm_name                        = "test-vm-power-default"
+    vm_node_name                   = "pve-node1"
+    vm_description                 = "Test VM with default power state"
+    clone_vm_id                    = 9000
+    vm_cpu_cores                   = 2
+    vm_memory_mb                   = 2048
+    vm_disk_datastore_id           = "local-lvm"
+    vm_disk_size                   = 20
+    vm_cloudinit_datastore_id      = "local"
+    vm_cloudinit_user_data_file_id = "local:snippets/user-data.yml"
+    vm_network_bridge              = "vmbr0"
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.started == true
+    error_message = "Default vm_started must be true — it is what the provider assumes when the attribute is unwritten, and any other default would start or stop every VM that leaves it unset."
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.on_boot == true
+    error_message = "Default vm_on_boot must be true — it is what the provider assumes when the attribute is unwritten, and any other default would change autostart on every VM that leaves it unset."
+  }
+}
+
+# openclaw's case: deliberately powered off and deliberately not autostarting.
+run "explicitly_powered_off" {
+  command = plan
+
+  variables {
+    vm_name                        = "test-vm-powered-off"
+    vm_node_name                   = "pve-node1"
+    vm_description                 = "Test VM that is deliberately off"
+    clone_vm_id                    = 9000
+    vm_cpu_cores                   = 2
+    vm_memory_mb                   = 2048
+    vm_disk_datastore_id           = "local-lvm"
+    vm_disk_size                   = 20
+    vm_cloudinit_datastore_id      = "local"
+    vm_cloudinit_user_data_file_id = "local:snippets/user-data.yml"
+    vm_network_bridge              = "vmbr0"
+    vm_started                     = false
+    vm_on_boot                     = false
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.started == false
+    error_message = "vm_started = false must reach the resource — otherwise a host that is off on purpose gets started by the next apply."
+  }
+
+  assert {
+    condition     = proxmox_virtual_environment_vm.this.on_boot == false
+    error_message = "vm_on_boot = false must reach the resource — otherwise a host that is off on purpose comes back by itself after the next node reboot."
+  }
+}

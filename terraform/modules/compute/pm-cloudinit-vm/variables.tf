@@ -232,3 +232,53 @@ variable "vm_mac_address" {
     error_message = "vm_mac_address must be six colon-separated hex octets, e.g. \"BC:24:11:00:02:40\" — Proxmox rejects any other form at apply time, after the plan has already been approved."
   }
 }
+
+# -----------------------------------------------------------------------------
+# Power state
+# -----------------------------------------------------------------------------
+# Both default to true, which is what the provider already assumes when these
+# attributes are not written at all. So adding them renders byte-for-byte the
+# configuration this module rendered before they existed, and openclaw-2,
+# pwnbox, redlib and plex see no diff. Same hard requirement as the static
+# addressing block above: do not give either of these a false default.
+#
+# WHY THIS EXISTS: the provider's defaults are not neutral. Every VM this
+# module manages is declared running and declared to autostart whether or not
+# anyone said so, so a host that is deliberately powered off has no way to say
+# so and shows up in every plan as `started = false -> true`. openclaw is
+# exactly that host -- it is off on purpose, and the pending lab plan wants to
+# start it and enable autostart. Leaving the attribute unset is not "don't
+# care", it is "running".
+
+variable "vm_started" {
+  description = <<-EOT
+    Whether the VM should be running. True (the default) matches the
+    provider's own default, so leaving it alone changes nothing.
+
+    Set false for a host that is deliberately powered off. Without it there is
+    no way to express that, and Terraform keeps proposing to start the guest
+    on every plan until someone applies one.
+
+    This is a declared power state, not a one-off action. Terraform will start
+    a stopped guest to satisfy true, and stop a running one to satisfy false,
+    on whatever apply comes next -- including an apply that was really about
+    something else entirely.
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "vm_on_boot" {
+  description = <<-EOT
+    Whether the VM autostarts when the Proxmox node boots. True (the default)
+    matches the provider's own default.
+
+    Independent of vm_started despite reading like a pair: a guest can be
+    running now but not autostart, or be off now and come back with the node.
+    The combination worth being deliberate about is started=false with
+    on_boot=true -- a host that is off today and returns by itself after the
+    next node reboot, which is rarely what anyone means by "powered off".
+  EOT
+  type        = bool
+  default     = true
+}

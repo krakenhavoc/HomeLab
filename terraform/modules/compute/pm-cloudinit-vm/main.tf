@@ -6,6 +6,13 @@ resource "proxmox_virtual_environment_vm" "this" {
 
   bios = var.vm_bios
 
+  # Both default to true in the provider when unwritten, and both variables
+  # default to true, so these two lines render exactly what this resource
+  # rendered before they existed -- no diff for any existing consumer. They
+  # exist so a deliberately powered-off host can say so; see variables.tf.
+  started = var.vm_started
+  on_boot = var.vm_on_boot
+
   clone {
     vm_id = var.clone_vm_id
     full  = true
