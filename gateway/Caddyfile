@@ -119,3 +119,38 @@ dns02.labxp.io {
 		}
 	}
 }
+
+# --- Home automation --------------------------------------------------------
+# hom01, not home: home.labxp.io is the WAN VPN endpoint and taking that name
+# internally would black-hole the VPN for anyone inside the lab -- the one
+# name you would want working while diagnosing why you cannot get in.
+#
+# Home Assistant is websocket-heavy (the whole UI updates over one), which
+# Caddy proxies transparently. It also refuses requests from an unknown proxy
+# unless told to expect one: set http.trusted_proxies in configuration.yaml to
+# 192.168.201.14 or the UI loads and then sits there failing to connect.
+hom01.labxp.io {
+	import tls_cloudflare
+	reverse_proxy 192.168.1.15:8123
+}
+
+# --- OpenClaw ---------------------------------------------------------------
+# Two Gateway instances on one host, separated by port: 18789 is the default
+# profile, 19789 the `work` profile.
+#
+# THE ADDRESS IS A DHCP LEASE, NOT A RESERVATION. openclaw-2's static
+# addressing is staged in terraform/deployments/lab but still commented out,
+# waiting on four VLAN 200 facts. This is the exact failure that work exists
+# to prevent: a rebuild once moved this host from .36 to .37, and everything
+# naming the old address quietly pointed at nothing. Two portal links and two
+# firewall rules now name .37, so a rebuild breaks all four at once and none
+# of them will say why. Pin the address when those facts are available.
+orca.labxp.io {
+	import tls_cloudflare
+	reverse_proxy 192.168.200.37:18789
+}
+
+workai.labxp.io {
+	import tls_cloudflare
+	reverse_proxy 192.168.200.37:19789
+}
