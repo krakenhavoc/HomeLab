@@ -37,7 +37,11 @@
 - Applications:
     - RedLib:
         href: https://redlib.labxp.io
-        siteMonitor: https://redlib.labxp.io
+        # /settings, not /. RedLib answers its root with 404 by design -- it
+        # has no landing page -- so monitoring / reports a working service as
+        # down. /settings is a real page and is what the container's own
+        # healthcheck uses.
+        siteMonitor: https://redlib.labxp.io/settings
         description: Private Reddit frontend
         icon: redlib.png
 
