@@ -23,9 +23,9 @@ variable "vm_cloudinit_datastore_id" {
 # The static-addressing fields below (ipv4_address through dns_domain) default
 # to null/empty, and unset they change nothing: the module renders
 # address = "dhcp", no gateway and no dns block, which is byte-for-byte what it
-# rendered before they existed. Nothing here reaches the module until the ref
-# in main.tf is bumped to v0.3.0 and the pass-through lines there are
-# uncommented -- see that file.
+# rendered before they existed. Nothing here reaches the module until PR #65
+# merges, main is tagged v0.3.0, the ref in main.tf is bumped and the
+# pass-through lines there are uncommented -- see that file.
 #
 # WHY THIS EXISTS: this host is becoming the lab gateway (docs/gateway.md).
 # Every internal DNS name is about to resolve to it, which makes its address a

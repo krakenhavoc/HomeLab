@@ -242,6 +242,12 @@ Two directions, both manual in OPNsense, and the second deserves thought.
 - **Outbound:** `pfe` → every upstream it proxies — Proxmox `:8006`,
   Plex `:32400` on VLAN 10, the lab VMs on VLAN 200, and `:443` outbound to
   the internet for ACME and the Cloudflare API.
+- **Outbound DNS:** `pfe` → `192.168.10.11` and `192.168.10.12` on `:53`,
+  UDP **and** TCP. Easy to overlook because the Pi-holes are not proxied
+  upstreams, they are the gateway's own resolvers — and `pfe` (VLAN 201)
+  reaching them (VLAN 10) is an inter-VLAN flow like any other. Without it
+  the host boots with resolvers it cannot reach, which looks like a hung
+  first boot rather than a firewall problem.
 
 That outbound set is the real cost of this design. The documented posture is
 default-deny between VLANs; this deliberately drills a hole from the apps VLAN
@@ -297,14 +303,26 @@ points here, so the address cannot be a DHCP lease. The variables, validations
 and pass-through are written; `192.168.201.14/24` and gateway `192.168.201.1`
 are recorded in `env/frontends-dev/terraform.tfvars`.
 
-Two things still gate it:
+One thing still gates it: **the module tag, which cannot be cut yet.**
 
-- **The module tag.** Static addressing is merged to `main` but unreleased —
-  every deployment pins `v0.2.0`. Tagging `v0.3.0` is a release against live
-  deployments, so it is deliberately left as an explicit decision rather than
-  something done in passing.
-- **`dns_servers`.** See item 3 under
-  [facts required](#facts-required-before-implementation).
+Static addressing is *not* on `main`. It lives on
+`feat/pm-cloudinit-static-addressing` as **PR #65**, which is open and
+mergeable. `main` is at `629a999` and its copy of `pm-cloudinit-vm` has no
+`vm_ipv4_address` at all. So the order is:
+
+1. Merge PR #65.
+2. Tag `v0.3.0` on `main`.
+3. Bump the ref in `frontends/main.tf` from `v0.2.0` to `v0.3.0` and
+   uncomment the four pass-through lines.
+4. Uncomment the four values in `env/frontends-dev/terraform.tfvars`.
+
+Tagging `v0.3.0` at the feature branch tip instead would technically work —
+tags do not require a merge — but it would leave `main` not containing its own
+released module, and a squash-merge of #65 would orphan the tagged commit
+entirely. Not worth the shortcut.
+
+`dns_servers` is resolved: `192.168.10.11` and `192.168.10.12`, already
+recorded in the tfvars block.
 
 The pass-through lines in `main.tf` are commented rather than set to `null`
 on purpose: Terraform rejects an argument the pinned module version does not
@@ -362,9 +380,8 @@ intermittent, unattributable packet loss on *two* hosts.
 1. ~~**`pfe` static address**~~ — **`192.168.201.14/24`**, supplied and
    confirmed outside the VLAN 201 DHCP pool.
 2. ~~**VLAN 201 gateway**~~ — **`192.168.201.1`**, supplied.
-3. **Both Pi-hole addresses.** *Still blocking.* This is the last thing
-   stopping Phase 0: the static address cannot be applied without resolvers,
-   because dropping the DHCP lease drops its nameservers too.
+3. ~~**Both Pi-hole addresses**~~ — **`192.168.10.11`** and
+   **`192.168.10.12`**, supplied.
 4. **ACME contact email** for Let's Encrypt.
 5. ~~**A new Cloudflare API token**~~ — decided: reuse the repo's existing
    `cloudflare_api_token`. See [Secrets](#secrets) for the two caveats.
@@ -376,14 +393,11 @@ intermittent, unattributable packet loss on *two* hosts.
 8. **Confirmation of the portal hostname** — `lab.labxp.io` is the proposal;
    `home.` or `portal.` work equally well.
 
-A note on item 3: `pfe` does not strictly *need* Pi-hole specifically. It
-needs to resolve public names for ACME, the Cloudflare API and image pulls,
-and the Caddyfile addresses its upstreams by IP. Public resolvers would work.
-Pi-hole is the right answer anyway — it matches how every other pinned host in
-the lab is configured, and it keeps the gateway's own outbound traffic
-filtered — but if the addresses are inconvenient to dig out, `1.1.1.1` and
-`9.9.9.9` would unblock Phase 0 today and can be changed later without a
-rebuild.
+Both Pi-holes sit on VLAN 10 while `pfe` is on VLAN 201, so the outbound
+firewall rule set below must include `pfe → 192.168.10.11/12:53` (UDP and
+TCP). This is easy to miss because it is not one of the proxied upstreams —
+and if it is missed, the symptom is a first boot that hangs rather than a
+DNS error, exactly as the validation message warns.
 
 ## Risks and trade-offs
 

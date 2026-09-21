@@ -13,24 +13,28 @@ pfe_host = {
   network_bridge = "vmbr0"
   vlan_id        = 201
 
-  # --- Static addressing: COMMENTED, BLOCKED ON ONE FACT ---------------------
+  # --- Static addressing: VALUES COMPLETE, AWAITING MODULE v0.3.0 ------------
   # This host is becoming the lab gateway (docs/gateway.md); every internal
   # DNS name is about to resolve here, so the address has to stop being a DHCP
-  # lease. Address and gateway below are supplied and confirmed. dns_servers
-  # is NOT, and the validation in variables.tf refuses ipv4_address without
-  # it -- deliberately, because a static address drops the DHCP lease and its
-  # resolvers with it, and this host's cloud-init installs Docker over the
-  # network. An empty resolv.conf here does not read as a DNS fault; it reads
-  # as a first boot that never finishes.
+  # lease. All four values below are supplied and confirmed. They stay
+  # commented for exactly one reason: the module ref in main.tf is still
+  # v0.2.0, which does not declare these inputs.
   #
-  # Needed to enable: both Pi-hole addresses. Both, not one -- a static host
-  # has no lease to fall back on, so a single resolver means every name
-  # lookup on the gateway stops while that Pi-hole reboots.
+  # To enable, in this order:
+  #   1. Merge PR #65 (feat/pm-cloudinit-static-addressing). Static addressing
+  #      is NOT on main -- main is at 629a999 and its pm-cloudinit-vm has no
+  #      vm_ipv4_address at all.
+  #   2. Tag v0.3.0 on main.
+  #   3. Bump the ref in main.tf and uncomment the pass-through there.
+  #   4. Uncomment the four lines below.
   #
-  # Also requires the module ref bump in main.tf; see the block there.
+  # Both Pi-holes, not one: a static host has no DHCP lease to fall back on,
+  # so a single resolver means every name lookup on the gateway stops while
+  # that Pi-hole reboots. They are on VLAN 10 and this host is on VLAN 201, so
+  # this also needs an inter-VLAN firewall rule for :53 -- see docs/gateway.md.
   #
   # ipv4_address = "192.168.201.14/24" # confirmed outside the VLAN 201 pool
   # ipv4_gateway = "192.168.201.1"
-  # dns_servers  = ["192.168.X.X", "192.168.X.X"] # both Pi-holes -- UNKNOWN
+  # dns_servers  = ["192.168.10.11", "192.168.10.12"] # both Pi-holes
   # dns_domain   = "labxp.io"
 }

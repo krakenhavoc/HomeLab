@@ -41,12 +41,17 @@ module "pfe_host" {
   # turns frontends CI red on every run. So these stay commented until the ref
   # is bumped, not merely set to null.
   #
-  # To turn this on, in one PR:
-  #   1. Tag the module v0.3.0 (static addressing is merged to main but
-  #      unreleased -- every deployment still pins v0.2.0).
-  #   2. Change the ref above from v0.2.0 to v0.3.0.
-  #   3. Uncomment the four lines below.
-  #   4. Uncomment the matching values in env/frontends-dev/terraform.tfvars.
+  # To turn this on, in this order:
+  #   1. Merge PR #65 (feat/pm-cloudinit-static-addressing). Static addressing
+  #      is NOT on main yet -- main is at 629a999 and its copy of
+  #      pm-cloudinit-vm has no vm_ipv4_address at all. Tagging v0.3.0 at the
+  #      feature branch tip instead would work, but would leave main not
+  #      containing its own released module, and a squash-merge of #65 would
+  #      orphan the tagged commit.
+  #   2. Tag v0.3.0 on main.
+  #   3. Change the ref above from v0.2.0 to v0.3.0.
+  #   4. Uncomment the four lines below.
+  #   5. Uncomment the matching values in env/frontends-dev/terraform.tfvars.
   #
   # THIS REPLACES THE VM. pfe is on DHCP today, so applying a static address
   # rewrites the cloud-init drive, and cloud-init network config is
