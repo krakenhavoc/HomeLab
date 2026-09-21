@@ -175,6 +175,7 @@ Detailed documentation for each component can be found in the `docs/` directory:
 - [Runbook](docs/runbook.md) - Deployment procedures and troubleshooting
 - [Network Setup](docs/network-setup.md) - Network configuration details
 - [Service Deployment](docs/service-deployment.md) - Service deployment guides
+- [Gateway](docs/gateway.md) - Portal and internal reverse proxy plan
 - [Backup Strategy](docs/backup-strategy.md) - Backup procedures and recovery
 - [Security Guidelines](docs/security.md) - Security best practices
 
