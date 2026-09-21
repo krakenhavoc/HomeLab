@@ -48,6 +48,24 @@
         icon: plex.png
 
 - Lab:
+    - Home Assistant:
+        href: https://hom01.labxp.io
+        siteMonitor: https://hom01.labxp.io
+        description: Home automation — 192.168.1.15:8123
+        icon: home-assistant.png
+
+    - OpenClaw:
+        href: https://orca.labxp.io
+        siteMonitor: https://orca.labxp.io
+        description: Gateway, default profile — :18789
+        icon: mdi-robot-outline
+
+    - OpenClaw (work):
+        href: https://workai.labxp.io
+        siteMonitor: https://workai.labxp.io
+        description: Gateway, work profile — :19789
+        icon: mdi-robot-outline
+
     - cmd_and_ctrl:
         href: https://cmd.labxp.io
         siteMonitor: https://cmd.labxp.io
