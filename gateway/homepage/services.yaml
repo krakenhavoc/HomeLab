@@ -46,8 +46,13 @@
         icon: redlib.png
 
     - Plex:
-        href: https://plex.labxp.io
-        siteMonitor: https://plex.labxp.io
+        # /web is the UI; the bare root serves the API, which answers 401.
+        href: https://plex.labxp.io/web
+        # /identity, not /. Plex answers its root with 401 unless the request
+        # carries a token, so monitoring / reports a healthy server as down.
+        # /identity is unauthenticated by design -- it is what Plex clients
+        # use to discover a server before they have credentials for it.
+        siteMonitor: https://plex.labxp.io/identity
         description: Media server — 192.168.10.10
         icon: plex.png
 
