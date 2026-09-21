@@ -82,34 +82,37 @@ redlib.labxp.io {
 plex.labxp.io {
 	import tls_cloudflare
 
-	# HTTPS upstream, even though Plex also answers plain HTTP on the same
-	# port, and the reason is not security -- it is that Plex builds redirects
-	# from the scheme of the connection it received, ignoring
-	# X-Forwarded-Proto. Proxied over HTTP it answered /web with
-	#   302 -> http://plex.labxp.io/web/index.html
-	# downgrading the browser to plain HTTP mid-navigation. The redirect chain
-	# breaks and Plex's client falls back to app.plex.tv, which looks like the
-	# gateway not working at all rather than like a scheme bug.
+	# Plex has two requirements here that pull in opposite directions, and
+	# satisfying either one the obvious way breaks the other.
 	#
-	# Over HTTPS the same request answers https://.../web/index.html, so the
-	# scheme survives and no header rewriting is needed.
+	# 1. HTTPS upstream, for the SCHEME. Plex builds redirects from the
+	#    scheme of the connection it received and ignores X-Forwarded-Proto.
+	#    Over plain HTTP it answered /web with http://plex.labxp.io/... ,
+	#    downgrading the browser mid-navigation.
 	#
-	# The certificate Plex presents is issued for *.plex.direct and cannot
-	# match an IP address, so this hop cannot be verified. It stays inside the
-	# lab between two hosts it owns; the browser's hop keeps its real
-	# Let's Encrypt certificate.
+	# 2. The UPSTREAM's Host, for AUTHENTICATION. Plex refuses to treat a
+	#    request as coming from an allowed network if the Host is a name it
+	#    does not recognise -- source IP is not enough. Measured against the
+	#    live server from pfe, holding everything else constant:
+	#        bare request                  -> 200
+	#        Host: plex.labxp.io           -> 401
+	#        X-Forwarded-For: <client>     -> 200
+	#        X-Forwarded-Proto: https      -> 200
+	#    That 401 is what sends the web client to app.plex.tv: it is the
+	#    sign-in redirect, not a proxy failure, and no amount of
+	#    allowedNetworks tuning fixes it while the Host is wrong.
+	#
+	# So do NOT set `header_up Host {host}`. Caddy already sends the upstream
+	# host when the upstream is named with a scheme, which is what keeps Plex
+	# treating the connection as local.
+	#
+	# The cost is that Plex then builds redirects pointing at its own
+	# address, which is unreachable from a browser on another VLAN and has no
+	# matching certificate. Rewriting Location on the way back out fixes that
+	# without touching the Host on the way in -- each direction gets the value
+	# it needs.
 	reverse_proxy https://192.168.10.10:32400 {
-		# Send the browser's hostname, not the upstream's. Naming the upstream
-		# with a scheme makes Caddy rewrite Host to the dial address, and Plex
-		# builds redirects from Host -- so /web answered
-		#   302 -> https://192.168.10.10:32400/web/index.html
-		# which is correct HTTPS and still useless: it sends the browser at an
-		# address that bypasses the gateway, has no matching certificate, and is
-		# unreachable from any VLAN but Plex's own.
-		#
-		# Verified against Plex directly: the same request with
-		# `Host: plex.labxp.io` answers https://plex.labxp.io/web/index.html.
-		header_up Host {host}
+		header_down Location "^https://192\.168\.10\.10:32400" "https://plex.labxp.io"
 
 		transport http {
 			tls_insecure_skip_verify
