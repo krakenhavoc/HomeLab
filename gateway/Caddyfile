@@ -81,10 +81,28 @@ redlib.labxp.io {
 
 plex.labxp.io {
 	import tls_cloudflare
-	# Plex speaks plain HTTP on 32400 and redirects / to /web itself.
-	# Websockets (used by the dashboard and playback state) need no special
-	# handling -- Caddy proxies them transparently.
-	reverse_proxy 192.168.10.10:32400
+
+	# HTTPS upstream, even though Plex also answers plain HTTP on the same
+	# port, and the reason is not security -- it is that Plex builds redirects
+	# from the scheme of the connection it received, ignoring
+	# X-Forwarded-Proto. Proxied over HTTP it answered /web with
+	#   302 -> http://plex.labxp.io/web/index.html
+	# downgrading the browser to plain HTTP mid-navigation. The redirect chain
+	# breaks and Plex's client falls back to app.plex.tv, which looks like the
+	# gateway not working at all rather than like a scheme bug.
+	#
+	# Over HTTPS the same request answers https://.../web/index.html, so the
+	# scheme survives and no header rewriting is needed.
+	#
+	# The certificate Plex presents is issued for *.plex.direct and cannot
+	# match an IP address, so this hop cannot be verified. It stays inside the
+	# lab between two hosts it owns; the browser's hop keeps its real
+	# Let's Encrypt certificate.
+	reverse_proxy https://192.168.10.10:32400 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
 }
 
 # --- Infrastructure ---------------------------------------------------------
