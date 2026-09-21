@@ -35,9 +35,16 @@ packages:
   - rsync
 
 users:
+  # sudo only. NOT "sudo, docker", which is the obvious thing to write and
+  # silently breaks login entirely: cloud-init creates users in the init
+  # stage, packages install in the config stage, so the docker group does not
+  # exist yet and `useradd --groups sudo,docker` fails. cloud-init logs it and
+  # moves on, so every later step still runs as root and the host looks
+  # healthy -- while having no login user at all and no SSH access.
+  # Membership is granted in runcmd instead, after Docker is installed.
   - name: ${admin_username}
     gecos: "PFE Admin"
-    groups: sudo, docker
+    groups: sudo
     shell: /bin/bash
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     ssh_authorized_keys:
@@ -58,6 +65,11 @@ write_files:
 runcmd:
   - systemctl enable --now qemu-guest-agent
   - systemctl enable --now docker
+
+  # Now that docker-ce has created the group, the admin can join it. Doing
+  # this here rather than in `users:` is what keeps the account from failing
+  # to be created at all -- see the note there.
+  - usermod -aG docker ${admin_username}
 
   # Shallow clone: this is a config cache, not a working copy, and nothing on
   # the host ever needs the history.
