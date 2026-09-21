@@ -41,12 +41,12 @@ variable "openclaw" {
     # autostart. Both default to true to match the module and the provider,
     # so the value that matters is the false set in env/lab/terraform.tfvars.
     #
-    # Until the module ref in main.tf reaches v0.3.0 these are declared and
-    # unused, and the lab plan keeps reporting
+    # These are live as of module v0.3.0. Before that the lab plan reported
     #   started = false -> true
     #   on_boot = false -> true
-    # on openclaw, because with the attributes unwritten the provider assumes
-    # a VM is meant to be running. The next successful apply boots it.
+    # on openclaw every run, because with the attributes unwritten the
+    # provider assumes a VM is meant to be running -- and the first apply
+    # after the Cloudflare outage cleared duly started it.
     started = optional(bool, true)
     on_boot = optional(bool, true)
   })
