@@ -31,6 +31,33 @@ module "openclaw" {
   vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.openclaw_cloudinit.id
   vm_network_bridge              = var.openclaw.network_bridge
   vm_vlan_id                     = var.openclaw.vlan_id
+
+  # --- Power state: INERT UNTIL THE REF ABOVE IS v0.3.0 ----------------------
+  # openclaw is powered off on purpose and is not meant to autostart. It
+  # cannot say so today: v0.2.0 of the module does not declare vm_started or
+  # vm_on_boot, and Terraform rejects an argument the pinned version does not
+  # declare regardless of its value, so these stay commented rather than being
+  # passed as true.
+  #
+  # Until they are uncommented the lab plan keeps showing, on openclaw:
+  #   ~ on_boot = false -> true
+  #   ~ started = false -> true
+  # That is not drift to be ignored. With the attributes unwritten the
+  # provider assumes the guest is meant to be running, so the next successful
+  # apply starts openclaw and enables autostart -- an apply that was almost
+  # certainly about something else.
+  #
+  # To turn on: merge this PR, tag v0.3.0 on main, bump the ref above, then
+  # uncomment the two lines below and the two values in
+  # env/lab/terraform.tfvars.
+  #
+  # ORDER MATTERS. Do that before the Cloudflare token is rotated, not after.
+  # The lab plan currently fails on three Cloudflare 401s, which means lab CD
+  # cannot apply anything at all -- so nothing boots openclaw while these
+  # lines are still commented. Restoring the token re-arms the apply.
+  #
+  # vm_started = var.openclaw.started
+  # vm_on_boot = var.openclaw.on_boot
 }
 
 # -----------------------------------------------------------------------------
@@ -89,6 +116,40 @@ module "openclaw_2" {
   vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.openclaw_2_cloudinit.id
   vm_network_bridge              = var.openclaw_2.network_bridge
   vm_vlan_id                     = var.openclaw_2.vlan_id
+
+  # --- Static addressing: COMMENTED UNTIL THE MODULE REF IS BUMPED -----------
+  # These five inputs do not exist in pm-cloudinit-vm at ?ref=v0.2.0, which is
+  # what the source line above pins. Terraform rejects an argument a module
+  # does not declare REGARDLESS OF ITS VALUE -- passing vm_ipv4_address = null
+  # against v0.2.0 fails `terraform validate` with "An argument named
+  # vm_ipv4_address is not expected here", which turns lab CI red on every
+  # subsequent PR, not just this one. So they cannot be live in the same commit
+  # that adds them to the module.
+  #
+  # The chicken-and-egg, stated plainly: the module lives in this repo but is
+  # consumed from it by git ref, so v0.3.0 cannot be tagged until the module
+  # change is on main, and this call cannot reference v0.3.0 until it is
+  # tagged. That is two merges, not one:
+  #
+  #   1. Merge the module change (modules/compute/pm-cloudinit-vm + this
+  #      variables.tf + tfvars comment). Lab CI stays green because this call
+  #      still pins v0.2.0 and passes nothing new.
+  #   2. Tag v0.3.0 on main, at or after that merge commit.
+  #   3. Second PR: bump all three `?ref=v0.2.0` occurrences in this file to
+  #      v0.3.0 and uncomment the five lines below. THIS is the PR whose plan
+  #      must be read carefully -- see the warning under the tfvars note.
+  #
+  # Bumping the ref without filling in the tfvars values is safe and produces
+  # no diff: unset, every one of these renders exactly what v0.2.0 rendered
+  # (address = "dhcp", no gateway, no dns block, no mac_address). That is true
+  # for openclaw and pwnbox on this page too, which is why step 3 can bump all
+  # three refs at once.
+  #
+  # vm_ipv4_address = var.openclaw_2.ipv4_address
+  # vm_ipv4_gateway = var.openclaw_2.ipv4_gateway
+  # vm_dns_servers  = var.openclaw_2.dns_servers
+  # vm_dns_domain   = var.openclaw_2.dns_domain
+  # vm_mac_address  = var.openclaw_2.mac_address
 }
 
 resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
@@ -362,11 +423,17 @@ moved {
 # restic job on each VM, the credentials, and the restore runbook. See
 # HomeLab#58.
 #
-# No API tokens here. The Terraform Cloudflare token is scoped to tunnel and
-# DNS only (see cloudflare_api_token's description) and cannot mint tokens
-# even if it were granted R2 permission. The owner creates one bucket-scoped
-# R2 API token per environment by hand in the dashboard, after apply, and
-# hands them to cmd_and_ctrl#1031.
+# No R2 *data* API tokens minted here. The Terraform Cloudflare token does
+# hold Workers R2 Storage: Edit -- it has to, it created these buckets -- but
+# bucket-scoped tokens for reading and writing objects are a separate thing it
+# cannot mint. The owner creates one of those per environment by hand in the
+# dashboard, after apply, and hands them to cmd_and_ctrl#1031.
+#
+# This comment used to say the token was "scoped to tunnel and DNS only and
+# cannot mint tokens even if it were granted R2 permission", matching an
+# equally wrong claim in cloudflare_api_token's description. Both understated
+# the token, and the correction matters: reissuing it from the old text
+# produces a token that cannot manage these buckets.
 resource "cloudflare_r2_bucket" "cmd_and_ctrl_backup" {
   for_each = local.cmd_and_ctrl_environments
 
