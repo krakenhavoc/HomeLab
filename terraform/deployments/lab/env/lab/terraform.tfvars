@@ -20,21 +20,65 @@ openclaw = {
   admin_username = "krkn"
 }
 # Second OpenClaw host: upstream installer (npm) instead of the fork source
-# build, Codex instead of Azure Foundry. Sized off upstream's guidance rather
-# than the original box -- nothing is compiled on this VM, so the 16 GB the
-# fork build needs buys nothing here. See variables.tf for the reasoning.
+# build, Codex instead of Azure Foundry. Nothing is compiled on this VM, so it
+# was first sized at 4 GB on upstream's guidance rather than copying the fork
+# box's 16 GB. See variables.tf for that reasoning.
+#
+# It now runs two Gateway instances -- the default profile and a `work`
+# profile on port 19789 -- and the installer caps each one's V8 old space at
+# 2048 MiB before their Codex and Claude Code child processes are counted.
+# 4 GB was oversubscribed. The host was raised to 16 GB out-of-band; this
+# value follows that change so a later apply does not revert it.
 openclaw_2 = {
   name_prefix    = "openclaw-2"
   description    = "OpenClaw (upstream install, Codex) - Managed by Terraform"
   tags           = ["openclaw"]
   bios           = "ovmf"
   cpu_cores      = 2
-  memory_mb      = 4096
+  memory_mb      = 16384
   os_disk_size   = 40
   disk_interface = "virtio0"
   network_bridge = "vmbr0"
   vlan_id        = 200
   admin_username = "krkn"
+
+  # --- Static addressing: DELIBERATELY COMMENTED OUT ------------------------
+  # Left inert because nobody has supplied the four facts these lines need,
+  # and every one of them is a fact about the VLAN 200 network that cannot be
+  # guessed from inside this repo. A wrong guess here is not a failed plan; it
+  # is an IP conflict on a live segment, which presents as intermittent packet
+  # loss on openclaw-2 AND on whatever else holds the address -- neither of
+  # which points at this file.
+  #
+  # To turn it on, the operator supplies, and verifies against the router:
+  #
+  #   1. ipv4_address — a free VLAN 200 address OUTSIDE the DHCP pool, in CIDR
+  #      form with the VLAN's real prefix length. Outside the pool is the part
+  #      that matters: an address inside the pool is not reserved by being
+  #      written here, and the DHCP server will hand it to the next machine
+  #      that asks. Check the pool's range on the router; do not infer it from
+  #      the addresses lab VMs happen to have been given.
+  #   2. ipv4_gateway — the VLAN 200 gateway. Bare address, no prefix.
+  #   3. dns_servers  — both Pi-hole addresses. Both, not one: a static host
+  #      has no DHCP lease to fall back on, so a single Pi-hole means every
+  #      name lookup on this box stops while that Pi-hole reboots.
+  #   4. dns_domain   — optional. Drop the line if short names are not used.
+  #
+  # Filling these in REPLACES THE VM. openclaw-2 is on DHCP today, so applying
+  # a static address rewrites the cloud-init drive, and cloud-init network
+  # config is first-boot-only -- the provider rebuilds the guest to make it
+  # take. That also discards the Codex OAuth login, which is a manual
+  # device-code step (see the module call's comment in main.tf). Expect it,
+  # confirm it in the plan, and have the device-code step ready.
+  #
+  # Nothing happens until the module ref in main.tf is bumped to v0.3.0 and
+  # the matching pass-through lines there are uncommented; the fields below
+  # are declared in variables.tf but reach no module until then.
+  #
+  # ipv4_address = "192.168.200.XX/YY" # outside the DHCP pool
+  # ipv4_gateway = "192.168.200.X"     # VLAN 200 gateway
+  # dns_servers  = ["192.168.X.X", "192.168.X.X"] # both Pi-holes
+  # dns_domain   = "labxp.io"
 }
 pwnbox = {
   name_prefix    = "pwnbox"
