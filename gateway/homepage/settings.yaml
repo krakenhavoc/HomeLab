@@ -1,0 +1,33 @@
+---
+# Homepage portal — look and layout. See https://gethomepage.dev/configs/settings/
+title: LabXP
+description: Home lab services
+
+startUrl: https://labxp.io
+
+# Dark by default, and the theme switcher stays available in the header.
+theme: dark
+color: slate
+headerStyle: boxed
+
+# Groups render in this order regardless of the order in services.yaml, so
+# the things worth reaching first sit at the top.
+layout:
+  Infrastructure:
+    style: row
+    columns: 3
+  Applications:
+    style: row
+    columns: 3
+  Lab:
+    style: row
+    columns: 3
+
+# Status dots come from siteMonitor entries in services.yaml.
+statusStyle: dot
+
+# Nothing here is secret, but the portal is the front door to the lab and
+# there is no reason for it to appear in a search index if it is ever
+# reachable from somewhere unexpected.
+disableCollapse: false
+hideVersion: true

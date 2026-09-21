@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# Reconcile the running gateway with gateway/ in the HomeLab repository.
+#
+# This exists so gateway config is not delivered by cloud-init. Editing a
+# cloud-init template replaces the VM -- pm-cloudinit-vm has no
+# ignore_changes on `initialization`, which is what destroyed the
+# cmd_and_ctrl VM on 2026-09-10 -- and a reverse proxy's config changes far
+# too often to pay a rebuild each time. Worse, a rebuild discards Caddy's
+# certificate store, and Let's Encrypt allows only 5 duplicate certificates
+# per week, so a few afternoons of iteration would end with no working TLS.
+#
+# Pull rather than push: the repository is public, so the host needs no
+# credentials and CI needs no SSH access into the network. Nothing inbound.
+#
+# Run by gateway-sync.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+REPO_DIR=/opt/gateway/repo
+LIVE_DIR=/opt/gateway/live
+SRC_DIR="${REPO_DIR}/gateway"
+
+log() { echo "[gateway-sync] $*"; }
+
+# --- Fetch -------------------------------------------------------------------
+# reset --hard, not pull: the checkout is a cache of origin/main, never a
+# place anyone edits. A merge conflict here would wedge the timer silently.
+git -C "${REPO_DIR}" fetch --quiet --depth 1 origin main
+git -C "${REPO_DIR}" reset --quiet --hard FETCH_HEAD
+
+if [[ ! -d "${SRC_DIR}" ]]; then
+  log "ERROR: ${SRC_DIR} missing from the checkout; refusing to sync"
+  exit 1
+fi
+
+# --- Validate BEFORE anything becomes live -----------------------------------
+# An invalid Caddyfile does not degrade the gateway, it stops it: Caddy
+# refuses to start and every internal name goes dark at once. Checking the
+# incoming file with the Caddy that is already running costs a second and
+# turns that into a no-op plus a log line.
+#
+# Skipped when no Caddy is running yet (first boot), because there is nothing
+# to validate with and nothing to break.
+if docker ps --format '{{.Names}}' | grep -qx caddy; then
+  if ! docker exec -i caddy caddy validate --adapter caddyfile --config - \
+      < "${SRC_DIR}/Caddyfile" >/dev/null 2>&1; then
+    log "ERROR: incoming Caddyfile is invalid; keeping the current config"
+    docker exec -i caddy caddy validate --adapter caddyfile --config - \
+      < "${SRC_DIR}/Caddyfile" || true
+    exit 1
+  fi
+fi
+
+# --- Publish -----------------------------------------------------------------
+# Copy out of the checkout rather than running compose inside it. Homepage
+# creates any config file it does not find, and those writes would otherwise
+# land in a git working tree and make the next `reset --hard` destructive.
+mkdir -p "${LIVE_DIR}"
+rsync -a --delete \
+  --exclude 'bootstrap/' \
+  --exclude 'README.md' \
+  "${SRC_DIR}/" "${LIVE_DIR}/"
+
+cd "${LIVE_DIR}"
+
+# --remove-orphans so a service deleted from the compose file actually stops,
+# rather than lingering and still holding its port.
+docker compose pull --quiet
+docker compose up -d --remove-orphans
+
+log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD)"

@@ -1,0 +1,19 @@
+[Unit]
+Description=Reconcile the lab gateway with gateway/ in the HomeLab repo
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/docs/gateway.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/gateway-sync
+
+# A failed sync must not take the gateway down. The script validates the
+# incoming Caddyfile before publishing it and exits non-zero without touching
+# the live config, so the previous good state keeps serving and the failure
+# shows up in `systemctl status gateway-sync` and the journal.
+SuccessExitStatus=0
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,113 @@
+---
+# The lab gateway: Caddy terminating TLS in front of a Homepage portal and
+# the private frontends. Runs on pfe (192.168.201.14). See docs/gateway.md.
+#
+# This file is the source of truth and is delivered to the host by
+# gateway-sync (see bootstrap/gateway-sync), NOT by cloud-init. Editing a
+# cloud-init template replaces the VM -- pm-cloudinit-vm has no
+# ignore_changes on `initialization` -- so config that changes weekly cannot
+# live there. Cloud-init seeds secrets and clones this repo once; everything
+# below is a `git push` away from the host thereafter.
+
+services:
+  # The only container that binds host ports. Everything else is reachable
+  # solely on the internal `gateway` network, by container name.
+  caddy:
+    image: ghcr.io/krakenhavoc/homelab/caddy-cloudflare:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    # Holds CF_DNS_API_TOKEN. Written by cloud-init from a Terraform variable
+    # and deliberately absent from this repo, which is public.
+    env_file:
+      - /etc/gateway/caddy.env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificate store. Losing this volume means re-issuing every
+      # certificate, and Let's Encrypt allows 5 duplicates per week, so a
+      # careless `down -v` can leave the gateway with nothing valid to serve.
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - gateway
+    security_opt:
+      - no-new-privileges:true
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v2.4.0
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      # MANDATORY since Homepage v1.0, and the single most likely reason a
+      # first deploy shows a blank page or "Host validation failed". It must
+      # list the BROWSER-facing hostname -- not the container name, not the
+      # proxy's IP. Never set it to "*".
+      HOMEPAGE_ALLOWED_HOSTS: labxp.io
+    volumes:
+      # Read-write on purpose: Homepage creates any config file it does not
+      # find. gateway-sync copies this directory out of the git checkout
+      # first, so those writes never dirty the repo.
+      - ./homepage:/app/config
+    networks:
+      - gateway
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - dockerproxy
+
+  # Homepage's Docker widgets need the Docker API. This exposes a read-only
+  # slice of it instead of bind-mounting /var/run/docker.sock straight into
+  # the container -- a direct mount would let a web UI start a privileged
+  # container, which is root on pfe by another name.
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:0.3.0
+    container_name: dockerproxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gateway
+    security_opt:
+      - no-new-privileges:true
+
+  redlib:
+    image: quay.io/redlib/redlib:latest
+    container_name: redlib
+    restart: unless-stopped
+    # No `ports:` any more. It used to publish 8080 on the host; now Caddy
+    # reaches it at redlib:8080 on the internal network and it is not
+    # directly addressable from the VLAN at all.
+    user: nobody
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    env_file:
+      - ./redlib.env
+    networks:
+      - gateway
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "--tries=1",
+          "http://localhost:8080/settings",
+        ]
+      interval: 5m
+      timeout: 3s
+
+networks:
+  gateway:
+
+volumes:
+  caddy_data:
+  caddy_config:
