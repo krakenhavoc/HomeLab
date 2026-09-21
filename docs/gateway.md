@@ -257,9 +257,17 @@ The records needed, all pointing at `192.168.201.14`, on **both** Pi-holes:
 | `labxp.io` | the portal |
 | `redlib.labxp.io` | RedLib |
 | `plex.labxp.io` | Plex (192.168.10.10:32400) |
-| `proxmox.labxp.io` | Proxmox web UI |
+| `proxmox.labxp.io` | Proxmox web UI (192.168.1.5:8006) |
 | `dns01.labxp.io` | Pi-hole 192.168.10.11 |
 | `dns02.labxp.io` | Pi-hole 192.168.10.12 |
+| `hom01.labxp.io` | Home Assistant (192.168.1.15:8123) |
+| `orca.labxp.io` | OpenClaw, default profile (192.168.200.37:18789) |
+| `workai.labxp.io` | OpenClaw, work profile (192.168.200.37:19789) |
+
+`home.labxp.io` is deliberately absent. It is the WAN VPN endpoint, and
+answering it internally would black-hole the VPN for anyone inside the lab —
+the one name you would want working while diagnosing why you cannot get in.
+Home Assistant is `hom01` for that reason.
 
 `dns01` and `dns02` pointing at the gateway rather than at the Pi-holes
 themselves looks circular and is not: DNS queries reach a resolver by address,
@@ -271,26 +279,71 @@ and reviewable, rather than existing only as clicks in two Pi-hole UIs.
 
 ## Firewall
 
-Two directions, both manual in OPNsense, and the second deserves thought.
+Concrete rules, with the addresses this gateway actually uses. `pfe` is
+`192.168.201.14` on VLAN 201.
 
-- **Inbound:** client VLAN(s) → `pfe:443` (and `:80`, which Caddy uses only to
-  redirect to HTTPS).
-- **Outbound:** `pfe` → every upstream it proxies — Proxmox `:8006`,
-  Plex `:32400` on VLAN 10, the lab VMs on VLAN 200, and `:443` outbound to
-  the internet for ACME and the Cloudflare API.
-- **Outbound DNS:** `pfe` → `192.168.10.11` and `192.168.10.12` on `:53`,
-  UDP **and** TCP. Easy to overlook because the Pi-holes are not proxied
-  upstreams, they are the gateway's own resolvers — and `pfe` (VLAN 201)
-  reaching them (VLAN 10) is an inter-VLAN flow like any other. Without it
-  the host boots with resolvers it cannot reach, which looks like a hung
-  first boot rather than a firewall problem.
+### Inbound
 
-That outbound set is the real cost of this design. The documented posture is
-default-deny between VLANs; this deliberately drills a hole from the apps VLAN
-into the management, server and lab VLANs, which makes `pfe` the most
-valuable host on the network to compromise. It is the unavoidable price of a
-central reverse proxy, but it should be **per-destination-and-port rules, never
-"VLAN 201 → any"**, and `pfe` should be treated as a tier-0 host from here on.
+| Source | Destination | Port | Why |
+|--------|-------------|------|-----|
+| client VLAN(s) | 192.168.201.14 | tcp/443 | reaching any gateway name |
+| client VLAN(s) | 192.168.201.14 | tcp/80 | optional — only so a typed `http://` redirects instead of hanging |
+
+### Outbound from pfe
+
+| Destination | Port | Serves |
+|-------------|------|--------|
+| 192.168.10.11, 192.168.10.12 | **udp+tcp/53** | **the gateway's own resolvers — see below** |
+| 192.168.10.11, 192.168.10.12 | tcp/443 | `dns01` / `dns02.labxp.io` (Pi-hole admin, HTTPS) |
+| 192.168.10.10 | tcp/32400 | `plex.labxp.io` |
+| 192.168.1.5 | tcp/8006 | `proxmox.labxp.io` |
+| 192.168.1.15 | tcp/8123 | `hom01.labxp.io` (Home Assistant) |
+| 192.168.200.37 | tcp/18789, tcp/19789 | `orca` / `workai.labxp.io` (OpenClaw) |
+| internet | tcp/80, tcp/443 | apt, git clone, GHCR pulls, ACME, Cloudflare API |
+
+Pi-hole is **tcp/443, not tcp/80**. It serves TLS itself and answers :80 with
+a 308 to the HTTPS URL, which Caddy dutifully hands back to the browser — a
+redirect loop that looks like a misconfigured proxy rather than a wrong port.
+
+`192.168.200.37` is a **DHCP lease**, not a reservation. openclaw-2's static
+addressing is staged in `terraform/deployments/lab` and still commented out
+pending four VLAN 200 facts. A rebuild once moved that host from .36 to .37;
+two Caddyfile blocks, two firewall rules and two portal links now name .37,
+so the next rebuild breaks six things at once and none of them will say why.
+
+**The `:53` rule is the one that blocks a rebuild.** It is not one of the
+proxied services and so is easy to leave off the list, but it is load-bearing
+in a way the others are not: a statically addressed host has no DHCP lease and
+therefore no resolvers except these two, and this host's first boot clones a
+repository and pulls four container images. With no route to `:53`, cloud-init
+does not fail fast — it hangs, leaving the Proxmox console as the only way in.
+Add it before the first apply.
+
+TCP as well as UDP. DNS falls back to TCP for responses that do not fit in a
+UDP datagram, and a UDP-only rule produces intermittent failures on exactly
+the large answers that matter, which is far harder to diagnose than no DNS at
+all.
+
+The outbound `tcp/80,443` rule almost certainly exists already — `pfe` pulls
+container images today — but it is listed because a static address changes
+nothing about it and it is easy to assume it was part of the DHCP setup.
+
+### The cost of this design
+
+That outbound set is what a central reverse proxy actually costs. The
+documented posture is default-deny between VLANs, and these rules deliberately
+drill from the apps VLAN into the server VLAN (10) and the management VLAN
+(1 — Proxmox). `pfe` becomes the most valuable host on the network to
+compromise, because it is the one box with a route to all of them.
+
+Keep every rule per-destination-and-port, never `VLAN 201 → any`, and treat
+`pfe` as a tier-0 host from here on.
+
+If the `:53` rule is unwelcome, the alternative is pointing `dns_servers` at
+the VLAN 201 gateway (192.168.201.1) and letting the router forward. That
+keeps the gateway out of VLAN 10 for DNS, at the cost of the lab's own
+filtering and split-horizon answers — which is most of the reason the Pi-holes
+exist.
 
 ## Secrets
 
