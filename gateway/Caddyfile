@@ -25,6 +25,27 @@
 	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
 }
 
+# OpenClaw refuses a proxied request unless it can attribute the client:
+#   "Proxy client attribution is required. Configure gateway.trustedProxies
+#    narrowly and make the proxy overwrite or safely rebuild forwarded client
+#    headers."
+#
+# Caddy APPENDS to X-Forwarded-For by default, preserving whatever the client
+# sent. That is the right default on the open internet, where an upstream
+# proxy's entry matters -- and exactly what OpenClaw rejects, because an
+# attacker-supplied X-Forwarded-For would survive into the header the gateway
+# reads. Overwriting it with the peer address Caddy actually accepted the
+# connection from is the "overwrite or safely rebuild" the error asks for.
+#
+# This is only half the fix. OpenClaw must also list this gateway in
+# gateway.trustedProxies (192.168.201.14) or it has no reason to believe the
+# header either.
+(openclaw_upstream) {
+	reverse_proxy 192.168.200.37:{args[0]} {
+		header_up X-Forwarded-For {http.request.remote.host}
+	}
+}
+
 # Shared TLS configuration. Every site below imports it.
 (tls_cloudflare) {
 	tls {
@@ -147,10 +168,10 @@ hom01.labxp.io {
 # of them will say why. Pin the address when those facts are available.
 orca.labxp.io {
 	import tls_cloudflare
-	reverse_proxy 192.168.200.37:18789
+	import openclaw_upstream 18789
 }
 
 workai.labxp.io {
 	import tls_cloudflare
-	reverse_proxy 192.168.200.37:19789
+	import openclaw_upstream 19789
 }
