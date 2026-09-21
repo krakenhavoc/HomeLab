@@ -19,18 +19,17 @@ openclaw = {
   vlan_id        = 200
   admin_username = "krkn"
 
-  # --- Powered off on purpose: COMMENTED UNTIL MODULE v0.3.0 ----------------
+  # --- Powered off on purpose -----------------------------------------------
   # openclaw is shut down deliberately and is not meant to come back on its
-  # own. Both values are decided; they stay commented only because the module
-  # ref in main.tf is still v0.2.0, which does not declare vm_started or
-  # vm_on_boot. See the block at the openclaw module call.
+  # own. Applying this STOPS the running guest: openclaw was started by the
+  # apply that followed the Cloudflare fix, which is the behaviour these two
+  # lines exist to prevent.
   #
   # on_boot is set alongside started, not instead of it. started=false with
   # on_boot left true means the host is off now and returns by itself after
   # the next node reboot, which is not "powered off" in any useful sense.
-  #
-  # started = false
-  # on_boot = false
+  started = false
+  on_boot = false
 }
 # Second OpenClaw host: upstream installer (npm) instead of the fork source
 # build, Codex instead of Azure Foundry. Nothing is compiled on this VM, so it
@@ -90,9 +89,9 @@ openclaw_2 = {
   # device-code step (see the module call's comment in main.tf). Expect it,
   # confirm it in the plan, and have the device-code step ready.
   #
-  # Nothing happens until the module ref in main.tf is bumped to v0.3.0 and
-  # the matching pass-through lines there are uncommented; the fields below
-  # are declared in variables.tf but reach no module until then.
+  # The module ref is now v0.3.0 and the inputs exist, so the only thing
+  # still missing is the four facts above. Fill them in here and uncomment
+  # the matching pass-through lines in main.tf.
   #
   # ipv4_address = "192.168.200.XX/YY" # outside the DHCP pool
   # ipv4_gateway = "192.168.200.X"     # VLAN 200 gateway

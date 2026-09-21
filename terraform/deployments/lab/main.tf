@@ -14,7 +14,7 @@ resource "proxmox_virtual_environment_file" "openclaw_cloudinit" {
 }
 
 module "openclaw" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.3.0"
 
   vm_name                        = var.openclaw.name_prefix
   vm_node_name                   = var.pve.host
@@ -32,32 +32,19 @@ module "openclaw" {
   vm_network_bridge              = var.openclaw.network_bridge
   vm_vlan_id                     = var.openclaw.vlan_id
 
-  # --- Power state: INERT UNTIL THE REF ABOVE IS v0.3.0 ----------------------
-  # openclaw is powered off on purpose and is not meant to autostart. It
-  # cannot say so today: v0.2.0 of the module does not declare vm_started or
-  # vm_on_boot, and Terraform rejects an argument the pinned version does not
-  # declare regardless of its value, so these stay commented rather than being
-  # passed as true.
+  # --- Power state ----------------------------------------------------------
+  # openclaw is powered off on purpose and is not meant to autostart. Both
+  # values live in env/lab/terraform.tfvars; unset they would default to true,
+  # which is what the provider assumes for any VM that does not say otherwise.
   #
-  # Until they are uncommented the lab plan keeps showing, on openclaw:
+  # That default is exactly what went wrong before these lines existed. With
+  # the attributes unwritten every lab plan carried
   #   ~ on_boot = false -> true
   #   ~ started = false -> true
-  # That is not drift to be ignored. With the attributes unwritten the
-  # provider assumes the guest is meant to be running, so the next successful
-  # apply starts openclaw and enables autostart -- an apply that was almost
-  # certainly about something else.
-  #
-  # To turn on: merge this PR, tag v0.3.0 on main, bump the ref above, then
-  # uncomment the two lines below and the two values in
-  # env/lab/terraform.tfvars.
-  #
-  # ORDER MATTERS. Do that before the Cloudflare token is rotated, not after.
-  # The lab plan currently fails on three Cloudflare 401s, which means lab CD
-  # cannot apply anything at all -- so nothing boots openclaw while these
-  # lines are still commented. Restoring the token re-arms the apply.
-  #
-  # vm_started = var.openclaw.started
-  # vm_on_boot = var.openclaw.on_boot
+  # on openclaw, and the first apply after the Cloudflare outage was fixed
+  # did start it. This is the change that stops that recurring.
+  vm_started = var.openclaw.started
+  vm_on_boot = var.openclaw.on_boot
 }
 
 # -----------------------------------------------------------------------------
@@ -99,7 +86,7 @@ resource "proxmox_virtual_environment_file" "openclaw_2_cloudinit" {
 }
 
 module "openclaw_2" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.3.0"
 
   vm_name                        = var.openclaw_2.name_prefix
   vm_node_name                   = var.pve.host
@@ -117,33 +104,25 @@ module "openclaw_2" {
   vm_network_bridge              = var.openclaw_2.network_bridge
   vm_vlan_id                     = var.openclaw_2.vlan_id
 
-  # --- Static addressing: COMMENTED UNTIL THE MODULE REF IS BUMPED -----------
-  # These five inputs do not exist in pm-cloudinit-vm at ?ref=v0.2.0, which is
-  # what the source line above pins. Terraform rejects an argument a module
-  # does not declare REGARDLESS OF ITS VALUE -- passing vm_ipv4_address = null
-  # against v0.2.0 fails `terraform validate` with "An argument named
-  # vm_ipv4_address is not expected here", which turns lab CI red on every
-  # subsequent PR, not just this one. So they cannot be live in the same commit
-  # that adds them to the module.
+  # --- Static addressing: NOW BLOCKED ONLY ON NETWORK FACTS -----------------
+  # The module ref above is v0.3.0, so these five inputs EXIST and could be
+  # uncommented today. They are not, because nobody has supplied the VLAN 200
+  # facts they need, and those are facts about the physical network that
+  # cannot be derived from inside this repo (see the checklist in
+  # env/lab/terraform.tfvars).
   #
-  # The chicken-and-egg, stated plainly: the module lives in this repo but is
-  # consumed from it by git ref, so v0.3.0 cannot be tagged until the module
-  # change is on main, and this call cannot reference v0.3.0 until it is
-  # tagged. That is two merges, not one:
+  # The old blocker is gone: v0.3.0 is tagged and pinned, so this is no longer
+  # waiting on a release. Only on an address.
   #
-  #   1. Merge the module change (modules/compute/pm-cloudinit-vm + this
-  #      variables.tf + tfvars comment). Lab CI stays green because this call
-  #      still pins v0.2.0 and passes nothing new.
-  #   2. Tag v0.3.0 on main, at or after that merge commit.
-  #   3. Second PR: bump all three `?ref=v0.2.0` occurrences in this file to
-  #      v0.3.0 and uncomment the five lines below. THIS is the PR whose plan
-  #      must be read carefully -- see the warning under the tfvars note.
+  # Leaving them commented rather than passing them as null is still the right
+  # call for a different reason -- it keeps the "what is missing" checklist
+  # attached to the lines it blocks. Passing null would validate fine against
+  # v0.3.0 and render DHCP exactly as today, but it would read as a decision
+  # rather than an omission.
   #
-  # Bumping the ref without filling in the tfvars values is safe and produces
-  # no diff: unset, every one of these renders exactly what v0.2.0 rendered
-  # (address = "dhcp", no gateway, no dns block, no mac_address). That is true
-  # for openclaw and pwnbox on this page too, which is why step 3 can bump all
-  # three refs at once.
+  # A wrong guess here is not a failed plan; it is an IP conflict on a live
+  # segment, which presents as intermittent packet loss on openclaw-2 AND on
+  # whatever else holds the address, and neither symptom points at this file.
   #
   # vm_ipv4_address = var.openclaw_2.ipv4_address
   # vm_ipv4_gateway = var.openclaw_2.ipv4_gateway
@@ -168,7 +147,7 @@ resource "proxmox_virtual_environment_file" "pwnbox_cloudinit" {
 }
 
 module "pwnbox" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.3.0"
 
   vm_name                        = var.pwnbox.name_prefix
   vm_node_name                   = var.pve.host
