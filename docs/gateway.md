@@ -257,9 +257,17 @@ The records needed, all pointing at `192.168.201.14`, on **both** Pi-holes:
 | `labxp.io` | the portal |
 | `redlib.labxp.io` | RedLib |
 | `plex.labxp.io` | Plex (192.168.10.10:32400) |
-| `proxmox.labxp.io` | Proxmox web UI |
+| `proxmox.labxp.io` | Proxmox web UI (192.168.1.5:8006) |
 | `dns01.labxp.io` | Pi-hole 192.168.10.11 |
 | `dns02.labxp.io` | Pi-hole 192.168.10.12 |
+| `hom01.labxp.io` | Home Assistant (192.168.1.15:8123) |
+| `orca.labxp.io` | OpenClaw, default profile (192.168.200.37:18789) |
+| `workai.labxp.io` | OpenClaw, work profile (192.168.200.37:19789) |
+
+`home.labxp.io` is deliberately absent. It is the WAN VPN endpoint, and
+answering it internally would black-hole the VPN for anyone inside the lab —
+the one name you would want working while diagnosing why you cannot get in.
+Home Assistant is `hom01` for that reason.
 
 `dns01` and `dns02` pointing at the gateway rather than at the Pi-holes
 themselves looks circular and is not: DNS queries reach a resolver by address,
@@ -286,10 +294,22 @@ Concrete rules, with the addresses this gateway actually uses. `pfe` is
 | Destination | Port | Serves |
 |-------------|------|--------|
 | 192.168.10.11, 192.168.10.12 | **udp+tcp/53** | **the gateway's own resolvers — see below** |
-| 192.168.10.11, 192.168.10.12 | tcp/80 | `dns01` / `dns02.labxp.io` (Pi-hole admin) |
+| 192.168.10.11, 192.168.10.12 | tcp/443 | `dns01` / `dns02.labxp.io` (Pi-hole admin, HTTPS) |
 | 192.168.10.10 | tcp/32400 | `plex.labxp.io` |
 | 192.168.1.5 | tcp/8006 | `proxmox.labxp.io` |
+| 192.168.1.15 | tcp/8123 | `hom01.labxp.io` (Home Assistant) |
+| 192.168.200.37 | tcp/18789, tcp/19789 | `orca` / `workai.labxp.io` (OpenClaw) |
 | internet | tcp/80, tcp/443 | apt, git clone, GHCR pulls, ACME, Cloudflare API |
+
+Pi-hole is **tcp/443, not tcp/80**. It serves TLS itself and answers :80 with
+a 308 to the HTTPS URL, which Caddy dutifully hands back to the browser — a
+redirect loop that looks like a misconfigured proxy rather than a wrong port.
+
+`192.168.200.37` is a **DHCP lease**, not a reservation. openclaw-2's static
+addressing is staged in `terraform/deployments/lab` and still commented out
+pending four VLAN 200 facts. A rebuild once moved that host from .36 to .37;
+two Caddyfile blocks, two firewall rules and two portal links now name .37,
+so the next rebuild breaks six things at once and none of them will say why.
 
 **The `:53` rule is the one that blocks a rebuild.** It is not one of the
 proxied services and so is easy to leave off the list, but it is load-bearing
