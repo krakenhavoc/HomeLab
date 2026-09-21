@@ -24,7 +24,15 @@ services:
     env_file:
       - /etc/gateway/caddy.env
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # A DIRECTORY, not ./Caddyfile:/etc/caddy/Caddyfile. Docker binds a
+      # single-file mount to the file's INODE, not its path, so anything that
+      # replaces the file rather than writing through it -- rsync, an editor
+      # saving atomically, a git checkout -- leaves the container reading the
+      # old inode forever. The file on the host looks correct, the sync logs
+      # success, `caddy reload` succeeds against the stale copy, and nothing
+      # anywhere reports a problem. Binding the directory resolves the path on
+      # every open, so replacements are picked up.
+      - ./caddy:/etc/caddy:ro
       # The certificate store. Losing this volume means re-issuing every
       # certificate, and Let's Encrypt allows 5 duplicates per week, so a
       # careless `down -v` can leave the gateway with nothing valid to serve.

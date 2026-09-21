@@ -77,10 +77,10 @@ fi
 # to validate with and nothing to break.
 if docker ps --format '{{.Names}}' | grep -qx caddy; then
   if ! docker exec -i caddy caddy validate --adapter caddyfile --config - \
-      < "${SRC_DIR}/Caddyfile" >/dev/null 2>&1; then
+      < "${SRC_DIR}/caddy/Caddyfile" >/dev/null 2>&1; then
     log "ERROR: incoming Caddyfile is invalid; keeping the current config"
     docker exec -i caddy caddy validate --adapter caddyfile --config - \
-      < "${SRC_DIR}/Caddyfile" || true
+      < "${SRC_DIR}/caddy/Caddyfile" || true
     exit 1
   fi
 fi
