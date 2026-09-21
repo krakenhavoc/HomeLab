@@ -1,9 +1,8 @@
 # Gateway: Portal and Internal Reverse Proxy
 
-Status: **partially built, nothing applied.** Phase 1 (the custom Caddy image)
-is implemented and its build is verified. Phase 0 (pinning `pfe`'s address) is
-wired but deliberately inert — it needs a module tag and one remaining network
-fact. Nothing in this document has touched live infrastructure.
+Status: **in progress.** The custom Caddy image (Phase 1) is built and
+verified. `v0.3.0` of `pm-cloudinit-vm` is tagged, which unblocks pinning
+`pfe`'s address. The stack itself is not yet deployed.
 
 A single entry point to the lab: an attractive splash page listing every
 internal service, and a reverse proxy in front of it so everything is reached
@@ -298,47 +297,30 @@ do today.
 
 Each phase is independently reviewable and leaves the lab working.
 
-**Phase 0 — Pin `pfe`'s address.** *Wired, inert, blocked.* Every DNS record
-points here, so the address cannot be a DHCP lease. The variables, validations
-and pass-through are written; `192.168.201.14/24` and gateway `192.168.201.1`
-are recorded in `env/frontends-dev/terraform.tfvars`.
+**Phase 0 — Pin `pfe`'s address.** *Unblocked; lands with Phase 3.*
+Every DNS name resolves here, so the address cannot be a DHCP lease.
+`192.168.201.14/24`, gateway `192.168.201.1`, resolvers `192.168.10.11` and
+`192.168.10.12`.
 
-One thing still gates it: **the module tag, which cannot be cut yet.**
+The release blocker is gone: PR #65 merged and `v0.3.0` is tagged on `main`,
+so `pm-cloudinit-vm` declares `vm_ipv4_address` and the `frontends` ref can
+be bumped.
 
-Static addressing is *not* on `main`. It lives on
-`feat/pm-cloudinit-static-addressing` as **PR #65**, which is open and
-mergeable. `main` is at `629a999` and its copy of `pm-cloudinit-vm` has no
-`vm_ipv4_address` at all. So the order is:
+It is deliberately **not** a standalone change any more. Applying a static
+address rewrites the cloud-init drive, and cloud-init is first-boot-only, so
+the provider replaces the guest. Installing the gateway stack rewrites the
+same drive and forces the same replacement. Doing them separately rebuilds
+`pfe` twice for one outcome, so Phase 0 and Phase 3 ship in one PR.
 
-1. Merge PR #65.
-2. Tag `v0.3.0` on `main`.
-3. Bump the ref in `frontends/main.tf` from `v0.2.0` to `v0.3.0` and
-   uncomment the four pass-through lines.
-4. Uncomment the four values in `env/frontends-dev/terraform.tfvars`.
-
-Tagging `v0.3.0` at the feature branch tip instead would technically work —
-tags do not require a merge — but it would leave `main` not containing its own
-released module, and a squash-merge of #65 would orphan the tagged commit
-entirely. Not worth the shortcut.
-
-`dns_servers` is resolved: `192.168.10.11` and `192.168.10.12`, already
-recorded in the tfvars block.
-
-The pass-through lines in `main.tf` are commented rather than set to `null`
-on purpose: Terraform rejects an argument the pinned module version does not
-declare *regardless of its value*, so `vm_ipv4_address = null` against
-`v0.2.0` still turns CI red.
-
-Do this **first**, before any certificates or config exist on the box.
-Applying a static address rewrites the cloud-init drive and the provider
-restarts — potentially rebuilds — the guest. Today `pfe` runs only stateless
-RedLib, so that costs nothing. After Phase 3 it holds the certificate store,
-and the same change starts costing Let's Encrypt rate limit budget.
+Do it before Caddy holds any certificates. Today `pfe` runs only stateless
+RedLib and a rebuild costs nothing; once the certificate store is on the box,
+the same change spends Let's Encrypt rate-limit budget (5 duplicate certs per
+week) and can leave the gateway with nothing valid to serve.
 
 The alternative — a DHCP reservation on OPNsense keyed to `pfe`'s current MAC
-— avoids the reboot and works fine, but does not survive a VM rebuild, which
-draws a new MAC. Given the box is disposable *right now*, doing it properly is
-cheaper now than it will ever be again.
+— avoids a rebuild but does not survive one, because a rebuild draws a new
+MAC. Given the box is disposable right now, declaring it is cheaper now than
+it will ever be again.
 
 **Phase 1 — Custom Caddy image. ✅ Done.**
 `docker/caddy-cloudflare/Dockerfile` plus `.github/workflows/docker-caddy-cloudflare.yaml`,
