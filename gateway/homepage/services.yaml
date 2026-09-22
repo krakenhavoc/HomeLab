@@ -112,13 +112,61 @@
 
     - OpenClaw:
         href: https://orca.labxp.io
-        siteMonitor: https://orca.labxp.io
+        # /health, not /. The root serves the Control UI shell, which renders a
+        # 200 whether or not the gateway behind it is healthy -- including
+        # while it is still loading plugins and refusing connections, which is
+        # exactly the window you want a status dot to notice. /health is the
+        # process answering for itself.
+        siteMonitor: https://orca.labxp.io/health
+        widget:
+          # customapi because there is no OpenClaw widget, and /health is the
+          # only JSON this gateway serves over HTTP. Everything the Control UI
+          # displays -- models, sessions, agent identity -- arrives over a
+          # websocket, which Homepage cannot consume. One honest field beats an
+          # empty card, and it distinguishes "Caddy answered" from "the gateway
+          # is live".
+          type: customapi
+          url: https://orca.labxp.io/health
+          refreshInterval: 30000
+          mappings:
+            - field: status
+              label: Gateway
+              format: text
+              remap:
+                - value: live
+                  to: Live
+                - any: true
+                  to: Degraded
         description: Agent gateway — default profile
         icon: mdi-robot-outline
 
     - OpenClaw (work):
         href: https://workai.labxp.io
-        siteMonitor: https://workai.labxp.io
+        # /health, not /. The root serves the Control UI shell, which renders a
+        # 200 whether or not the gateway behind it is healthy -- including
+        # while it is still loading plugins and refusing connections, which is
+        # exactly the window you want a status dot to notice. /health is the
+        # process answering for itself.
+        siteMonitor: https://workai.labxp.io/health
+        widget:
+          # customapi because there is no OpenClaw widget, and /health is the
+          # only JSON this gateway serves over HTTP. Everything the Control UI
+          # displays -- models, sessions, agent identity -- arrives over a
+          # websocket, which Homepage cannot consume. One honest field beats an
+          # empty card, and it distinguishes "Caddy answered" from "the gateway
+          # is live".
+          type: customapi
+          url: https://workai.labxp.io/health
+          refreshInterval: 30000
+          mappings:
+            - field: status
+              label: Gateway
+              format: text
+              remap:
+                - value: live
+                  to: Live
+                - any: true
+                  to: Degraded
         # A different glyph from the default profile on purpose. Two identical
         # robot icons side by side made the only difference between them the
         # word in brackets.
