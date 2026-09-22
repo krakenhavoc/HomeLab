@@ -134,37 +134,3 @@ variable "cloudflare_api_token" {
     error_message = "cloudflare_api_token is empty — frontends-deploy.yaml must pass secrets.CLOUDFLARE_API_TOKEN through to terraform-ci/terraform-cd. An empty token is written to the host verbatim and only shows up later as ACME failures."
   }
 }
-
-variable "homepage_widget_env" {
-  description = <<-EOT
-    HOMEPAGE_VAR_* lines for the portal's service widgets, written verbatim to
-    /etc/gateway/homepage.env. Empty (the default) is valid: the widgets show
-    an API error and every other part of the portal keeps working.
-
-    One variable holding the whole file rather than one per token. There are
-    six, none is referenced anywhere else in this deployment, and they only
-    ever travel together -- six variables plus six GitHub secrets plus six
-    workflow lines is a lot of plumbing for that.
-
-    Expected content, one per line:
-
-      HOMEPAGE_VAR_PROXMOX_TOKEN_ID=api@pam!homepage
-      HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET=...
-      HOMEPAGE_VAR_PIHOLE1_KEY=...
-      HOMEPAGE_VAR_PIHOLE2_KEY=...
-      HOMEPAGE_VAR_PLEX_TOKEN=...
-      HOMEPAGE_VAR_HASS_TOKEN=...
-
-    These are read credentials for a dashboard, not administrative ones. Scope
-    each down where the service allows it; Proxmox in particular only needs
-    PVEAuditor.
-
-    Changing this rewrites the cloud-init drive and REPLACES THE VM, because
-    cloud-init is first-boot-only. To rotate a token without a rebuild, edit
-    /etc/gateway/homepage.env on the host and restart the homepage container,
-    then set this so a future rebuild comes back with the same values.
-  EOT
-  type        = string
-  sensitive   = true
-  default     = ""
-}

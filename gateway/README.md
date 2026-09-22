@@ -105,17 +105,28 @@ Where each comes from:
 Until the file has values those cards show an API error. The link, icon and
 status dot still work, so a missing token costs statistics and nothing else.
 
-### Surviving a rebuild
+### Why this file is not managed by Terraform
 
-A file written by hand is lost when the VM is replaced. `homepage_widget_env`
-in the `frontends` deployment writes the same file from Terraform, so set it
-there as well once the values are settled.
+A file written by hand is lost when the VM is replaced, so the obvious move is
+to have cloud-init write it. Do not: cloud-init is first-boot-only, so editing
+the template replaces the snippet resource, which makes `user_data_file_id`
+unknown at plan time, which REPLACES THE VM. A tweak to a dashboard token
+would cost a rebuild and the certificate store with it.
 
-It is not wired to a GitHub secret yet, deliberately: `terraform-ci` is pinned
-by tag and does not declare that secret, and passing a reusable workflow a
-secret it does not declare is a startup failure rather than an error -- the
-job never runs and the PR shows no plan at all. Wiring it needs a
-`terraform-ci` change and a new tag.
+That was tried and reverted in the same pull request that added these widgets.
+The plan read:
+
+    proxmox_virtual_environment_file.pfe_host_cloudinit must be replaced
+    module.pfe_host.proxmox_virtual_environment_vm.this must be replaced
+
+for a change whose entire effect was writing an empty file, because the
+variable defaulted to empty. The whole reason `gateway/` exists is that
+config does not belong in cloud-init, and dashboard credentials are config.
+
+So the file is host state. If the VM is rebuilt, put it back -- it is six
+lines and the widgets are the only thing that depends on it. Should that
+become tiresome, the right fix is a secret store the host reads at runtime,
+not cloud-init.
 
 ## Background
 

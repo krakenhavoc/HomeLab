@@ -62,19 +62,6 @@ write_files:
     content: |
       CF_DNS_API_TOKEN=${cloudflare_api_token}
 
-  # Homepage widget credentials, as HOMEPAGE_VAR_* lines. One variable holding
-  # the whole file rather than one Terraform variable per token: there are six
-  # of them, none is referenced anywhere else, and six secrets plus six
-  # variables plus six workflow lines is a lot of plumbing for values that
-  # only ever travel together.
-  #
-  # Written even when empty so the file always exists.
-  - path: /etc/gateway/homepage.env
-    owner: root:root
-    permissions: '0600'
-    content: |
-      ${indent(6, homepage_widget_env)}
-
 runcmd:
   - systemctl enable --now qemu-guest-agent
   - systemctl enable --now docker
