@@ -17,13 +17,8 @@ lastdash_host = {
   # inter-VLAN firewall rule.
   vlan_id = 201
 
-  # TODO(before merge): a free address OUTSIDE the VLAN 201 DHCP pool.
-  # Taken today: .1 (gateway), .9 (nfs), .14 (pfe). Must match the upstream
-  # in gateway/caddy/Caddyfile.
-  ipv4_address = "192.168.201.REPLACE_ME/24"
-  ipv4_gateway = "192.168.201.1"
-
-  # Both Pi-holes (VLAN 10): needs the same :53 UDP/TCP rule pfe has.
-  dns_servers = ["192.168.10.11", "192.168.10.12"]
-  dns_domain  = "labxp.io"
+  # DHCP with a static lease on the firewall keyed on this MAC (Proxmox OUI;
+  # BC:24:11:00:02:40 is openclaw-2's). The leased address must match the
+  # upstream in gateway/caddy/Caddyfile.
+  mac_address = "BC:24:11:00:02:50"
 }

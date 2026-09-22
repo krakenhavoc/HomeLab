@@ -259,6 +259,9 @@ idrac.labxp.io {
 #   everything   -> web
 # The API must never register routes under /api/auth/*.
 #
+# The upstream address is the firewall's static DHCP lease for the VM's
+# pinned MAC (BC:24:11:00:02:50); change both together.
+#
 # LAN/VPN only on purpose: LastDash has no real login yet (one dev user, and
 # the API trusts an X-User-Id header). Do not publish this name.
 lastdash.labxp.io {

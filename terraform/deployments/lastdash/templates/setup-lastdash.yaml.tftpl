@@ -74,6 +74,6 @@ runcmd:
   - systemctl start lastdash-sync.service
 
 final_message: |
-  ${hostname} is up at ${ipv4_address}.
+  ${hostname} is up (address from the firewall's static DHCP lease).
   LastDash is delivered by lastdash-sync from the HomeLab repo.
   App: https://lastdash.labxp.io (via the gateway on pfe)

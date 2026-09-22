@@ -8,7 +8,6 @@ resource "proxmox_virtual_environment_file" "lastdash_host_cloudinit" {
     data = templatefile("${path.module}/templates/setup-lastdash.yaml.tftpl", {
       hostname       = "${var.lastdash_host.name_prefix}-${var.lastdash_host.env}",
       admin_username = "lastdash"
-      ipv4_address   = var.lastdash_host.ipv4_address
 
       token_encryption_secret = var.lastdash_token_encryption_secret
       nextauth_secret         = var.lastdash_nextauth_secret
@@ -66,22 +65,20 @@ resource "proxmox_virtual_environment_vm" "lastdash" {
 
   initialization {
     datastore_id = var.vm_cloudinit_datastore_id
+    # DHCP: the address (and resolvers) come from the firewall's static
+    # lease for mac_address below.
     ip_config {
       ipv4 {
-        address = var.lastdash_host.ipv4_address
-        gateway = var.lastdash_host.ipv4_gateway
+        address = "dhcp"
       }
-    }
-    dns {
-      servers = var.lastdash_host.dns_servers
-      domain  = var.lastdash_host.dns_domain
     }
     user_data_file_id = proxmox_virtual_environment_file.lastdash_host_cloudinit.id
   }
 
   network_device {
-    bridge  = var.lastdash_host.network_bridge
-    vlan_id = var.lastdash_host.vlan_id
+    bridge      = var.lastdash_host.network_bridge
+    vlan_id     = var.lastdash_host.vlan_id
+    mac_address = var.lastdash_host.mac_address
   }
 
   serial_device {}

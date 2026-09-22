@@ -35,29 +35,19 @@ variable "lastdash_host" {
     network_bridge = optional(string, "vmbr0")
     vlan_id        = optional(number, 201)
 
-    # Static, outside the VLAN 201 DHCP pool: the gateway's Caddyfile pins
-    # this address, so a rebuild that drew a different lease would leave
-    # lastdash.labxp.io pointing at nothing.
-    ipv4_address = optional(string, null)
-    ipv4_gateway = optional(string, null)
-    dns_servers  = optional(list(string), [])
-    dns_domain   = optional(string, null)
+    # Addressing is DHCP with a static lease on the firewall, keyed on this
+    # pinned MAC -- the firewall is the single source of truth for addresses.
+    # Pinned because a rebuild would otherwise draw a new MAC, lose the lease,
+    # and leave the gateway's Caddyfile upstream pointing at nothing. Do not
+    # also set a static address in cloud-init (see pm-cloudinit-vm's
+    # vm_mac_address notes: two sources of truth for one fact).
+    mac_address = optional(string, null)
   })
   default = {}
 
   validation {
-    condition     = var.lastdash_host.ipv4_address != null && can(cidrnetmask(var.lastdash_host.ipv4_address))
-    error_message = "lastdash_host.ipv4_address is required and must carry a prefix length, e.g. \"192.168.201.20/24\" — the gateway's Caddyfile proxies to this address, so it cannot be a DHCP lease."
-  }
-
-  validation {
-    condition     = var.lastdash_host.ipv4_gateway != null && can(cidrnetmask("${var.lastdash_host.ipv4_gateway}/32"))
-    error_message = "lastdash_host.ipv4_gateway is required and must be a bare IPv4 address with no prefix, e.g. \"192.168.201.1\"."
-  }
-
-  validation {
-    condition     = length(var.lastdash_host.dns_servers) > 0
-    error_message = "lastdash_host.dns_servers is required with a static address — first boot pulls container images, and an empty resolv.conf hangs rather than failing."
+    condition     = var.lastdash_host.mac_address != null && can(regex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", var.lastdash_host.mac_address))
+    error_message = "lastdash_host.mac_address is required, as six colon-separated hex octets under Proxmox's OUI, e.g. \"BC:24:11:00:02:50\" — the firewall's static DHCP lease is keyed on it, and a generated MAC would change on rebuild."
   }
 }
 

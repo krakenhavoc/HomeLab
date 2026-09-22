@@ -36,10 +36,12 @@ Same shape as the gateway: **push, and the host follows.**
    `LASTDASH_GHCR_TOKEN` (classic PAT, `read:packages` only).
 2. Terraform Cloud workspace **`lastdash-prod`** in `LabXPIO`, tagged `apps`,
    **execution mode: Local** (the runner reaches Proxmox over SSH).
-3. A static address for the VM outside the VLAN 201 DHCP pool, in
-   `env/lastdash-prod/terraform.tfvars` **and** the Caddyfile block.
-4. Firewall: `lastdash-prod` → both Pi-holes on :53 UDP/TCP (same rule as
-   pfe). pfe → the VM is same-VLAN, no rule needed.
+3. Firewall: a **static DHCP lease** on VLAN 201 for MAC
+   `BC:24:11:00:02:50` (pinned in `env/lastdash-prod/terraform.tfvars`), and
+   that address as the upstream in the Caddyfile block. pfe → the VM is
+   same-VLAN, no rule needed.
+4. The VM gets its resolvers from the lease; make sure VLAN 201 DHCP clients
+   can reach them (as they already do for other DHCP hosts there).
 5. Pi-hole: host record `lastdash.labxp.io` → `192.168.201.14` on **both**
    Pi-holes.
 6. Merge. Terraform creates the VM; cloud-init installs Docker, logs in to
