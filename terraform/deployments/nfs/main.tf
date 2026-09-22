@@ -33,6 +33,16 @@ resource "proxmox_virtual_environment_container" "nfs" {
     mount   = ["nfs"]
   }
 
+  # Declared to match the live containers, which have always run with the
+  # provider defaults (1 core, 1024 units) because this block was missing and
+  # var.nfs_server.cpu_cores went unused. Newer provider versions report the
+  # block, so leaving it out showed up as drift in every plan.
+  cpu {
+    architecture = "amd64"
+    cores        = var.nfs_server.cpu_cores
+    units        = 1024
+  }
+
   disk {
     datastore_id = var.nfs_server.datastore_id
     size         = var.nfs_server.disk_size
