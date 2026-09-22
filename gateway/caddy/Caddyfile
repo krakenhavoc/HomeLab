@@ -268,12 +268,12 @@ lastdash.labxp.io {
 	import tls_cloudflare
 
 	handle /api/auth/* {
-		reverse_proxy 192.168.201.REPLACE_ME:3000
+		reverse_proxy 192.168.201.19:3000
 	}
 	handle /api/* {
-		reverse_proxy 192.168.201.REPLACE_ME:3001
+		reverse_proxy 192.168.201.19:3001
 	}
 	handle {
-		reverse_proxy 192.168.201.REPLACE_ME:3000
+		reverse_proxy 192.168.201.19:3000
 	}
 }
