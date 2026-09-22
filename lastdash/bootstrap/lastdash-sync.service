@@ -1,0 +1,18 @@
+[Unit]
+Description=Reconcile the LastDash stack with lastdash/ in the HomeLab repo
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/lastdash/README.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/lastdash-sync
+
+# A failed sync must not take LastDash down: the script validates the
+# incoming compose file first and exits non-zero without touching the running
+# stack. Failures show up in `systemctl status lastdash-sync`.
+SuccessExitStatus=0
+
+[Install]
+WantedBy=multi-user.target

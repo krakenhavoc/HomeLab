@@ -250,3 +250,27 @@ idrac.labxp.io {
 		}
 	}
 }
+
+# LastDash -- unified inbox for Slack, Teams, GitHub and more. Runs on its own
+# VM (terraform/deployments/lastdash, runtime in lastdash/) on VLAN 201, so no
+# inter-VLAN rule is needed from pfe. One host, split by path:
+#   /api/auth/*  -> web (NextAuth lives in the Next.js app)
+#   /api/*       -> api (Fastify, including the /api/ws websocket)
+#   everything   -> web
+# The API must never register routes under /api/auth/*.
+#
+# LAN/VPN only on purpose: LastDash has no real login yet (one dev user, and
+# the API trusts an X-User-Id header). Do not publish this name.
+lastdash.labxp.io {
+	import tls_cloudflare
+
+	handle /api/auth/* {
+		reverse_proxy 192.168.201.REPLACE_ME:3000
+	}
+	handle /api/* {
+		reverse_proxy 192.168.201.REPLACE_ME:3001
+	}
+	handle {
+		reverse_proxy 192.168.201.REPLACE_ME:3000
+	}
+}

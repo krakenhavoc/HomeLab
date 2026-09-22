@@ -70,6 +70,18 @@ on:
       cloudflare_zone_id:
         description: "Cloudflare zone ID for labxp.io"
         required: false
+      lastdash_token_encryption_secret:
+        description: "LastDash TOKEN_ENCRYPTION_SECRET. Must match the database's stored tokens."
+        required: false
+      lastdash_nextauth_secret:
+        description: "LastDash NEXTAUTH_SECRET (session signing)"
+        required: false
+      lastdash_postgres_password:
+        description: "Password for the LastDash stack's internal Postgres"
+        required: false
+      lastdash_ghcr_token:
+        description: "GitHub classic PAT with read:packages, for pulling ghcr.io/krakenhavoc/lastdash-*"
+        required: false
     outputs:
       plan_artifact_name:
         description: "Name of the uploaded plan artifact"
@@ -97,6 +109,10 @@ jobs:
       TF_VAR_cloudflare_api_token: ${{ secrets.cloudflare_api_token }}
       TF_VAR_cloudflare_account_id: ${{ secrets.cloudflare_account_id }}
       TF_VAR_cloudflare_zone_id: ${{ secrets.cloudflare_zone_id }}
+      TF_VAR_lastdash_token_encryption_secret: ${{ secrets.lastdash_token_encryption_secret }}
+      TF_VAR_lastdash_nextauth_secret: ${{ secrets.lastdash_nextauth_secret }}
+      TF_VAR_lastdash_postgres_password: ${{ secrets.lastdash_postgres_password }}
+      TF_VAR_lastdash_ghcr_token: ${{ secrets.lastdash_ghcr_token }}
       # Redundant fallback. providers.tf configures the Cloudflare provider from
       # var.cloudflare_api_token, which the TF_VAR above already supplies, and
       # the apply job reads the value recorded in the saved plan file. Set here

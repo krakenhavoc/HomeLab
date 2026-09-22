@@ -1,0 +1,79 @@
+#cloud-config
+# First-boot bootstrap for the LastDash app host. See lastdash/README.md.
+#
+# Like pfe's setup, this file holds no app config: it installs Docker, writes
+# the secrets, logs in to GHCR, clones the repo and hands over to
+# lastdash-sync. The compose file lives in lastdash/ in the repository.
+preserve_hostname: false
+hostname: ${hostname}
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+  - git
+  - rsync
+
+users:
+  # sudo only; docker membership is granted in runcmd once the group exists
+  # (see the note in frontends/templates/setup-pfe.yaml.tftpl).
+  - name: ${admin_username}
+    gecos: "LastDash Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+write_files:
+  # App config and secrets. Used as compose --env-file (for POSTGRES_PASSWORD
+  # substitution) and as each service's env_file. 0600 root:root.
+  - path: /etc/lastdash/env
+    owner: root:root
+    permissions: '0600'
+    content: |
+      LASTDASH_TAG=latest
+      POSTGRES_PASSWORD=${postgres_password}
+      CORS_ORIGIN=https://lastdash.labxp.io
+      API_BASE_URL=https://lastdash.labxp.io
+      NEXTAUTH_URL=https://lastdash.labxp.io
+      TOKEN_ENCRYPTION_SECRET=${token_encryption_secret}
+      NEXTAUTH_SECRET=${nextauth_secret}
+      ENABLE_BROWSER_SESSION_CONNECT=true
+
+  # Read-only GHCR credential; the images are private (the app repo is).
+  - path: /etc/lastdash/ghcr-token
+    owner: root:root
+    permissions: '0600'
+    content: |
+      ${ghcr_token}
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+  - systemctl enable --now docker
+  - usermod -aG docker ${admin_username}
+
+  # Docker stores the login in /root/.docker/config.json for the root-run sync.
+  - docker login ghcr.io -u krakenhavoc --password-stdin < /etc/lastdash/ghcr-token
+
+  - mkdir -p /opt/lastdash
+  - git clone --depth 1 --branch main https://github.com/krakenhavoc/HomeLab.git /opt/lastdash/repo
+  - install -m 0755 /opt/lastdash/repo/lastdash/bootstrap/lastdash-sync /usr/local/bin/lastdash-sync
+  - install -m 0644 /opt/lastdash/repo/lastdash/bootstrap/lastdash-sync.service /etc/systemd/system/lastdash-sync.service
+  - install -m 0644 /opt/lastdash/repo/lastdash/bootstrap/lastdash-sync.timer /etc/systemd/system/lastdash-sync.timer
+  - systemctl daemon-reload
+  - systemctl enable --now lastdash-sync.timer
+  - systemctl start lastdash-sync.service
+
+final_message: |
+  ${hostname} is up at ${ipv4_address}.
+  LastDash is delivered by lastdash-sync from the HomeLab repo.
+  App: https://lastdash.labxp.io (via the gateway on pfe)
