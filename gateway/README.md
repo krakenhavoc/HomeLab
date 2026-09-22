@@ -61,6 +61,98 @@ Do **not** add `pve.labxp.io`. That name is the Proxmox API endpoint the
 run in this repo through Caddy, turning a proxy hiccup into a CI outage across
 every deployment. Browser access uses `proxmox.labxp.io` instead.
 
+## Portal widgets
+
+The service cards can show live statistics -- Proxmox VM counts and CPU, Plex
+library sizes and active streams, Pi-hole query and block counts, Home
+Assistant entity states. That data is most of what makes a dashboard look like
+a dashboard rather than a list of links.
+
+Each one needs a read credential, so they come from the environment and never
+from this repository:
+
+```yaml
+key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+```
+
+`{{HOMEPAGE_VAR_x}}` is the syntax Homepage actually honours. Its docs also
+show `${x}`, which does not expand and renders as literal text on the card.
+
+### Turning them on
+
+Put the values in `/etc/gateway/homepage.env` on the host, one per line:
+
+```
+HOMEPAGE_VAR_PROXMOX_TOKEN_ID=api@pam!homepage
+HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET=...
+HOMEPAGE_VAR_PIHOLE1_KEY=...
+HOMEPAGE_VAR_PIHOLE2_KEY=...
+HOMEPAGE_VAR_PLEX_TOKEN=...
+HOMEPAGE_VAR_HASS_TOKEN=...
+```
+
+Then `cd /opt/gateway/live && docker compose up -d homepage`.
+
+Where each comes from:
+
+| Variable | Where |
+|----------|-------|
+| `PROXMOX_TOKEN_ID` / `_SECRET` | Datacenter → Permissions → API Tokens. `PVEAuditor` is enough. The ID is the whole `user@realm!name` string. |
+| `PIHOLE1_KEY` / `PIHOLE2_KEY` | Each Pi-hole: Settings → Web interface / API → app password. v6 replaced the old API token. |
+| `PLEX_TOKEN` | The `X-Plex-Token` on any request from a signed-in session. |
+| `HASS_TOKEN` | Profile → Security → long-lived access token. |
+
+Until the file has values those cards show an API error. The link, icon and
+status dot still work, so a missing token costs statistics and nothing else.
+
+### Why this file is not managed by Terraform
+
+A file written by hand is lost when the VM is replaced, so the obvious move is
+to have cloud-init write it. Do not: cloud-init is first-boot-only, so editing
+the template replaces the snippet resource, which makes `user_data_file_id`
+unknown at plan time, which REPLACES THE VM. A tweak to a dashboard token
+would cost a rebuild and the certificate store with it.
+
+That was tried and reverted in the same pull request that added these widgets.
+The plan read:
+
+    proxmox_virtual_environment_file.pfe_host_cloudinit must be replaced
+    module.pfe_host.proxmox_virtual_environment_vm.this must be replaced
+
+for a change whose entire effect was writing an empty file, because the
+variable defaulted to empty. The whole reason `gateway/` exists is that
+config does not belong in cloud-init, and dashboard credentials are config.
+
+So the file is host state. If the VM is rebuilt, put it back -- it is six
+lines and the widgets are the only thing that depends on it. Should that
+become tiresome, the right fix is a secret store the host reads at runtime,
+not cloud-init.
+
+## Background
+
+`settings.yaml` points at `/assets/backdrop.svg`, which is generated gradients
+rather than a photograph. To use your own wallpaper, drop it in
+`gateway/assets/` and change one line:
+
+```yaml
+background:
+  image: /assets/your-wallpaper.jpg
+```
+
+Keep it under 500 KB or the large file pre-commit hook rejects it. Homepage
+blurs and dims whatever it gets, so composition matters far more than
+resolution.
+
+Note that `/assets` is NOT the config directory. Homepage serves static files
+from `/app/public` inside the container; an image dropped in `config/images`
+and referenced as `/images/...` returns 404. `docker-compose.yaml` mounts
+`gateway/assets` to `/app/public/assets` for exactly this.
+
+`blur`, `brightness` and `opacity` under `background`, and `cardBlur`
+alongside it, are the dials. `cardBlur` is the one doing the most work: it is
+what makes the cards read as glass over depth rather than as opaque boxes on
+a picture.
+
 ## Secrets
 
 `/etc/gateway/caddy.env` holds `CF_DNS_API_TOKEN` and is written once by

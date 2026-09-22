@@ -25,13 +25,21 @@ headerStyle: clean
 # /images so the mount does not shadow the images Homepage ships itself.
 background:
   image: /assets/backdrop.svg
-  blur: sm
+  # Heavier blur than looks sensible written down. The backdrop is supposed to
+  # be unreadable -- blur is what turns an image into atmosphere, and what the
+  # dashboards this is modelled on are actually doing. md over sm because the
+  # default here is geometric; a photograph can usually take sm.
+  blur: md
   brightness: 75
-  opacity: 40
+  # 40 was too timid: dimmed and blurred that hard, the backdrop barely
+  # registered and the page read as flat dark grey. Turn this down if a busy
+  # wallpaper competes with the cards.
+  opacity: 65
 
-# Frosted cards. This is what makes the backdrop read as depth instead of as a
-# picture sitting behind unrelated boxes.
-cardBlur: sm
+# Frosted cards, and the setting that does the most work on this page. Without
+# it the cards are opaque rectangles sitting on top of a picture; with it they
+# read as glass over depth, which is the whole look.
+cardBlur: md
 
 # Four groups instead of three, and sized to their contents. The old layout
 # declared 3 columns for every group while holding 3, 2 and 4 services, so two
