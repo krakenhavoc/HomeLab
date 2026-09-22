@@ -34,7 +34,7 @@ Same shape as the gateway: **push, and the host follows.**
    `LASTDASH_TOKEN_ENCRYPTION_SECRET` (the dev value — see *Data*),
    `LASTDASH_NEXTAUTH_SECRET`, `LASTDASH_POSTGRES_PASSWORD`,
    `LASTDASH_GHCR_TOKEN` (classic PAT, `read:packages` only).
-2. Terraform Cloud workspace **`lastdash-prod`** in `LabXPIO`, tagged `apps`,
+2. Terraform Cloud workspace **`lastdash-prod`** in `LabXPIO` (pinned by name in `backend.tf`),
    **execution mode: Local** (the runner reaches Proxmox over SSH).
 3. Firewall: a **static DHCP lease** on VLAN 201 for MAC
    `BC:24:11:00:02:50` (pinned in `env/lastdash-prod/terraform.tfvars`), and
