@@ -19,7 +19,7 @@ variable "nfs_server" {
     name_prefix    = optional(string, "nfs")
     description    = optional(string, "NFS Server")
     tags           = optional(list(string), ["nfs"])
-    cpu_cores      = optional(number, 4)
+    cpu_cores      = optional(number, 1)
     memory_mb      = optional(number, 4096)
     disk_interface = optional(string, "virtio0")
     network_bridge = optional(string, "vmbr0")

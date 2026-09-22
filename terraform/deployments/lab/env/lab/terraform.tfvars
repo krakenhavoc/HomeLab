@@ -52,9 +52,13 @@ openclaw_2 = {
   # wanted `cores = 8 -> 2`, and applying that would have cut the box to a
   # quarter of its CPU while it runs two Gateway instances plus their Codex
   # and Claude Code child processes.
-  cpu_cores      = 8
-  memory_mb      = 16384
-  os_disk_size   = 40
+  cpu_cores = 8
+  memory_mb = 16384
+  # Matches the live disk, grown to 100 GB out-of-band. The config said 40, so
+  # the pending plan wanted `size = 100 -> 40` -- a shrink Proxmox cannot do,
+  # which would have failed the lab apply (or worse) on the next unrelated
+  # merge. Following the change, as with the cores and memory above.
+  os_disk_size   = 100
   disk_interface = "virtio0"
   network_bridge = "vmbr0"
   vlan_id        = 200
