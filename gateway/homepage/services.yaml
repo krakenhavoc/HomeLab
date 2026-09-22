@@ -198,6 +198,15 @@
         description: Agent gateway — work profile
         icon: mdi-robot-industrial
 
+- Apps:
+    - LastDash:
+        href: https://lastdash.labxp.io
+        # /api/healthz is the API's liveness route; the root would only prove
+        # the web app is up.
+        siteMonitor: https://lastdash.labxp.io/api/healthz
+        description: Unified inbox — Slack, Teams, GitHub and more
+        icon: mdi-inbox-multiple-outline
+
 - Games:
     - cmd_and_ctrl:
         href: https://cmd.labxp.io

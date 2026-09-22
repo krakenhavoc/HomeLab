@@ -1,0 +1,15 @@
+[Unit]
+Description=Poll the HomeLab repo and GHCR for LastDash updates
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/lastdash/README.md
+
+[Timer]
+# Every 5 minutes: a merge to LastDash main is live within ~5-10 minutes
+# (image build, then this). Slower than gateway-sync because each run also
+# asks GHCR for new images.
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

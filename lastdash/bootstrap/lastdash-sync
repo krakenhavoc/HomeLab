@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Reconcile the LastDash stack with lastdash/ in the HomeLab repository and
+# pull fresh images. Modelled on gateway/bootstrap/gateway-sync -- read that
+# for the reasoning behind fetch/reset, the self-update and copying out of the
+# checkout.
+#
+# Two things flow through here:
+#   - config changes to lastdash/ (compose file, this script, its units)
+#   - new app images: the LastDash repo's images.yml pushes :latest on every
+#     merge to main, and `compose pull` picks it up. Pin LASTDASH_TAG in
+#     /etc/lastdash/env to hold a version.
+#
+# Run by lastdash-sync.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+REPO_DIR=/opt/lastdash/repo
+LIVE_DIR=/opt/lastdash/live
+SRC_DIR="${REPO_DIR}/lastdash"
+ENV_FILE=/etc/lastdash/env
+
+log() { echo "[lastdash-sync] $*"; }
+
+git -C "${REPO_DIR}" fetch --quiet --depth 1 origin main
+git -C "${REPO_DIR}" reset --quiet --hard FETCH_HEAD
+
+if [[ ! -d "${SRC_DIR}" ]]; then
+  log "ERROR: ${SRC_DIR} missing from the checkout; refusing to sync"
+  exit 1
+fi
+if [[ ! -f "${ENV_FILE}" ]]; then
+  log "ERROR: ${ENV_FILE} missing (written by cloud-init); refusing to start"
+  exit 1
+fi
+
+# --- Self-update (takes effect next run; see gateway-sync) -------------------
+if ! cmp -s "${SRC_DIR}/bootstrap/lastdash-sync" /usr/local/bin/lastdash-sync; then
+  install -m 0755 "${SRC_DIR}/bootstrap/lastdash-sync" /usr/local/bin/.lastdash-sync.new
+  mv /usr/local/bin/.lastdash-sync.new /usr/local/bin/lastdash-sync
+  log "lastdash-sync updated; the next run will use it"
+fi
+
+units_changed=0
+for f in lastdash-sync.service lastdash-sync.timer; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
+    install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
+    units_changed=1
+    log "${f} updated"
+  fi
+done
+if [[ "${units_changed}" -eq 1 ]]; then
+  systemctl daemon-reload
+fi
+
+# --- Validate, then publish --------------------------------------------------
+if ! docker compose --env-file "${ENV_FILE}" -f "${SRC_DIR}/docker-compose.yaml" \
+    config --quiet; then
+  log "ERROR: incoming docker-compose.yaml is invalid; keeping the current stack"
+  exit 1
+fi
+
+mkdir -p "${LIVE_DIR}"
+rsync -a --delete \
+  --exclude 'bootstrap/' \
+  --exclude 'README.md' \
+  "${SRC_DIR}/" "${LIVE_DIR}/"
+
+cd "${LIVE_DIR}"
+docker compose --env-file "${ENV_FILE}" pull --quiet
+docker compose --env-file "${ENV_FILE}" up -d --remove-orphans
+
+# Old image layers pile up with every :latest; keep the disk from filling.
+docker image prune -f --filter "until=168h" >/dev/null
+
+log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD)"

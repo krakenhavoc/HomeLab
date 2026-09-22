@@ -1,0 +1,69 @@
+# LastDash on the lastdash VM. Reconciled by lastdash-sync from this
+# directory; started with `docker compose --env-file /etc/lastdash/env`.
+# /etc/lastdash/env is written once by cloud-init
+# (terraform/deployments/lastdash) and holds the secrets.
+#
+# The gateway (pfe, same VLAN) proxies lastdash.labxp.io to :3000/:3001.
+# Postgres and Redis are internal to this stack and never published.
+#
+# Source of the images and the app-side reference compose:
+# https://github.com/krakenhavoc/lastdash (deploy/, .github/workflows/images.yml)
+name: lastdash
+
+services:
+  api:
+    image: ghcr.io/krakenhavoc/lastdash-api:${LASTDASH_TAG:-latest}
+    restart: unless-stopped
+    env_file: /etc/lastdash/env
+    environment:
+      DATABASE_URL: postgres://lastdash:${POSTGRES_PASSWORD}@postgres:5432/lastdash
+      REDIS_URL: redis://redis:6379
+      PORT: "3001"
+      HOST: 0.0.0.0
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/krakenhavoc/lastdash-web:${LASTDASH_TAG:-latest}
+    restart: unless-stopped
+    env_file: /etc/lastdash/env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lastdash
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: lastdash
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lastdash -d lastdash"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:
