@@ -48,11 +48,11 @@ cardBlur: md
 layout:
   Infrastructure:
     style: row
-    columns: 3
+    columns: 4
     icon: mdi-server-network
   Media:
     style: row
-    columns: 2
+    columns: 3
     icon: mdi-play-circle-outline
   Automation:
     style: row

@@ -72,6 +72,15 @@
         description: DNS and ad filtering — failover
         icon: pi-hole.png
 
+    - iDRAC:
+        href: https://idrac.labxp.io
+        # /start.html, not /. The root is a 302 to it, and following a
+        # redirect chain is a slower check than asking for the page it lands
+        # on.
+        siteMonitor: https://idrac.labxp.io/start.html
+        description: Out-of-band management — Proxmox host
+        icon: mdi-server-network-outline
+
 - Media:
     - Plex:
         # /web is the UI; the bare root serves the API.
@@ -95,6 +104,22 @@
         siteMonitor: https://redlib.labxp.io/settings
         description: Private Reddit frontend
         icon: redlib.png
+
+    - qBittorrent:
+        href: https://torrent.labxp.io
+        siteMonitor: https://torrent.labxp.io
+        description: Torrent client — bound to the VPN tunnel
+        icon: qbittorrent.png
+        widget:
+          type: qbittorrent
+          # Direct rather than through the gateway. The widget polls every
+          # few seconds and this keeps it off the proxy path entirely, which
+          # also means the card still reports when Caddy is the thing that is
+          # unhappy.
+          url: http://192.168.1.201:8000
+          username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+          fields: ["leech", "download", "seed", "upload"]
 
 - Automation:
     - Home Assistant:

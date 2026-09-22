@@ -208,3 +208,45 @@ workai.labxp.io {
 	import tls_cloudflare
 	import openclaw_upstream 19789
 }
+
+# --- Downloads --------------------------------------------------------------
+# qBittorrent's WebUI. Verified it accepts a forwarded Host before wiring this
+# up -- its host header validation is on by default and rejects unknown names
+# in some versions, which would have looked like a proxy fault.
+#
+# The WebUI binds every interface, so it answers on :8000 whether or not the
+# VPN tunnel is up. That is deliberate on the host's part and worth keeping:
+# it is the one way in to see WHY torrents have stalled when the tunnel is
+# down. Reaching this page therefore says nothing about whether the VPN is
+# connected -- see the qBittorrent card on the portal for that.
+torrent.labxp.io {
+	import tls_cloudflare
+	reverse_proxy 192.168.1.201:8000
+}
+
+# --- Out of band ------------------------------------------------------------
+# The Proxmox host's iDRAC. Reachable whether or not the host itself is, which
+# is the entire point of it, so it is the one name here that stays useful when
+# everything else is down.
+#
+# header_up Host is required and is the OPPOSITE of what Plex needed. Naming
+# the upstream with a scheme makes Caddy rewrite Host to the dial address, and
+# iDRAC builds redirects from Host: proxied without this it answers / with
+#   302 -> https://192.168.200.22/start.html
+# an address with no matching certificate that is unreachable from the client
+# VLAN. With the browser's Host it answers https://idrac.labxp.io/start.html
+# and needs no Location rewriting at all. Verified both ways against the live
+# controller before wiring it.
+#
+# Dell ships a self-signed certificate (CN=idrac-DXCVF62), so this hop cannot
+# be verified -- the same trade already made for Proxmox, Pi-hole and Plex.
+idrac.labxp.io {
+	import tls_cloudflare
+	reverse_proxy https://192.168.200.22 {
+		header_up Host {host}
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
