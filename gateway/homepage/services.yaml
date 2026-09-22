@@ -96,6 +96,22 @@
         description: Private Reddit frontend
         icon: redlib.png
 
+    - qBittorrent:
+        href: https://torrent.labxp.io
+        siteMonitor: https://torrent.labxp.io
+        description: Torrent client — bound to the VPN tunnel
+        icon: qbittorrent.png
+        widget:
+          type: qbittorrent
+          # Direct rather than through the gateway. The widget polls every
+          # few seconds and this keeps it off the proxy path entirely, which
+          # also means the card still reports when Caddy is the thing that is
+          # unhappy.
+          url: http://192.168.1.201:8000
+          username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+          fields: ["leech", "download", "seed", "upload"]
+
 - Automation:
     - Home Assistant:
         href: https://hom01.labxp.io
