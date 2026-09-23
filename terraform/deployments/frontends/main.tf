@@ -20,6 +20,13 @@ resource "proxmox_virtual_environment_file" "pfe_host_cloudinit" {
     })
     file_name = "setup-pfe-${var.pfe_host.env}.yaml"
   }
+
+  # Frozen: a new snippet replaces the VM (the module can't ignore it).
+  # Token rotations go to /etc/gateway/caddy.env by hand; drop this at a
+  # planned rebuild.
+  lifecycle {
+    ignore_changes = [source_raw]
+  }
 }
 
 # pfe is the lab gateway: Caddy terminates TLS for every internal name and
