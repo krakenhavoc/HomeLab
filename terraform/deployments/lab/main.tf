@@ -60,7 +60,7 @@ module "openclaw" {
 # REPLACES THE VM. source_raw forces the file resource to be replaced, which
 # makes its id unknown at plan time, which propagates into
 # vm_cloudinit_user_data_file_id and rebuilds the guest -- the failure mode
-# documented on the cmd_and_ctrl resource below. That resource works around it
+# documented on the cmd_and_ctrl VM (deployments/cmd-and-ctrl). That resource works around it
 # with `lifecycle { ignore_changes = [initialization] }`; a module call cannot,
 # since lifecycle blocks are not inputs.
 #
@@ -166,293 +166,54 @@ module "pwnbox" {
   vm_vlan_id                     = var.pwnbox.vlan_id
 }
 
-# -----------------------------------------------------------------------------
-# cmd_and_ctrl game server — production and develop preview
-# -----------------------------------------------------------------------------
-# Two VMs from one definition, behind cmd.labxp.io and cmd-dev.labxp.io.
-#
-# Both hostnames are deliberately ONE label under the zone. Cloudflare
-# Universal SSL issues only labxp.io + *.labxp.io, and a wildcard matches a
-# single label, so a nested name like dev.cmd.labxp.io has no certificate and
-# fails the TLS handshake outright -- no HTTP, no useful error at the edge.
-# Covering a nested name needs Advanced Certificate Manager. Keep new
-# hostnames flat unless someone buys it.
-#
-# They differ only in hostname, fqdn, tokens and CMDCTRL_ENV. Paths, service
-# name, service user and listen port are identical, so the cmd_and_ctrl CD
-# pipeline deploys to both with the same recipe and only the target host
-# changes. A preview environment whose deploy is shaped differently from the
-# production deploy it rehearses is not rehearsing anything.
-#
-# Raw resource (not the pm-cloudinit-vm module) because each needs a second
-# data disk for CMDCTRL_DATA_DIR (Scryfall dump + image cache).
-
-locals {
-  cmd_and_ctrl_environments = {
-    prod = var.cmd_and_ctrl
-    dev  = var.cmd_and_ctrl_dev
-  }
-
-  # Production's tunnel was created by hand in the Zero Trust dashboard and its
-  # token arrives as a secret; importing a tunnel that is currently serving
-  # traffic is a risk with no payoff. The develop tunnel is created below, so
-  # its token comes from the provider and needs no secret at all.
-  cmd_and_ctrl_tunnel_tokens = {
-    prod = var.cmd_and_ctrl_tunnel_token
-    dev  = data.cloudflare_zero_trust_tunnel_cloudflared_token.cmd_and_ctrl_dev.token
-  }
-
-  # Separate tokens on purpose: the preview environment exposes card spawning
-  # and seat swapping to any admin session, so sharing production's token would
-  # make a leak from the low-trust box a compromise of the live table.
-  cmd_and_ctrl_admin_tokens = {
-    prod = var.cmd_and_ctrl_admin_token
-    dev  = var.cmd_and_ctrl_dev_admin_token
-  }
-
-  # Only production files bug reports. The preview environment is left empty,
-  # which makes the template omit the env line entirely -- a low-trust box with
-  # Issues:write on the production repo is not a trade worth making for a
-  # button nobody uses in a preview.
-  cmd_and_ctrl_github_tokens = {
-    prod = var.cmd_and_ctrl_github_token
-    dev  = ""
-  }
-}
-
-# --- Cloudflare: develop tunnel, ingress and DNS -----------------------------
-# config_src = "cloudflare" is load-bearing. Left at its default the connector
-# expects a local config file and the ingress rules below are never applied,
-# which presents as a tunnel that is healthy and returns 502.
-
-resource "cloudflare_zero_trust_tunnel_cloudflared" "cmd_and_ctrl_dev" {
-  account_id = var.cloudflare_account_id
-  name       = var.cmd_and_ctrl_dev.name_prefix
-  config_src = "cloudflare"
-}
-
-resource "cloudflare_zero_trust_tunnel_cloudflared_config" "cmd_and_ctrl_dev" {
-  account_id = var.cloudflare_account_id
-  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev.id
-
-  config = {
-    ingress = [
-      {
-        hostname = var.cmd_and_ctrl_dev.fqdn
-        # Caddy on the dev VM. It listens plain HTTP because Cloudflare
-        # terminates TLS at the edge.
-        service = "http://localhost:80"
-      },
-      # Cloudflare requires a catch-all rule with no hostname as the last entry.
-      {
-        service = "http_status:404"
-      },
-    ]
-  }
-}
-
-resource "cloudflare_dns_record" "cmd_and_ctrl_dev" {
-  zone_id = var.cloudflare_zone_id
-  name    = var.cmd_and_ctrl_dev.fqdn
-  type    = "CNAME"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev.id}.cfargotunnel.com"
-  proxied = true
-  # Proxied records must use TTL 1 ("automatic"); Cloudflare rejects anything else.
-  ttl = 1
-}
-
-# --- Proxmox VMs -------------------------------------------------------------
-
-resource "proxmox_virtual_environment_file" "cmd_and_ctrl_cloudinit" {
-  for_each = local.cmd_and_ctrl_environments
-
-  provider     = pve
-  content_type = "snippets"
-  datastore_id = "snippets"
-  node_name    = var.pve.host
-
-  source_raw {
-    data = templatefile("${path.module}/templates/setup-cmd_and_ctrl.yaml.tftpl", {
-      hostname       = each.value.name_prefix
-      admin_username = each.value.admin_username
-      fqdn           = each.value.fqdn
-      cmdctrl_env    = each.value.cmdctrl_env
-      admin_token    = local.cmd_and_ctrl_admin_tokens[each.key]
-      tunnel_token   = local.cmd_and_ctrl_tunnel_tokens[each.key]
-      github_token   = local.cmd_and_ctrl_github_tokens[each.key]
-    })
-    file_name = "setup-${each.value.name_prefix}.yaml"
-  }
-}
-
-resource "proxmox_virtual_environment_vm" "cmd_and_ctrl" {
-  for_each = local.cmd_and_ctrl_environments
-
-  provider = pve
-
-  name        = each.value.name_prefix
-  node_name   = var.pve.host
-  description = each.value.description
-  tags        = sort(concat(["terraform"], each.value.tags))
-  bios        = each.value.bios
-
-  clone {
-    vm_id = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
-    full  = true
-  }
-
-  agent {
-    enabled = true
-    trim    = true
-  }
-
-  cpu {
-    cores = each.value.cpu_cores
-    type  = "x86-64-v2-AES"
-  }
-
-  memory {
-    dedicated = each.value.memory_mb
-  }
-
-  # OS disk (cloned from template)
-  disk {
-    datastore_id = var.vm_disk_datastore_id
-    interface    = "virtio0"
-    iothread     = true
-    discard      = "on"
-    size         = each.value.os_disk_size
-  }
-
-  # Data disk for CMDCTRL_DATA_DIR — Scryfall dump + image cache.
-  # cloud-init formats/mounts at /var/lib/cmd_and_ctrl.
-  disk {
-    datastore_id = var.vm_disk_datastore_id
-    interface    = "virtio1"
-    iothread     = true
-    discard      = "on"
-    size         = each.value.data_disk_size
-    file_format  = "raw"
-  }
-
-  initialization {
-    datastore_id = var.vm_cloudinit_datastore_id
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-    user_data_file_id = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit[each.key].id
-  }
-
-  network_device {
-    bridge  = each.value.network_bridge
-    vlan_id = each.value.vlan_id
-  }
-
-  serial_device {}
-
-  vga {
-    type = "std"
-  }
-
-  operating_system {
-    type = "l26"
-  }
-
-  # Cloud-init is first-boot only, so a changed snippet is not a reason to
-  # rebuild a running VM -- and without this it is. Editing the template
-  # replaces proxmox_virtual_environment_file (source_raw forces replacement),
-  # which makes its id unknown at plan time even when the resulting id string
-  # is identical, which propagates into user_data_file_id here and forces the
-  # VM to be replaced. That destroyed the production VM and its data disk on
-  # 2026-09-10.
-  #
-  # The cost of ignoring it: a template edit no longer reaches an existing
-  # host. Changes to the env file or Caddyfile must be delivered by the
-  # cmd_and_ctrl CD pipeline, or the VM tainted deliberately to rebuild it.
-  lifecycle {
-    ignore_changes = [initialization]
-  }
-}
-
-# The single cmd_and_ctrl VM became a for_each over environments. These tell
-# Terraform the production VM and its cloud-init snippet moved address rather
-# than being destroyed and rebuilt.
-#
-# CHECK THE PLAN BEFORE APPLYING: it must report 0 to destroy. A plan that
-# wants to destroy proxmox_virtual_environment_vm.cmd_and_ctrl means a moved
-# block did not match, and applying it would take production down and lose the
-# data disk.
-moved {
-  from = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit
-  to   = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit["prod"]
-}
-
-moved {
+# cmd_and_ctrl moved to deployments/cmd-and-ctrl (imported there). Forget, don't destroy.
+removed {
   from = proxmox_virtual_environment_vm.cmd_and_ctrl
-  to   = proxmox_virtual_environment_vm.cmd_and_ctrl["prod"]
+  lifecycle {
+    destroy = false
+  }
 }
 
-# -----------------------------------------------------------------------------
-# cmd_and_ctrl off-node backups (Cloudflare R2)
-# -----------------------------------------------------------------------------
-# One bucket per environment. This repo only provisions the bucket.
-# krakenhavoc/cmd_and_ctrl#1031 owns everything that writes to it: the nightly
-# restic job on each VM, the credentials, and the restore runbook. See
-# HomeLab#58.
-#
-# No R2 *data* API tokens minted here. The Terraform Cloudflare token does
-# hold Workers R2 Storage: Edit -- it has to, it created these buckets -- but
-# bucket-scoped tokens for reading and writing objects are a separate thing it
-# cannot mint. The owner creates one of those per environment by hand in the
-# dashboard, after apply, and hands them to cmd_and_ctrl#1031.
-#
-# This comment used to say the token was "scoped to tunnel and DNS only and
-# cannot mint tokens even if it were granted R2 permission", matching an
-# equally wrong claim in cloudflare_api_token's description. Both understated
-# the token, and the correction matters: reissuing it from the old text
-# produces a token that cannot manage these buckets.
-resource "cloudflare_r2_bucket" "cmd_and_ctrl_backup" {
-  for_each = local.cmd_and_ctrl_environments
-
-  account_id = var.cloudflare_account_id
-  name       = "cmd-and-ctrl-backup-${each.key}"
-
-  # The free tier (10 GB-month, this backup is ~1-2 GB) only covers Standard.
-  storage_class = "Standard"
+removed {
+  from = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit
+  lifecycle {
+    destroy = false
+  }
 }
 
-# No object lifecycle EXPIRY rules on this bucket, deliberately. Retention is
-# restic's `forget --prune`, run by cmd_and_ctrl#1031 -- restic tracks which
-# pack files its snapshots still reference, and an R2 rule that expires
-# objects by age has no such knowledge. It would delete pack files a snapshot
-# still needs and corrupt the repository.
-#
-# The one rule below only cleans up abandoned multipart uploads (a failed or
-# interrupted upload that never completed); it never touches a completed
-# object, so it does not participate in retention at all.
-resource "cloudflare_r2_bucket_lifecycle" "cmd_and_ctrl_backup" {
-  for_each = local.cmd_and_ctrl_environments
+removed {
+  from = cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev
+  lifecycle {
+    destroy = false
+  }
+}
 
-  account_id  = var.cloudflare_account_id
-  bucket_name = cloudflare_r2_bucket.cmd_and_ctrl_backup[each.key].name
+removed {
+  from = cloudflare_zero_trust_tunnel_cloudflared_config.cmd_and_ctrl_dev
+  lifecycle {
+    destroy = false
+  }
+}
 
-  rules = [
-    {
-      id      = "abort-incomplete-multipart-uploads"
-      enabled = true
-      conditions = {
-        prefix = ""
-      }
-      abort_multipart_uploads_transition = {
-        condition = {
-          type    = "Age"
-          max_age = 7 * 24 * 60 * 60 # 7 days, in seconds
-        }
-      }
-    }
-  ]
+removed {
+  from = cloudflare_dns_record.cmd_and_ctrl_dev
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = cloudflare_r2_bucket.cmd_and_ctrl_backup
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = cloudflare_r2_bucket_lifecycle.cmd_and_ctrl_backup
+  lifecycle {
+    destroy = false
+  }
 }
 
 # -----------------------------------------------------------------------------
