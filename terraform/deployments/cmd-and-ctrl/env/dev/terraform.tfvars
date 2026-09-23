@@ -18,6 +18,6 @@ cmd_and_ctrl = {
   cmdctrl_env    = "dev"
   backup_bucket  = "cmd-and-ctrl-backup-dev"
   manage_tunnel  = true
-  # A low-trust box with Issues:write on the prod repo isn't worth it.
-  bug_reports = false
+  # Own token (dev project), so bug reports work in the preview too.
+  bug_reports = true
 }
