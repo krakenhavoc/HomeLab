@@ -37,6 +37,7 @@ jobs:
       enable_proxmox_ssh: true
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
 
   plex-cd:
@@ -60,4 +61,5 @@ jobs:
       enable_proxmox_ssh: true
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}

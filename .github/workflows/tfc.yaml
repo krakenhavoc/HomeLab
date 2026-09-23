@@ -30,6 +30,7 @@ jobs:
       workspace: tfc
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
 
   tfc-cd:
     needs: tfc-ci
@@ -43,3 +44,4 @@ jobs:
       plan_artifact_name: ${{ needs.tfc-ci.outputs.plan_artifact_name }}
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}

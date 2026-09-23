@@ -39,6 +39,9 @@ on:
       hcp_api_token:
         description: "HCP Terraform Cloud API token"
         required: true
+      plan_encryption_key:
+        description: "Key the plan artifact was encrypted with"
+        required: true
       proxmox_ve_api_token:
         description: "Proxmox VE API token for Proxmox Provider"
         required: false
@@ -93,6 +96,19 @@ jobs:
         working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
 
+      - name: Decrypt TF Plan
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          PLAN_ENCRYPTION_KEY: ${{ secrets.plan_encryption_key }}
+        run: |
+          openssl enc -d -aes-256-cbc -pbkdf2 -pass env:PLAN_ENCRYPTION_KEY \
+            -in tfplan-${{ inputs.workspace || inputs.environment }}.enc -out tfplan-${{ inputs.workspace || inputs.environment }}
+
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
         run: terraform apply -input=false tfplan-${{ inputs.workspace || inputs.environment }}
+
+      - name: Remove plaintext plan
+        if: always()
+        working-directory: ${{ inputs.working_directory }}
+        run: rm -f tfplan-${{ inputs.workspace || inputs.environment }}
