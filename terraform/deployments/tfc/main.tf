@@ -18,12 +18,6 @@ locals {
     "cmd-and-ctrl" = ["dev", "prd"]
   }
 
-  # Pre-convention names; removed when renamed.
-  legacy_names = {
-    "frontends-prd" = "frontends-dev"
-    "lastdash-prd"  = "lastdash-prod"
-  }
-
   # frontends/backend.tf still selects on "apps".
   extra_tags = {
     "frontends-prd" = ["apps"]
@@ -44,7 +38,7 @@ locals {
   workspaces = merge(
     {
       for key, ws in local.tiered : key => {
-        name    = lookup(local.legacy_names, key, key)
+        name    = key
         project = ws.project
         tags = merge(
           { (ws.app) = "", env = ws.project },
