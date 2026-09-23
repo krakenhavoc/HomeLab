@@ -137,32 +137,16 @@ jobs:
       - name: Generate TF Plan Summary
         if: github.event_name == 'pull_request'
         working-directory: ${{ inputs.working_directory }}
+        env:
+          WS: ${{ inputs.workspace || inputs.environment }}
+          ENV_NAME: ${{ inputs.environment }}
+          DIR: ${{ inputs.working_directory }}
         run: |
-          terraform show -json tfplan-${{ inputs.workspace || inputs.environment }} > plan.json
-
-          ADD=$(jq '[.resource_changes[]? | select(.change.actions | index("create"))] | length // 0' plan.json)
-          CHANGE=$(jq '[.resource_changes[]? | select(.change.actions | index("update"))] | length // 0' plan.json)
-          DESTROY=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length // 0' plan.json)
-
-          TOTAL_CHANGES=$((ADD + CHANGE + DESTROY))
-
-          echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
-          echo "### Terraform Plan Summary (\`${{ inputs.workspace || inputs.environment }}\`)" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-
-          if [ "$TOTAL_CHANGES" -eq "0" ]; then
-            echo "✅ **No changes.** Infrastructure matches configuration." >> $GITHUB_ENV
-          else
-            echo "| Action | Count |" >> $GITHUB_ENV
-            echo "|--------|-------|" >> $GITHUB_ENV
-            echo "| ➕ Create | $ADD |" >> $GITHUB_ENV
-            echo "| 🔁 Update | $CHANGE |" >> $GITHUB_ENV
-            echo "| ❌ Destroy | $DESTROY |" >> $GITHUB_ENV
-          fi
-
-          echo "" >> $GITHUB_ENV
-          echo "_Environment: \`${{ inputs.environment }}\` | Path: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          terraform show -json "tfplan-$WS" > plan.json
+          summary=$("$GITHUB_WORKSPACE/.github/scripts/plan-summary.sh" plan.json "$WS" "$ENV_NAME" "$DIR")
+          echo "$summary" >> "$GITHUB_STEP_SUMMARY"
+          delim="EOF_$(openssl rand -hex 8)"
+          printf 'PLAN_SUMMARY<<%s\n%s\n%s\n' "$delim" "$summary" "$delim" >> "$GITHUB_ENV"
 
       - name: Add TF Plan Summary to PR
         if: github.event_name == 'pull_request'
