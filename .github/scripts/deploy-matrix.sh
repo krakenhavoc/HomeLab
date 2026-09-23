@@ -26,7 +26,7 @@ if [ "$EVENT" = workflow_dispatch ]; then
 else
   changed=$(git diff --name-only "$BASE...$HEAD")
   # Pipeline changes replan everything.
-  if grep -qE '^\.github/(workflows/(deploy|terraform-ci|terraform-cd)\.yaml|scripts/deploy-matrix\.sh)$' <<<"$changed"; then
+  if grep -qE '^\.github/(workflows/(deploy|terraform-ci|terraform-cd)\.yaml|scripts/(deploy-matrix|bws-secrets)\.sh)$' <<<"$changed"; then
     apps=$(ls "$root")
   else
     apps=$(sed -nE "s|^$root/([^/]+)/.*|\1|p" <<<"$changed" | sort -u)
