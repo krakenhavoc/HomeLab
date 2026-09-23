@@ -92,6 +92,15 @@ resource "proxmox_virtual_environment_vm" "this" {
   description = var.cmd_and_ctrl.description
   tags        = sort(concat(["terraform"], var.cmd_and_ctrl.tags))
   bios        = var.cmd_and_ctrl.bios
+  # Inherited from the template; declared so import doesn't strip them.
+  machine = "q35"
+
+  efi_disk {
+    datastore_id      = var.vm_disk_datastore_id
+    file_format       = "raw"
+    type              = "2m"
+    pre_enrolled_keys = false
+  }
 
   clone {
     vm_id = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
@@ -159,9 +168,10 @@ resource "proxmox_virtual_environment_vm" "this" {
   # A snippet change replaces the file, whose id is then unknown at plan time,
   # which replaces the VM. That destroyed prd and its data disk on 2026-09-10.
   # Template edits reach a running host through the app's CD, or a deliberate
-  # rebuild (drop prevent_destroy first). clone isn't read back on import.
+  # rebuild (drop prevent_destroy first). clone isn't read back on import;
+  # keyboard_layout and vga aren't either, and setting them reboots the VM.
   lifecycle {
-    ignore_changes  = [clone, initialization]
+    ignore_changes  = [clone, initialization, keyboard_layout, vga]
     prevent_destroy = true
   }
 }
