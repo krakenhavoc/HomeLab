@@ -3,6 +3,7 @@ name: TFC CI/CD
 permissions:
   contents: read
   pull-requests: write
+  actions: read
 
 on:
   push:
@@ -28,9 +29,7 @@ jobs:
       var_file_path: env/tfc/terraform.tfvars
       environment: platform
       workspace: tfc
-    secrets:
-      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
+    secrets: inherit
 
   tfc-cd:
     needs: tfc-ci
@@ -38,10 +37,7 @@ jobs:
     uses: ./.github/workflows/terraform-cd.yaml
     with:
       working_directory: terraform/deployments/tfc
-      # prd for the approval gate.
-      environment: prd
+      environment: platform
       workspace: tfc
       plan_artifact_name: ${{ needs.tfc-ci.outputs.plan_artifact_name }}
-    secrets:
-      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
+    secrets: inherit

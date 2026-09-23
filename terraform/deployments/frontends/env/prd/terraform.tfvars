@@ -5,6 +5,7 @@ vm_cloudinit_datastore_id = "hdd_556g_thin"
 # proxies to the service behind it, with a Homepage portal at lab.labxp.io.
 # Design: docs/gateway.md. Runtime config: gateway/.
 pfe_host = {
+  # Legacy host name; change only at a planned rebuild.
   env            = "dev"
   name_prefix    = "pfe"
   description    = "Private Frontends Host"

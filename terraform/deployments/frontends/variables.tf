@@ -114,7 +114,7 @@ variable "cloudflare_api_token" {
     address, and that address changes on its own. 401/10000 is
     indistinguishable from a dead token; 403/10000 is a missing permission.
 
-    Supplied as the existing repo-wide CLOUDFLARE_API_TOKEN, which is broader
+    Supplied as CLOUDFLARE_API_TOKEN in the prd environment, which is broader
     than this needs -- it also carries tunnel and R2 write, so filesystem
     access on this host grants those too. A token scoped to just the two
     permissions above would be tighter; swapping it is a one-line change to
@@ -123,14 +123,10 @@ variable "cloudflare_api_token" {
   type        = string
   sensitive   = true
 
-  # The shared terraform-ci workflow sets TF_VAR_cloudflare_api_token
-  # unconditionally, so a deployment that forgets to pass the secret through
-  # gets an empty string rather than a missing-variable error. Without this
-  # check that empty string reaches the host, Caddy starts happily, and the
-  # first symptom is certificates that never issue -- minutes of ACME retries
-  # pointing at DNS rather than at a workflow that is missing one line.
+  # An empty token reaches the host, Caddy starts happily, and the first
+  # symptom is certificates that never issue.
   validation {
     condition     = length(var.cloudflare_api_token) > 0
-    error_message = "cloudflare_api_token is empty — frontends-deploy.yaml must pass secrets.CLOUDFLARE_API_TOKEN through to terraform-ci/terraform-cd. An empty token is written to the host verbatim and only shows up later as ACME failures."
+    error_message = "cloudflare_api_token is empty; check CLOUDFLARE_API_TOKEN in the prd environment. An empty token is written to the host verbatim and only shows up later as ACME failures."
   }
 }

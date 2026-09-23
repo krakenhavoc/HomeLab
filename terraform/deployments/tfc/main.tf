@@ -18,11 +18,6 @@ locals {
     "cmd-and-ctrl" = ["dev", "prd"]
   }
 
-  # frontends/backend.tf still selects on "apps".
-  extra_tags = {
-    "frontends-prd" = ["apps"]
-  }
-
   platform = {
     shared          = "shared"
     "GH-Controller" = "gh-runner"
@@ -40,10 +35,7 @@ locals {
       for key, ws in local.tiered : key => {
         name    = key
         project = ws.project
-        tags = merge(
-          { (ws.app) = "", env = ws.project },
-          { for tag in lookup(local.extra_tags, key, []) : tag => "" },
-        )
+        tags    = { (ws.app) = "", env = ws.project }
       }
     },
     {
