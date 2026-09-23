@@ -16,7 +16,7 @@ resource "proxmox_virtual_environment_file" "pfe_host_cloudinit" {
 
       # The only secret this host holds. Everything else the gateway needs
       # lives in gateway/ in this repository, which is public.
-      cloudflare_api_token = var.caddy_cloudflare_api_token
+      cloudflare_api_token = var.cloudflare_api_token
     })
     file_name = "setup-pfe-${var.pfe_host.env}.yaml"
   }

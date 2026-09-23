@@ -89,7 +89,7 @@ variable "pfe_host" {
   }
 }
 
-variable "caddy_cloudflare_api_token" {
+variable "cloudflare_api_token" {
   description = <<-EOT
     Cloudflare API token used by Caddy on this host for the ACME DNS-01
     challenge. Two permissions on the labxp.io zone:
@@ -114,16 +114,19 @@ variable "caddy_cloudflare_api_token" {
     address, and that address changes on its own. 401/10000 is
     indistinguishable from a dead token; 403/10000 is a missing permission.
 
-    Secret CADDY_CLOUDFLARE_API_TOKEN in the prd environment. Separate from
-    CLOUDFLARE_API_TOKEN, which is cmd_and_ctrl's. Changing the value
-    rewrites the cloud-init snippet.
+    Supplied as CLOUDFLARE_API_TOKEN in the prd environment, which is broader
+    than this needs -- it also carries tunnel and R2 write, so filesystem
+    access on this host grants those too. A token scoped to just the two
+    permissions above would be tighter; swapping it is a one-line change to
+    the GitHub environment secret and no change here.
   EOT
   type        = string
   sensitive   = true
 
-  # An empty token reaches the host and only shows up later as ACME failures.
+  # An empty token reaches the host, Caddy starts happily, and the first
+  # symptom is certificates that never issue.
   validation {
-    condition     = length(var.caddy_cloudflare_api_token) > 0
-    error_message = "caddy_cloudflare_api_token is empty; set CADDY_CLOUDFLARE_API_TOKEN in the prd environment."
+    condition     = length(var.cloudflare_api_token) > 0
+    error_message = "cloudflare_api_token is empty; check CLOUDFLARE_API_TOKEN in the prd environment. An empty token is written to the host verbatim and only shows up later as ACME failures."
   }
 }
