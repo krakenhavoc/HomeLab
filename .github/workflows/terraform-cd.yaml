@@ -95,4 +95,4 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
-        run: terraform apply -input=false tfplan-${{ inputs.environment }}
+        run: terraform apply -input=false tfplan-${{ inputs.workspace || inputs.environment }}

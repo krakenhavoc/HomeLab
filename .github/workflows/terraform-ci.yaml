@@ -96,7 +96,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
     outputs:
-      artifact_name: tf-plan-${{ inputs.environment }}
+      artifact_name: tf-plan-${{ inputs.workspace || inputs.environment }}
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
@@ -152,13 +152,13 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ inputs.working_directory }}
-        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} ${{ inputs.terraform_vars }} -out=tfplan-${{ inputs.environment }}
+        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} ${{ inputs.terraform_vars }} -out=tfplan-${{ inputs.workspace || inputs.environment }}
 
       - name: Generate TF Plan Summary
         if: github.event_name == 'pull_request'
         working-directory: ${{ inputs.working_directory }}
         run: |
-          terraform show -json tfplan-${{ inputs.environment }} > plan.json
+          terraform show -json tfplan-${{ inputs.workspace || inputs.environment }} > plan.json
 
           ADD=$(jq '[.resource_changes[]? | select(.change.actions | index("create"))] | length // 0' plan.json)
           CHANGE=$(jq '[.resource_changes[]? | select(.change.actions | index("update"))] | length // 0' plan.json)
@@ -199,5 +199,5 @@ jobs:
       - name: Upload TF Plan
         uses: actions/upload-artifact@v5
         with:
-          name: tf-plan-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.environment }}
+          name: tf-plan-${{ inputs.workspace || inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.workspace || inputs.environment }}

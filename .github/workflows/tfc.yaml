@@ -1,0 +1,45 @@
+name: TFC CI/CD
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  push:
+    paths:
+      - "terraform/deployments/tfc/**"
+      - ".github/workflows/tfc.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "terraform/deployments/tfc/**"
+      - ".github/workflows/tfc.yaml"
+      - ".github/workflows/terraform-ci.yaml"
+      - ".github/workflows/terraform-cd.yaml"
+
+jobs:
+  tfc-ci:
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/tfc
+      var_file_path: env/tfc/terraform.tfvars
+      environment: platform
+      workspace: tfc
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+
+  tfc-cd:
+    needs: tfc-ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/tfc
+      # prd for the approval gate.
+      environment: prd
+      workspace: tfc
+      plan_artifact_name: ${{ needs.tfc-ci.outputs.plan_artifact_name }}
+    secrets:
+      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
