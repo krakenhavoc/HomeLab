@@ -44,6 +44,9 @@ on:
       hcp_api_token:
         description: "HCP Terraform Cloud API token"
         required: true
+      plan_encryption_key:
+        description: "Key for the plan artifact; plans hold secrets in plaintext"
+        required: true
       proxmox_ve_api_token:
         description: "Proxmox VE API token for Proxmox Provider"
         required: false
@@ -196,8 +199,25 @@ jobs:
               body: process.env.PLAN_SUMMARY
             })
 
+      # Public repo: artifacts are downloadable by anyone signed in.
+      - name: Encrypt TF Plan
+        working-directory: ${{ inputs.working_directory }}
+        env:
+          PLAN_ENCRYPTION_KEY: ${{ secrets.plan_encryption_key }}
+        run: |
+          test -n "$PLAN_ENCRYPTION_KEY" || { echo "plan_encryption_key is empty"; exit 1; }
+          openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:PLAN_ENCRYPTION_KEY \
+            -in tfplan-${{ inputs.environment }} -out tfplan-${{ inputs.environment }}.enc
+          rm -f tfplan-${{ inputs.environment }} plan.json
+
       - name: Upload TF Plan
         uses: actions/upload-artifact@v5
         with:
           name: tf-plan-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.environment }}.enc
+          retention-days: 1
+
+      - name: Remove plaintext plan
+        if: always()
+        working-directory: ${{ inputs.working_directory }}
+        run: rm -f tfplan-${{ inputs.environment }} plan.json
