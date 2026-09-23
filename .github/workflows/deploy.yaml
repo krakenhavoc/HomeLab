@@ -1,0 +1,115 @@
+name: Deploy
+
+# One workflow for every tiered app: terraform/deployments/<app>/env/<env>.
+# PR: plan what changed. Merge: apply exactly the plans the PR produced.
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "App under terraform/deployments"
+        required: true
+        type: string
+      env:
+        description: "Env under the app's env/ (lab, dev, prd)"
+        required: true
+        type: string
+
+# New pushes cancel a PR's stale plans. Main runs never cancel each other;
+# terraform-cd queues per workspace.
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      plan_run_id: ${{ steps.plan-run.outputs.id }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          APP: ${{ inputs.app }}
+          ENV: ${{ inputs.env }}
+        run: .github/scripts/deploy-matrix.sh >> "$GITHUB_OUTPUT"
+
+      # Merge applies the PR's saved plans; main is never replanned.
+      - id: plan-run
+        if: github.event_name == 'push' && steps.detect.outputs.matrix != '[]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" -q '.[0].head.sha // empty')
+          [ -n "$head" ] || { echo "::error::$GITHUB_SHA did not come from a PR"; exit 1; }
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yaml/runs?event=pull_request&head_sha=$head&status=success" \
+            -q '.workflow_runs[0].id // empty')
+          [ -n "$id" ] || { echo "::error::no successful plan run for PR head $head"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  plan:
+    needs: detect
+    if: needs.detect.outputs.matrix != '[]' && github.event_name != 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    uses: ./.github/workflows/terraform-ci.yaml
+    with:
+      working_directory: terraform/deployments/${{ matrix.app }}
+      var_file_path: env/${{ matrix.env }}/terraform.tfvars
+      environment: ${{ matrix.env }}
+      workspace: ${{ matrix.workspace }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+    secrets: inherit
+
+  # Required status check; stable name whatever the matrix is.
+  plans:
+    needs: [detect, plan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          DETECT: ${{ needs.detect.result }}
+          PLAN: ${{ needs.plan.result }}
+        run: |
+          echo "detect=$DETECT plan=$PLAN"
+          [ "$DETECT" = success ] && { [ "$PLAN" = success ] || [ "$PLAN" = skipped ]; }
+
+  apply:
+    needs: [detect, plan]
+    if: >-
+      always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      && needs.detect.result == 'success' && needs.detect.outputs.matrix != '[]'
+      && (needs.plan.result == 'success' || needs.plan.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    uses: ./.github/workflows/terraform-cd.yaml
+    with:
+      working_directory: terraform/deployments/${{ matrix.app }}
+      environment: ${{ matrix.env }}
+      workspace: ${{ matrix.workspace }}
+      runner: self-hosted
+      enable_proxmox_ssh: true
+      plan_artifact_name: tf-plan-${{ matrix.workspace }}
+      plan_run_id: ${{ needs.detect.outputs.plan_run_id }}
+    secrets: inherit

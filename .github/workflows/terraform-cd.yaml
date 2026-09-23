@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       environment:
-        description: "Environment name (lab, dev, prd, etc.)"
+        description: "GitHub environment (lab, dev, prd, platform, ...)"
         required: true
         type: string
       runner:
@@ -35,34 +35,31 @@ on:
         description: "Name of the plan artifact to download"
         required: true
         type: string
-    secrets:
-      hcp_api_token:
-        description: "HCP Terraform Cloud API token"
-        required: true
-      plan_encryption_key:
-        description: "Key the plan artifact was encrypted with"
-        required: true
-      proxmox_ve_api_token:
-        description: "Proxmox VE API token for Proxmox Provider"
+      plan_run_id:
+        description: "Run that uploaded the plan; defaults to this run"
         required: false
-      proxmox_ve_password:
-        description: "Proxmox VE password for Proxmox Provider"
-        required: false
+        type: string
+        default: ""
+    # Callers pass `secrets: inherit`.
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   apply:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
-    # Only run apply on main branch for production environments, otherwise always runs
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(inputs.environment, 'prd')) || !contains(inputs.environment, 'prd')
+    # Never from a PR. The 2026-09-10 incident was a PR run applying to lab.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    concurrency:
+      group: tf-${{ inputs.workspace || inputs.environment }}
+      cancel-in-progress: false
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
-      PROXMOX_VE_API_TOKEN: ${{ secrets.proxmox_ve_api_token }}
-      PROXMOX_VE_PASSWORD: ${{ secrets.proxmox_ve_password }}
+      PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+      PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -80,6 +77,8 @@ jobs:
         with:
           name: ${{ inputs.plan_artifact_name }}
           path: ${{ inputs.working_directory }}
+          run-id: ${{ inputs.plan_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -90,7 +89,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3.1.2
         with:
           terraform_version: ${{ inputs.terraform_version }}
-          cli_config_credentials_token: ${{ secrets.hcp_api_token }}
+          cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
@@ -99,11 +98,12 @@ jobs:
       - name: Decrypt TF Plan
         working-directory: ${{ inputs.working_directory }}
         env:
-          PLAN_ENCRYPTION_KEY: ${{ secrets.plan_encryption_key }}
+          PLAN_ENCRYPTION_KEY: ${{ secrets.PLAN_ENCRYPTION_KEY }}
         run: |
           openssl enc -d -aes-256-cbc -pbkdf2 -pass env:PLAN_ENCRYPTION_KEY \
             -in tfplan-${{ inputs.workspace || inputs.environment }}.enc -out tfplan-${{ inputs.workspace || inputs.environment }}
 
+      # A plan made before another apply to this workspace fails as stale.
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
         run: terraform apply -input=false tfplan-${{ inputs.workspace || inputs.environment }}

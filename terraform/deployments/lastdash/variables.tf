@@ -62,7 +62,7 @@ variable "lastdash_token_encryption_secret" {
   sensitive   = true
   validation {
     condition     = length(var.lastdash_token_encryption_secret) >= 16
-    error_message = "lastdash_token_encryption_secret must be at least 16 characters (the API refuses shorter keys). Check that lastdash-deploy.yaml passes secrets.LASTDASH_TOKEN_ENCRYPTION_SECRET."
+    error_message = "lastdash_token_encryption_secret must be at least 16 characters (the API refuses shorter keys). Check LASTDASH_TOKEN_ENCRYPTION_SECRET in the prd environment."
   }
 }
 
@@ -72,7 +72,7 @@ variable "lastdash_nextauth_secret" {
   sensitive   = true
   validation {
     condition     = length(var.lastdash_nextauth_secret) >= 16
-    error_message = "lastdash_nextauth_secret is empty or too short — check that lastdash-deploy.yaml passes secrets.LASTDASH_NEXTAUTH_SECRET."
+    error_message = "lastdash_nextauth_secret is empty or too short — set LASTDASH_NEXTAUTH_SECRET in the prd environment."
   }
 }
 
@@ -82,7 +82,7 @@ variable "lastdash_postgres_password" {
   sensitive   = true
   validation {
     condition     = length(var.lastdash_postgres_password) >= 16
-    error_message = "lastdash_postgres_password is empty or too short — check that lastdash-deploy.yaml passes secrets.LASTDASH_POSTGRES_PASSWORD."
+    error_message = "lastdash_postgres_password is empty or too short — set LASTDASH_POSTGRES_PASSWORD in the prd environment."
   }
 }
 
@@ -92,6 +92,6 @@ variable "lastdash_ghcr_token" {
   sensitive   = true
   validation {
     condition     = length(var.lastdash_ghcr_token) > 0
-    error_message = "lastdash_ghcr_token is empty — check that lastdash-deploy.yaml passes secrets.LASTDASH_GHCR_TOKEN."
+    error_message = "lastdash_ghcr_token is empty — set LASTDASH_GHCR_TOKEN in the prd environment."
   }
 }

@@ -4,6 +4,7 @@ vm_cloudinit_datastore_id = "hdd_556g_thin"
 # LastDash app host. Served at https://lastdash.labxp.io through the gateway.
 # Runtime config: lastdash/. Design notes: lastdash/README.md.
 lastdash_host = {
+  # Legacy host name; change only at a planned rebuild.
   env         = "prod"
   name_prefix = "lastdash"
   description = "LastDash app host (web, api, postgres, redis)"

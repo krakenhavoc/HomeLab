@@ -6,7 +6,7 @@ gateway. LAN/VPN only — see *Access* below.
 
 | Piece | Where |
 | --- | --- |
-| VM, secrets | `terraform/deployments/lastdash` (applied by `lastdash-deploy.yaml`) |
+| VM, secrets | `terraform/deployments/lastdash` (applied by `deploy.yaml`) |
 | Compose stack (web, api, Postgres 16, Redis 7) | `lastdash/docker-compose.yaml` |
 | Reconcile loop | `lastdash/bootstrap/lastdash-sync` + timer (every 5 min) |
 | TLS + routing | `gateway/caddy/Caddyfile`, block `lastdash.labxp.io` |
@@ -30,14 +30,14 @@ Same shape as the gateway: **push, and the host follows.**
 
 ## First deploy checklist
 
-1. GitHub environment **`lastdash-prod`** on this repo with secrets
+1. GitHub environment **`prd`** on this repo with secrets
    `LASTDASH_TOKEN_ENCRYPTION_SECRET` (the dev value — see *Data*),
    `LASTDASH_NEXTAUTH_SECRET`, `LASTDASH_POSTGRES_PASSWORD`,
    `LASTDASH_GHCR_TOKEN` (classic PAT, `read:packages` only).
-2. Terraform Cloud workspace **`lastdash-prod`** in `LabXPIO` (pinned by name in `backend.tf`),
+2. Terraform Cloud workspace **`lastdash-prd`** in `LabXPIO` (managed in `terraform/deployments/tfc`),
    **execution mode: Local** (the runner reaches Proxmox over SSH).
 3. Firewall: a **static DHCP lease** on VLAN 201 for MAC
-   `BC:24:11:00:02:50` (pinned in `env/lastdash-prod/terraform.tfvars`), and
+   `BC:24:11:00:02:50` (pinned in `env/prd/terraform.tfvars`), and
    that address as the upstream in the Caddyfile block. pfe → the VM is
    same-VLAN, no rule needed.
 4. The VM gets its resolvers from the lease; make sure VLAN 201 DHCP clients

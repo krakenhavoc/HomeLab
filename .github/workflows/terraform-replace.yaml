@@ -9,12 +9,12 @@ on:
         description: "Resource address to recreate (e.g. module.vpc.aws_instance.web)"
         required: true
         default: ""
-      deployment_name:
-        description: "Deployment name (e.g. lab, frontends, plex, etc)"
+      app:
+        description: "App under terraform/deployments (e.g. lab, plex, frontends)"
         required: true
         default: ""
-      environment:
-        description: "Hashicorp workspace tag for resource's state"
+      env:
+        description: "Env under the app's env/ (lab, dev, prd)"
         required: true
         default: ""
       terraform_version:
@@ -27,22 +27,12 @@ env:
 jobs:
   terraform-replace:
     runs-on: self-hosted
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.env }}
     env:
-      TF_WORKSPACE: ${{ inputs.environment }}
+      # Same rule as deploy-matrix.sh.
+      TF_WORKSPACE: ${{ inputs.app == inputs.env && inputs.app || format('{0}-{1}', inputs.app, inputs.env) }}
       NODE_OPTIONS: "--no-network-family-autoselection"
-      # Same variables terraform-ci's plan job passes. Without these the
-      # apply below dies on "No value for required variable" before it can
-      # replace anything -- this workflow could not run against the lab
-      # deployment at all.
       PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
-      TF_VAR_cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
-      TF_VAR_cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
-      TF_VAR_cmd_and_ctrl_github_token: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
-      TF_VAR_cmd_and_ctrl_dev_admin_token: ${{ secrets.CMD_AND_CTRL_DEV_ADMIN_TOKEN }}
-      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
@@ -72,16 +62,29 @@ jobs:
           terraform_version: ${{ inputs.terraform_version }}
           cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
+      # Same export as terraform-ci.
+      - name: Export TF_VAR_*
+        env:
+          SECRETS: ${{ toJSON(secrets) }}
+          VARS: ${{ toJSON(vars) }}
+        run: |
+          delim="EOF_$(openssl rand -hex 8)"
+          jq -rn --arg d "$delim" --argjson s "$SECRETS" --argjson v "$VARS" '
+            $v + $s | to_entries[]
+            | select(.key | test("^[A-Za-z_][A-Za-z0-9_]*$"))
+            | "TF_VAR_\(.key | ascii_downcase)<<\($d)\n\(.value)\n\($d)"
+          ' >> "$GITHUB_ENV"
+
       - name: Terraform Init
-        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        working-directory: terraform/deployments/${{ inputs.app }}
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        working-directory: terraform/deployments/${{ inputs.app }}
         run: terraform validate
 
       - name: Terraform Apply
-        working-directory: terraform/deployments/${{ inputs.deployment_name }}
+        working-directory: terraform/deployments/${{ inputs.app }}
         env:
           # Passed through the environment rather than interpolated into the
           # script body. Interpolating mangles a quoted index bracket --
@@ -89,7 +92,7 @@ jobs:
           # rejects with "Index brackets must contain ... a literal string" --
           # and it also lets a dispatch input inject arbitrary shell.
           REPLACE_RESOURCE: ${{ inputs.replace_resource }}
-          VAR_FILE: env/${{ inputs.environment }}/terraform.tfvars
+          VAR_FILE: env/${{ inputs.env }}/terraform.tfvars
         run: |
           set -eu
           # Build argv so the address survives word splitting intact.

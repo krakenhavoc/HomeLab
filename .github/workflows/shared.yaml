@@ -4,6 +4,7 @@ permissions:
   contents: read
   pull-requests: write
   packages: read
+  actions: read
 
 on:
   push:
@@ -44,19 +45,10 @@ jobs:
       enable_proxmox_ssh: false
       # Pulls from inputs on dispatch, or uses an empty string on push/PR
       terraform_vars: "-var=win11_iso_url='${{ github.event.inputs.win11_iso_url }}'"
-    secrets:
-      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
-      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+    secrets: inherit
 
   shared-cd:
     needs: shared-ci
-    # Apply ONLY on a merge to main. terraform-cd gates on
-    # `!contains(inputs.environment, 'prd')`, which is always true for a
-    # non-prd environment, so without this the apply ran on every
-    # pull_request push -- an unreviewed plan applied to live
-    # infrastructure. That destroyed the production cmd_and_ctrl VM from an
-    # open PR on 2026-09-10. Plan still runs on PRs; only apply is gated.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
@@ -68,7 +60,4 @@ jobs:
       runner: self-hosted
       plan_artifact_name: tf-plan-${{ matrix.environment }}
       enable_proxmox_ssh: false
-    secrets:
-      hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
-      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
-      proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
+    secrets: inherit
