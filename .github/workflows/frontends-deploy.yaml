@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         environment: ["frontends-dev"]
-    uses: krakenhavoc/HomeLab/.github/workflows/terraform-ci.yaml@v0.3.0
+    uses: ./.github/workflows/terraform-ci.yaml
     with:
       working_directory: terraform/deployments/frontends
       var_file_path: env/${{ matrix.environment }}/terraform.tfvars
@@ -37,6 +37,7 @@ jobs:
       enable_proxmox_ssh: true
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       # Caddy on pfe uses this for the ACME DNS-01 challenge. Seeded into
       # /etc/gateway/caddy.env by cloud-init; see docs/gateway.md.
@@ -54,7 +55,7 @@ jobs:
     strategy:
       matrix:
         environment: ["frontends-dev"]
-    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@v0.2.0
+    uses: ./.github/workflows/terraform-cd.yaml
     with:
       working_directory: terraform/deployments/frontends
       environment: ${{ matrix.environment }}
@@ -63,6 +64,7 @@ jobs:
       plan_artifact_name: tf-plan-${{ matrix.environment }}
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       # No cloudflare_api_token here, deliberately. terraform-cd declares no
       # Cloudflare secret at any version, and passing a reusable workflow a

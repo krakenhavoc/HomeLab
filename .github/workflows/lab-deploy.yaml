@@ -37,6 +37,7 @@ jobs:
       enable_proxmox_ssh: true
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       cmd_and_ctrl_admin_token: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
       cmd_and_ctrl_tunnel_token: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
@@ -48,17 +49,16 @@ jobs:
 
   lab-cd:
     needs: lab-ci
-    # Apply ONLY on a merge to main. The gate inside terraform-cd.yaml@v0.2.0 is
+    # Apply ONLY on a merge to main. The gate inside terraform-cd.yaml is
     # `!contains(inputs.environment, 'prd')`, and "lab" does not contain "prd",
     # so without this the lab apply fired on every pull_request push -- an
     # unreviewed apply against live infrastructure. On 2026-09-10 that destroyed
-    # the production cmd_and_ctrl VM from a PR. The called workflow is pinned at
-    # a tag and cannot be fixed from here, so the caller gates it.
+    # the production cmd_and_ctrl VM from a PR.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     strategy:
       matrix:
         environment: ["lab"]
-    uses: krakenhavoc/HomeLab/.github/workflows/terraform-cd.yaml@v0.2.0
+    uses: ./.github/workflows/terraform-cd.yaml
     with:
       working_directory: terraform/deployments/lab
       environment: ${{ matrix.environment }}
@@ -67,4 +67,5 @@ jobs:
       plan_artifact_name: tf-plan-${{ matrix.environment }}
     secrets:
       hcp_api_token: ${{ secrets.HCP_API_TOKEN }}
+      plan_encryption_key: ${{ secrets.PLAN_ENCRYPTION_KEY }}
       proxmox_ve_api_token: ${{ secrets.PROXMOX_VE_API_TOKEN }}
