@@ -106,6 +106,22 @@ jobs:
           TFSECRET_LASTDASH_TOKEN_ENCRYPTION_SECRET: ${{ secrets.LASTDASH_TOKEN_ENCRYPTION_SECRET }}
         run: .github/scripts/export-tf-vars.sh >> "$GITHUB_ENV"
 
+      # env/<env>/secrets.env: NAME=<bitwarden secret id> -> TF_VAR_<name>.
+      # Runs after the list above so Bitwarden wins.
+      - name: Read Bitwarden secret ids
+        id: bws
+        env:
+          SECRETS_FILE: ${{ inputs.working_directory }}/${{ inputs.var_file_path }}
+          HAS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN != '' }}
+        run: .github/scripts/bws-secrets.sh "$(dirname "$SECRETS_FILE")/secrets.env" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Bitwarden secrets
+        if: steps.bws.outputs.secrets != ''
+        uses: bitwarden/sm-action@1238aae8fc64b212641190a9227c8a734ab1a793 # v3.0.1
+        with:
+          access_token: ${{ secrets.BWS_ACCESS_TOKEN }}
+          secrets: ${{ steps.bws.outputs.secrets }}
+
       - name: Terraform Init
         working-directory: ${{ inputs.working_directory }}
         run: terraform init -input=false
