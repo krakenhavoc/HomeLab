@@ -99,7 +99,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
     outputs:
-      artifact_name: tf-plan-${{ inputs.environment }}
+      artifact_name: tf-plan-${{ inputs.workspace || inputs.environment }}
     env:
       TF_WORKSPACE: ${{ inputs.workspace || inputs.environment }}
       NODE_OPTIONS: "--no-network-family-autoselection"
@@ -155,13 +155,13 @@ jobs:
 
       - name: Terraform Plan
         working-directory: ${{ inputs.working_directory }}
-        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} ${{ inputs.terraform_vars }} -out=tfplan-${{ inputs.environment }}
+        run: terraform plan -input=false -var-file=${{ inputs.var_file_path }} ${{ inputs.terraform_vars }} -out=tfplan-${{ inputs.workspace || inputs.environment }}
 
       - name: Generate TF Plan Summary
         if: github.event_name == 'pull_request'
         working-directory: ${{ inputs.working_directory }}
         run: |
-          terraform show -json tfplan-${{ inputs.environment }} > plan.json
+          terraform show -json tfplan-${{ inputs.workspace || inputs.environment }} > plan.json
 
           ADD=$(jq '[.resource_changes[]? | select(.change.actions | index("create"))] | length // 0' plan.json)
           CHANGE=$(jq '[.resource_changes[]? | select(.change.actions | index("update"))] | length // 0' plan.json)
@@ -170,7 +170,7 @@ jobs:
           TOTAL_CHANGES=$((ADD + CHANGE + DESTROY))
 
           echo "PLAN_SUMMARY<<EOF" >> $GITHUB_ENV
-          echo "### Terraform Plan Summary (\`${{ inputs.environment }}\`)" >> $GITHUB_ENV
+          echo "### Terraform Plan Summary (\`${{ inputs.workspace || inputs.environment }}\`)" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
 
           if [ "$TOTAL_CHANGES" -eq "0" ]; then
@@ -184,7 +184,7 @@ jobs:
           fi
 
           echo "" >> $GITHUB_ENV
-          echo "_Workspace: \`${{ env.TF_WORKSPACE || 'default' }}\` | Path: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
+          echo "_Environment: \`${{ inputs.environment }}\` | Path: \`${{ inputs.working_directory }}\`_" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Add TF Plan Summary to PR
@@ -207,17 +207,17 @@ jobs:
         run: |
           test -n "$PLAN_ENCRYPTION_KEY" || { echo "plan_encryption_key is empty"; exit 1; }
           openssl enc -aes-256-cbc -pbkdf2 -salt -pass env:PLAN_ENCRYPTION_KEY \
-            -in tfplan-${{ inputs.environment }} -out tfplan-${{ inputs.environment }}.enc
-          rm -f tfplan-${{ inputs.environment }} plan.json
+            -in tfplan-${{ inputs.workspace || inputs.environment }} -out tfplan-${{ inputs.workspace || inputs.environment }}.enc
+          rm -f tfplan-${{ inputs.workspace || inputs.environment }} plan.json
 
       - name: Upload TF Plan
         uses: actions/upload-artifact@v5
         with:
-          name: tf-plan-${{ inputs.environment }}
-          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.environment }}.enc
+          name: tf-plan-${{ inputs.workspace || inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfplan-${{ inputs.workspace || inputs.environment }}.enc
           retention-days: 1
 
       - name: Remove plaintext plan
         if: always()
         working-directory: ${{ inputs.working_directory }}
-        run: rm -f tfplan-${{ inputs.environment }} plan.json
+        run: rm -f tfplan-${{ inputs.workspace || inputs.environment }} plan.json

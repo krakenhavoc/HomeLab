@@ -102,13 +102,13 @@ jobs:
           PLAN_ENCRYPTION_KEY: ${{ secrets.plan_encryption_key }}
         run: |
           openssl enc -d -aes-256-cbc -pbkdf2 -pass env:PLAN_ENCRYPTION_KEY \
-            -in tfplan-${{ inputs.environment }}.enc -out tfplan-${{ inputs.environment }}
+            -in tfplan-${{ inputs.workspace || inputs.environment }}.enc -out tfplan-${{ inputs.workspace || inputs.environment }}
 
       - name: Terraform Apply
         working-directory: ${{ inputs.working_directory }}
-        run: terraform apply -input=false tfplan-${{ inputs.environment }}
+        run: terraform apply -input=false tfplan-${{ inputs.workspace || inputs.environment }}
 
       - name: Remove plaintext plan
         if: always()
         working-directory: ${{ inputs.working_directory }}
-        run: rm -f tfplan-${{ inputs.environment }}
+        run: rm -f tfplan-${{ inputs.workspace || inputs.environment }}
