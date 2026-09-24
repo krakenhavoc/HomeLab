@@ -1,330 +1,110 @@
-# Backup Strategy
+# Backup and recovery strategy
 
-## Overview
+The recovery model separates infrastructure reconstruction from data restoration. Terraform, templates, and cloud-init can recreate machines; they cannot recreate application data that existed only on a guest disk.
 
-This document outlines the backup strategy for the homelab environment, including what data is backed up, backup schedules, retention policies, and disaster recovery procedures.
+## Protection layers
 
-## cmd_and_ctrl (implemented)
-
-The only backup that actually exists today. `terraform/deployments/lab` provisions a Cloudflare R2 bucket per cmd_and_ctrl environment (prod, dev) for off-node backups of the VM's data disk (HomeLab#58). The nightly job that writes to those buckets -- `restic`, run from each VM by the cmd_and_ctrl CD pipeline, with its credentials and its restore runbook -- lives in that repo, not here: see [cmd_and_ctrl#1031](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1031) and that repo's restore runbook.
-
-Retention is restic's `forget --prune`, not an R2 lifecycle rule: an R2 rule that expires objects by age has no notion of which pack files a restic snapshot still needs, and would corrupt the repository.
-
-Everything below this section describes a target state (Proxmox Backup Server, TrueNAS, Docker volume/database backup scripts, and the rest) that is not implemented anywhere in this lab today.
-
-## Backup Philosophy
-
-The backup strategy follows the **3-2-1 rule**:
-- **3** copies of data
-- **2** different storage media types
-- **1** off-site backup
-
-## Backup Scope
-
-### What Gets Backed Up
-
-#### Critical (Daily Backups)
-- VM configurations and metadata
-- Database dumps
-- Application configurations
-- User data and documents
-- Docker volumes for critical services
-- Network device configurations
-
-#### Important (Weekly Backups)
-- Full VM disk images
-- Media libraries metadata
-- Development repositories
-- Application logs (rotated)
-
-#### Archive (Monthly Backups)
-- Historical data
-- Old VM snapshots
-- Audit logs
-- Documentation archives
-
-### What's Not Backed Up
-- Temporary files
-- Cache directories
-- ISO images and installation media
-- Easily re-downloadable content
-- Test/development environments
-
-## Backup Infrastructure
-
-### Primary Backup Storage
-
-**Proxmox Backup Server (PBS)**
-- Location: Dedicated backup server
-- Storage: ZFS pool with snapshots
-- Deduplication and compression enabled
-- Incremental backups
-
-### Secondary Backup Storage
-
-**TrueNAS NAS**
-- Network-attached storage
-- Replicated from PBS
-- ZFS snapshots for point-in-time recovery
-
-### Off-site Backup
-
-**Cloud Storage**
-- Encrypted backups to cloud provider
-- Critical data only (cost optimization)
-- Monthly sync from NAS
-
-## Backup Schedules
-
-### Automated Backup Times
-
-```
-Daily Backups:     02:00 AM (Low activity period)
-Weekly Backups:    Sunday 03:00 AM
-Monthly Backups:   1st Sunday 04:00 AM
+```mermaid
+flowchart LR
+    Git[Git repository<br/>configuration] --> Rebuild[Rebuild infrastructure]
+    State[HCP Terraform<br/>resource state] --> Rebuild
+    Images[Templates + images] --> Rebuild
+    Backup[Off-node service data] --> Restore[Restore application]
+    Rebuild --> Restore
+    Restore --> Verify[Verify service]
 ```
 
-### Service-Specific Schedules
+| Layer | Protects | Does not protect |
+| --- | --- | --- |
+| Git | Terraform, cloud-init, workflows, and runbooks | Runtime data and secrets |
+| HCP Terraform | Resource identity and dependency state | Guest files and databases |
+| Proxmox snapshot or backup | A point-in-time guest or disk | The Proxmox failure domain unless copied elsewhere |
+| NFS | Shared media access | A second copy of that media by itself |
+| Object storage / restic | Selected application data off-node | Services that have not been enrolled |
 
-| Service | Frequency | Retention |
-|---------|-----------|-----------|
-| Database VMs | Daily | 7 days |
-| Application VMs | Daily | 14 days |
-| File Server | Daily | 30 days |
-| Development VMs | Weekly | 4 weeks |
-| Docker Volumes | Daily | 7 days |
+## Current implementation
 
-## Retention Policy
+The `cmd-and-ctrl` deployment provisions separate Cloudflare R2 buckets for its production and development environments. Retention and uploads are owned by that application's restic job, not by this repository. Terraform creates the buckets and an incomplete-multipart-upload cleanup rule; it deliberately does not expire completed restic objects because age-based object deletion can corrupt a repository.
 
-### Short-term Retention (On-site)
-- Daily backups: 7 days
-- Weekly backups: 4 weeks
-- Monthly backups: 12 months
+Other workload backup jobs are not codified in this repository today. Proxmox backup configuration may exist operationally, but it is outside this codebase and must be verified on the live platform before relying on it.
 
-### Long-term Retention (Off-site)
-- Monthly archives: 2 years
-- Yearly archives: 5 years
-- Critical business data: 7 years
+The `scripts/backup/` directory is a reserved workspace, not evidence of an automated backup system.
 
-### Cleanup Policy
-- Automated cleanup based on retention policy
-- Manual review before deleting monthly archives
-- Alerts for backup storage capacity > 80%
+## Recovery objectives
 
-## Backup Methods
+Until measurements and restore exercises provide better numbers, use service tiers instead of invented RPO/RTO promises:
 
-### Proxmox VE Virtual Machines
+| Tier | Examples | Recovery expectation |
+| --- | --- | --- |
+| Critical control plane | Proxmox access, network services, CI runner access | Restore enough control to operate the lab first |
+| Stateful production | `cmd_and_ctrl`, LastDash, media metadata, shared storage | Restore from the latest verified off-node copy |
+| Rebuildable service | Frontend hosts, runner workers, disposable lab VMs | Recreate from Terraform and cloud-init |
+| Archival or replaceable | Installation media, downloaded templates | Download or regenerate from the upstream source |
 
-```bash
-# Manual backup command
-vzdump <vmid> --storage pbs-backup --mode snapshot --compress zstd
+Record measured restore time and the oldest acceptable data point during each recovery exercise. Those measurements should become explicit objectives later.
 
-# Scheduled backup (configured in Proxmox UI)
-# Datacenter > Backup > Add
-```
+## Pre-change backup check
 
-### Docker Volumes
+Before any plan that replaces or deletes a stateful resource:
 
-```bash
-# Backup script example
-#!/bin/bash
-docker run --rm \
-  -v volume_name:/data \
-  -v /backup:/backup \
-  alpine tar czf /backup/volume_name-$(date +%Y%m%d).tar.gz /data
-```
+1. Identify the data that is not represented in Git.
+2. Locate the most recent backup in a different failure domain.
+3. Confirm its timestamp, size, and job status.
+4. Verify the credentials and instructions required to restore it.
+5. Prefer a small restore test over trusting a green backup job.
+6. Record who approved the destructive change and when it will occur.
 
-### Database Backups
+A backup that has never been restored is an assumption.
 
-```bash
-# PostgreSQL
-pg_dump -U postgres dbname | gzip > /backup/dbname-$(date +%Y%m%d).sql.gz
+## Recovery patterns
 
-# MySQL/MariaDB
-mysqldump -u root -p dbname | gzip > /backup/dbname-$(date +%Y%m%d).sql.gz
+### Rebuild a stateless VM
 
-# MongoDB
-mongodump --out /backup/mongodb-$(date +%Y%m%d)
-```
+1. Confirm the target resource address and plan.
+2. Recreate it through the normal or manual replacement workflow.
+3. Wait for cloud-init to finish.
+4. Re-register or reauthenticate integrations that are intentionally manual.
+5. Verify service health and remove any stale registrations.
 
-### Configuration Files
+### Restore a stateful application
 
-```bash
-# Ansible playbook for config backup
-ansible-playbook backup-configs.yml
+1. Stop writers to avoid diverging data.
+2. Rebuild or repair the infrastructure layer.
+3. Mount or attach the intended persistent storage.
+4. Restore the application data with the application's own tool.
+5. Validate consistency before reopening traffic.
+6. Record the recovered point in time and any lost interval.
 
-# Backed up configs:
-# - /etc/
-# - Network device configs
-# - Application configs
-# - SSL certificates
-```
+### Recover Terraform control
 
-## Monitoring and Verification
+If a workspace or state operation fails, do not create a replacement workspace immediately. Confirm the organization, workspace selection, and backend configuration first. Use HCP Terraform state history for recovery and take a copy before any manual state operation.
 
-### Backup Monitoring
+### Recover from Proxmox host loss
 
-**Automated Checks**
-- Backup job completion status
-- Backup size trends
-- Storage capacity monitoring
-- Integrity verification
+1. Restore the hypervisor and management network.
+2. Recover or reconnect storage.
+3. Restore the minimum services needed for Terraform execution.
+4. Recreate shared templates and images.
+5. Restore stateful services from backups.
+6. Rebuild stateless services from code.
+7. Validate VLAN placement and application dependencies.
 
-**Alerts Configured For**
-- Failed backup jobs
-- Backup duration > expected time
-- Storage capacity warnings
-- Verification failures
+## Restore exercise
 
-### Backup Verification
+Run a focused recovery exercise at least quarterly or after a major storage change:
 
-**Weekly Verification**
-- Random backup restore test
-- Integrity check on backup files
-- Verification logs reviewed
+- choose one service and one backup point
+- restore to an isolated name and network location
+- verify application-level data, not just file presence
+- measure recovery time
+- delete the test restoration when complete
+- update this document and the service runbook with anything that was missing
 
-**Monthly Verification**
-- Full restore test of critical VM
-- Database restore test
-- Application restore test
+## Roadmap
 
-## Disaster Recovery
-
-### Recovery Time Objective (RTO)
-- Critical services: 1 hour
-- Important services: 4 hours
-- Non-critical services: 24 hours
-
-### Recovery Point Objective (RPO)
-- Critical data: 1 hour (incremental)
-- Important data: 24 hours
-- Archive data: 30 days
-
-### Disaster Recovery Procedures
-
-#### Complete Infrastructure Loss
-
-1. **Immediate Actions**
-   - Assess damage and scope
-   - Activate disaster recovery team
-   - Set up temporary infrastructure
-
-2. **Recovery Steps**
-   ```
-   1. Restore hypervisor host
-   2. Configure network connectivity
-   3. Restore critical VMs from backup
-   4. Restore databases
-   5. Restore application data
-   6. Verify service functionality
-   ```
-
-3. **Validation**
-   - Test all critical services
-   - Verify data integrity
-   - Update DNS and network configs
-   - Document recovery process
-
-#### Partial Service Loss
-
-1. Identify affected services
-2. Restore from most recent backup
-3. Validate restored data
-4. Resume normal operations
-
-#### Data Corruption
-
-1. Identify corruption extent
-2. Restore from pre-corruption backup
-3. Replay transaction logs if available
-4. Validate data consistency
-
-## Backup Scripts
-
-### Automated Backup Script
-
-Location: `scripts/backup/automated-backup.sh`
-
-Key features:
-- Pre-backup health checks
-- Parallel backup execution
-- Post-backup verification
-- Notification on completion/failure
-
-### Restore Script
-
-Location: `scripts/backup/restore.sh`
-
-Capabilities:
-- Interactive restore wizard
-- Point-in-time recovery
-- Validation checks
-- Rollback on failure
-
-## Security
-
-### Backup Encryption
-- All backups encrypted at rest
-- AES-256 encryption
-- Keys stored in vault
-- Regular key rotation
-
-### Access Control
-- Role-based access to backups
-- Audit logging of all restore operations
-- MFA required for restore operations
-
-### Network Security
-- Backup traffic over isolated VLAN
-- VPN for off-site replication
-- Firewall rules restricting backup access
-
-## Documentation
-
-### Backup Documentation Maintained
-- Backup configuration details
-- Restore procedures per service
-- Recovery runbooks
-- Contact information
-- Vendor support details
-
-### Change Management
-- All backup changes documented
-- Testing before production implementation
-- Rollback procedures defined
-
-## Metrics and Reporting
-
-### Weekly Reports
-- Backup success/failure rates
-- Storage utilization trends
-- Backup duration trends
-- Failed backup analysis
-
-### Monthly Reports
-- Comprehensive backup status
-- Capacity planning recommendations
-- Disaster recovery test results
-- Compliance verification
-
-## Future Enhancements
-
-- [ ] Implement continuous data protection (CDP)
-- [ ] Add cross-region replication
-- [ ] Automate disaster recovery testing
-- [ ] Implement immutable backups
-- [ ] Add ransomware protection features
-- [ ] Enhance monitoring with ML anomaly detection
-
-## Resources
-
-### Tools Used
-- Proxmox Backup Server
-- Borgmatic
-- Restic
-- Duplicati
-- rclone for cloud sync
-
-### External Documentation
-- [Proxmox Backup Server Documentation](https://pbs.proxmox.com/docs/)
-- [Best Practices for Backup](https://www.backblaze.com/blog/the-3-2-1-backup-strategy/)
+- [ ] Inventory every stateful path and its owner.
+- [ ] Codify Proxmox backup policy and off-node replication.
+- [ ] Add backup success and age monitoring.
+- [ ] Add encrypted, automated backups for remaining stateful services.
+- [ ] Document measured recovery objectives.
+- [ ] Schedule and record recurring restore tests.

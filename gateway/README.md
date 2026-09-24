@@ -1,202 +1,87 @@
 # Gateway configuration
 
-Runtime configuration for the lab gateway on `pfe` (192.168.201.14): Caddy
-terminating TLS in front of a Homepage portal and the private frontends.
+This directory is the runtime configuration for the internal gateway: Caddy terminates TLS, Homepage provides the portal, and Redlib runs behind the proxy.
 
-Design and rationale live in [`docs/gateway.md`](../docs/gateway.md). This
-directory is the config itself.
+The architecture and security decisions are documented in [Gateway and internal portal](../docs/gateway.md). This page covers day-to-day changes to the configuration itself.
 
-## How config reaches the host
+## Contents
 
-`gateway-sync` runs on `pfe` every minute, fetches this repo, validates the
-incoming Caddyfile against the running Caddy, copies `gateway/` to
-`/opt/gateway/live/` and runs `docker compose up -d`.
+| Path | Purpose |
+| --- | --- |
+| `docker-compose.yaml` | Gateway containers, networks, volumes, and security settings |
+| `caddy/Caddyfile` | Internal names, TLS policy, and upstream routes |
+| `homepage/` | Portal layout, services, bookmarks, and widgets |
+| `assets/` | Static portal assets |
+| `bootstrap/` | Host-side sync service and timer |
+| `redlib.env` | Non-secret Redlib settings |
 
-**Push to `main` and the gateway follows within the minute.** No Terraform, no
-apply, no VM rebuild.
+## How changes reach the host
 
-That indirection is not decoration. `pm-cloudinit-vm` has no
-`ignore_changes` on `initialization`, so editing a cloud-init template
-*replaces the VM* — the mechanism that destroyed the `cmd_and_ctrl` VM on
-2026-09-10. A reverse proxy's config changes far too often to pay a rebuild
-each time, and each rebuild would discard Caddy's certificate store. Let's
-Encrypt allows 5 duplicate certificates per week, so a few afternoons of
-iteration through cloud-init would end with no working TLS at all.
+The host periodically fetches `main`, validates the candidate Caddyfile, copies the gateway configuration into its live directory, and reconciles the Compose project.
 
-Terraform owns the VM and the secrets. This directory owns everything else.
+That pull model keeps inbound management access out of CI. It also prevents routine proxy edits from entering cloud-init, where a changed first-boot snippet can cause a VM replacement.
 
-## Adding a service
+A failed Caddy validation leaves the last working configuration in service. Merging is still a production action: validate locally and review the route, DNS, and firewall implications first.
 
-Four steps, none of them Terraform:
+## Add a proxied service
 
-1. **Caddyfile** — copy a block, point it at the upstream:
+Every service needs four coordinated changes:
 
-   ```caddyfile
-   plex.labxp.io {
-       import tls_cloudflare
-       reverse_proxy 192.168.10.x:32400
-   }
-   ```
+1. Add an explicit Caddy route to the stable internal upstream.
+2. Add the browser-facing name to internal DNS on every resolver clients may use.
+3. Permit only the required gateway-to-upstream traffic.
+4. Add a Homepage entry if the service belongs in the portal.
 
-2. **DNS** — a **plain host record** on **both** Pi-holes (192.168.10.11 and
-   .12) for `plex.labxp.io` → `192.168.201.14`. Both, not one: a single entry
-   means the name stops resolving whenever that Pi-hole reboots.
+Use one host record per service. Do not add a zone-wide DNS wildcard, because it can shadow public applications and control-plane names.
 
-   Never a dnsmasq `address=/labxp.io/192.168.201.14` line. That matches every
-   subdomain, so it would swallow `cmd.labxp.io` (live and public) and
-   `pve.labxp.io` (the endpoint every Terraform run here uses). A host record
-   matches the exact name only.
-
-3. **Firewall** — allow `pfe` → the upstream's address and port. `pfe` is on
-   VLAN 201 and most targets are not, so this is an inter-VLAN rule. Keep it
-   per-destination-and-port; never `VLAN 201 → any`.
-
-4. **Portal** — add it to `homepage/services.yaml` so it appears on the splash
-   page.
-
-Push. Done.
-
-Do **not** add `pve.labxp.io`. That name is the Proxmox API endpoint the
-`bpg/proxmox` provider uses from CI; repointing it would route every Terraform
-run in this repo through Caddy, turning a proxy hiccup into a CI outage across
-every deployment. Browser access uses `proxmox.labxp.io` instead.
+Keep automation endpoints separate from human-facing proxy names. CI should not depend on the gateway it is responsible for updating.
 
 ## Portal widgets
 
-The service cards can show live statistics -- Proxmox VM counts and CPU, Plex
-library sizes and active streams, Pi-hole query and block counts, Home
-Assistant entity states. That data is most of what makes a dashboard look like
-a dashboard rather than a list of links.
-
-Each one needs a read credential, so they come from the environment and never
-from this repository:
+Widget credentials come from the host environment and are referenced in Homepage configuration with its variable syntax:
 
 ```yaml
-key: "{{HOMEPAGE_VAR_PLEX_TOKEN}}"
+key: "{{HOMEPAGE_VAR_SERVICE_TOKEN}}"
 ```
 
-`{{HOMEPAGE_VAR_x}}` is the syntax Homepage actually honours. Its docs also
-show `${x}`, which does not expand and renders as literal text on the card.
+Never place the value in this repository. Widgets should use read-only credentials wherever the upstream supports them, and the portal should remain useful when a widget credential is absent.
 
-### Turning them on
+Homepage receives Docker status through the restricted socket proxy defined in `docker-compose.yaml`. Do not replace it with a direct socket mount into the web application.
 
-Put the values in `/etc/gateway/homepage.env` on the host, one per line:
+## Static assets
 
-```
-HOMEPAGE_VAR_PROXMOX_TOKEN_ID=api@pam!homepage
-HOMEPAGE_VAR_PROXMOX_TOKEN_SECRET=...
-HOMEPAGE_VAR_PIHOLE1_KEY=...
-HOMEPAGE_VAR_PIHOLE2_KEY=...
-HOMEPAGE_VAR_PLEX_TOKEN=...
-HOMEPAGE_VAR_HASS_TOKEN=...
-```
+Portal assets belong in `assets/`, which is mounted into Homepage's public asset directory. Keep images small enough for the repository's large-file check and reference them with an `/assets/` URL from `homepage/settings.yaml`.
 
-Then `cd /opt/gateway/live && docker compose up -d homepage`.
+## Change checklist
 
-Where each comes from:
-
-| Variable | Where |
-|----------|-------|
-| `PROXMOX_TOKEN_ID` / `_SECRET` | Datacenter → Permissions → API Tokens. `PVEAuditor` is enough. The ID is the whole `user@realm!name` string. |
-| `PIHOLE1_KEY` / `PIHOLE2_KEY` | Each Pi-hole: Settings → Web interface / API → app password. v6 replaced the old API token. |
-| `PLEX_TOKEN` | The `X-Plex-Token` on any request from a signed-in session. |
-| `HASS_TOKEN` | Profile → Security → long-lived access token. |
-
-Until the file has values those cards show an API error. The link, icon and
-status dot still work, so a missing token costs statistics and nothing else.
-
-### Why this file is not managed by Terraform
-
-A file written by hand is lost when the VM is replaced, so the obvious move is
-to have cloud-init write it. Do not: cloud-init is first-boot-only, so editing
-the template replaces the snippet resource, which makes `user_data_file_id`
-unknown at plan time, which REPLACES THE VM. A tweak to a dashboard token
-would cost a rebuild and the certificate store with it.
-
-That was tried and reverted in the same pull request that added these widgets.
-The plan read:
-
-    proxmox_virtual_environment_file.pfe_host_cloudinit must be replaced
-    module.pfe_host.proxmox_virtual_environment_vm.this must be replaced
-
-for a change whose entire effect was writing an empty file, because the
-variable defaulted to empty. The whole reason `gateway/` exists is that
-config does not belong in cloud-init, and dashboard credentials are config.
-
-So the file is host state. If the VM is rebuilt, put it back -- it is six
-lines and the widgets are the only thing that depends on it. Should that
-become tiresome, the right fix is a secret store the host reads at runtime,
-not cloud-init.
-
-## Background
-
-`settings.yaml` points at `/assets/backdrop.svg`, which is generated gradients
-rather than a photograph. To use your own wallpaper, drop it in
-`gateway/assets/` and change one line:
-
-```yaml
-background:
-  image: /assets/your-wallpaper.jpg
-```
-
-Keep it under 500 KB or the large file pre-commit hook rejects it. Homepage
-blurs and dims whatever it gets, so composition matters far more than
-resolution.
-
-Note that `/assets` is NOT the config directory. Homepage serves static files
-from `/app/public` inside the container; an image dropped in `config/images`
-and referenced as `/images/...` returns 404. `docker-compose.yaml` mounts
-`gateway/assets` to `/app/public/assets` for exactly this.
-
-`blur`, `brightness` and `opacity` under `background`, and `cardBlur`
-alongside it, are the dials. `cardBlur` is the one doing the most work: it is
-what makes the cards read as glass over depth rather than as opaque boxes on
-a picture.
-
-## Secrets
-
-`/etc/gateway/caddy.env` holds `CF_DNS_API_TOKEN` and is written once by
-cloud-init from a Terraform variable. It is **not** in this repo, which is
-public.
-
-Rotating it is a Terraform change plus a rebuild, or — faster — editing the
-file on the host and `docker compose restart caddy`.
+- [ ] The Caddyfile validates.
+- [ ] The upstream is stable and reachable from the gateway.
+- [ ] Internal DNS uses an explicit record on every resolver.
+- [ ] Firewall access is limited to the required destination and service.
+- [ ] No credential or internal inventory detail was added to tracked files.
+- [ ] Direct recovery access remains available.
+- [ ] The portal still works when optional widgets fail.
 
 ## Troubleshooting
 
-**Blank page or "Host validation failed"** — `HOMEPAGE_ALLOWED_HOSTS` in
-`docker-compose.yaml` must list the browser-facing hostname (`labxp.io`), not
-the container name or the proxy's address. Mandatory since Homepage v1.0 and
-the most common first-deploy failure.
+### A configuration change does not appear
 
-**Certificate never issues** — check the Cloudflare token first:
+Inspect the host sync service and its recent logs. A rejected Caddyfile should be visible there while the previous configuration continues serving.
 
-```bash
-docker exec caddy env | grep CF_DNS      # is it even present
-docker logs caddy 2>&1 | grep -i acme
-```
+### The portal reports host validation errors
 
-A Cloudflare **401 code 10000** is an invalid, revoked or expired token — *or*
-a valid one whose Client IP Address Filter excludes the caller. That last case
-took down the lab pipeline on 2026-09-21 and is invisible from the dashboard.
-**403 code 10000** is a token missing a permission. The token needs
-`Zone:DNS:Edit` and `Zone:Zone:Read` on `labxp.io`.
+Confirm Homepage's allowed-host configuration matches the browser-facing name. Do not weaken the setting to a wildcard.
 
-**Name does not resolve** — the Pi-hole records are manual and easy to add to
-only one of the two.
+### A certificate is not issued
 
-**Config changes not appearing** — `systemctl status gateway-sync` and
-`journalctl -u gateway-sync -n 50`. A rejected Caddyfile logs the validation
-error and leaves the previous config serving.
+Check the Caddy logs, DNS provider authentication, zone permissions, and resolver visibility. Report error codes without printing tokens or environment files.
 
-**Everything is down** — Caddy is the only container binding ports, so a Caddy
-failure takes every name with it. Services remain reachable at their
-`IP:port`; the gateway is a convenience layer, not a dependency.
+### One service fails while others work
 
-## The apex
+Test the upstream directly from the gateway, then check its specific Caddy route, DNS record, and firewall path.
 
-The portal is served at `labxp.io` itself, not a subdomain. Both Pi-holes
-answer that exact name with `192.168.201.14`, which means **anything published
-at the apex on the public internet is unreachable from inside the lab**. That
-is accepted, not overlooked. Subdomains are unaffected — `cmd.labxp.io` still
-resolves publicly — as long as the Pi-hole entries stay plain host records.
+### Every gateway name fails
+
+Check the gateway host, Caddy container, certificate volumes, and internal DNS. The backing services should remain reachable through their direct recovery paths.
+
+Internal names, addresses, network identifiers, firewall rules, and credential identifiers are intentionally left out of this public guide.

@@ -1,330 +1,125 @@
-# Architecture Overview
+# Architecture overview
 
-This document provides a high-level overview of the HomeLab infrastructure architecture, key components, and network topology.
+The lab is a small production environment built around one goal: make infrastructure changes repeatable without hiding the operational consequences. Proxmox supplies the runtime, Terraform owns the resource definitions, cloud-init bootstraps Linux guests, and GitHub Actions provides the review and delivery path. Bitwarden Secrets Manager supplies selected deployment secrets without putting their values in Git.
 
-## Table of Contents
+## System context
 
-- [System Architecture](#system-architecture)
-- [Infrastructure Components](#infrastructure-components)
-- [Network Topology](#network-topology)
-- [Technology Stack](#technology-stack)
-- [Data Flow](#data-flow)
-- [Related Documentation](#related-documentation)
-
-## System Architecture
-
-The HomeLab infrastructure is built on a layered architecture designed for flexibility, scalability, and ease of management.
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Application Layer                        │
-│  (Kubernetes Workloads, Services, Media Servers)            │
-└─────────────────────────────────────────────────────────────┘
-                             ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Orchestration Layer                        │
-│     (Kubernetes Cluster, Container Runtime, CNI)            │
-└─────────────────────────────────────────────────────────────┘
-                             ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Virtualization Layer                       │
-│            (Proxmox VE, VMs, Cloud-init)                    │
-└─────────────────────────────────────────────────────────────┘
-                             ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Infrastructure Layer                      │
-│           (Physical Servers, Storage, Network)              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    Maintainer[Maintainer] -->|pushes changes| GitHub[GitHub repository]
+    GitHub -->|runs workflows| Runner[Self-hosted runner]
+    Runner -->|plans and applies| Proxmox[Proxmox VE]
+    Runner <--> State[(HCP Terraform)]
+    Proxmox --> Guests[VMs and LXC containers]
+    Guests --> Services[Lab, applications, gateway,<br/>media, storage, and CI services]
+    Network[Router, firewall, DNS, DHCP] --> Proxmox
+    Network --> Guests
 ```
 
-## Infrastructure Components
+The repository controls the compute side of this boundary. Router rules, DHCP pools, DNS infrastructure, and physical switch configuration remain external dependencies and are documented only at the level needed to operate the workloads safely.
 
-### Hypervisor Platform
+The [diagram gallery](../diagrams/README.md) expands this overview into dedicated platform, deployment, delivery, network, and recovery views. Public diagrams intentionally omit internal addressing and low-level management details.
 
-**Proxmox Virtual Environment (VE)**
-- Type 1 hypervisor for running virtual machines
-- Provides web-based management interface
-- Supports cloud-init for automated VM provisioning
-- Integrated backup and snapshot functionality
+## Layers
 
-### Kubernetes Cluster
+### Delivery
 
-The current deployment includes a production-grade Kubernetes cluster:
+GitHub Actions runs formatting, validation, linting, security scans, module tests, and deployment workflows. The central deployment workflow detects changed application tiers, resolves their secret identifiers through Bitwarden, creates encrypted Terraform plans for review, and applies those plans only after a merge to `main`. GitHub runner provisioning is manual and starts in dry-run mode because those machines are part of the delivery system itself.
 
-**Master Node (Control Plane)**
-- **k8s-master-1**: Single control plane node
-  - Memory: 4 GB RAM
-  - Runs Kubernetes control plane components (API server, scheduler, controller manager)
-  - Hosts etcd datastore
-  - Cloud-init automated setup
+### Infrastructure as code
 
-**Worker Nodes**
-- **k8s-worker-2**: Worker node for application workloads
-  - Memory: 4 GB RAM
-  - Runs container workloads via containerd
+Each directory under `terraform/deployments/` is an independently initialized root module with its own HCP Terraform workspace or workspace tag. This limits the blast radius of routine changes.
 
-- **k8s-worker-3**: Worker node for application workloads
-  - Memory: 4 GB RAM
-  - Runs container workloads via containerd
+The current deployment boundaries are:
 
-**Kubernetes Components**
-- **Version**: v1.29 (latest stable)
-- **Container Runtime**: Containerd (replacing deprecated Docker)
-- **CNI Plugin**: Calico for pod networking and network policies
-- **Service Type**: NodePort and LoadBalancer support
-- **Package Management**: apt-based with version pinning
+- `lab`: experimental and application-specific VMs
+- `cmd-and-ctrl`: development and production application hosts, ingress, and backup buckets
+- `frontends`: internal gateway and private frontend services
+- `lastdash`: stateful application host
+- `plex`: media-server VMs
+- `nfs`: storage-serving LXC containers
+- `shared`: images and templates consumed by other stacks
+- `gh-runner`: self-hosted CI controller and workers
+- `tfc`: HCP Terraform projects and workspaces
 
-### Configuration Management
+### Provisioning
 
-**Terraform**
-- Infrastructure as Code (IaC) for VM provisioning
-- Modular design with reusable components
-- Module: `pve-cloudinit-vm` for Proxmox VM creation
-- State management for infrastructure tracking
-- CI/CD integration via GitHub Actions
+Linux VMs clone an Ubuntu 24.04 template and receive rendered cloud-init snippets. Cloud-init installs packages, writes service configuration, and enables workloads on first boot. It is not a general-purpose configuration-management system: changing a snippet does not reliably mutate an existing guest.
 
-**Cloud-init**
-- Automated VM initialization and configuration
-- Package installation and system setup
-- Kubernetes component installation
-- Network and security configuration
-- Integration with Proxmox snippets storage
+The `ansible/` directory is reserved for later convergence work. No Ansible playbooks are currently part of the production path.
 
-**Ansible** (Future)
-- Configuration drift detection
-- Application deployment automation
-- System updates and patching
+### Runtime
 
-## Network Topology
+Proxmox VE runs virtual machines and LXC containers. Workload placement is segmented by VLAN, while shared media storage is exported by NFS. Docker is installed inside selected guests for application packaging; it is not the infrastructure control plane.
 
-### High-Level Network Design
+## Deployment relationships
 
-```
-                    Internet
-                       │
-                       ↓
-                 ┌──────────┐
-                 │ OpnSense │  (Firewall/Router)
-                 │ Firewall │
-                 └──────────┘
-                       │
-              ┌────────┴────────┐
-              │                 │
-         ┌─────────┐      ┌─────────┐
-         │ UniFi   │      │  Core   │
-         │ Switch  │──────│ Switch  │
-         └─────────┘      └─────────┘
-              │                 │
-    ┌─────────┼─────────────────┼─────────┐
-    │         │                 │         │
-┌───────┐ ┌───────┐     ┌───────────┐ ┌─────┐
-│ VLAN  │ │ VLAN  │     │  Proxmox  │ │ NAS │
-│ 10    │ │ 20    │     │  Cluster  │ │     │
-│(Mgmt) │ │(Apps) │     └───────────┘ └─────┘
-└───────┘ └───────┘           │
-                              │
-                    ┌─────────┴──────────┐
-                    │                    │
-              ┌──────────┐          ┌──────────┐
-              │ K8s      │          │ K8s      │
-              │ Master   │          │ Workers  │
-              │ (VM)     │          │ (VMs)    │
-              └──────────┘          └──────────┘
+```mermaid
+flowchart LR
+    VMTemplate[Proxmox VM template] --> Lab[lab]
+    VMTemplate --> Cmd[cmd-and-ctrl]
+    VMTemplate --> Frontends[frontends]
+    VMTemplate --> LastDash[lastdash]
+    VMTemplate --> Plex[plex]
+    VMTemplate --> Runners[gh-runner]
+    Shared[shared<br/>LXC image + install media] --> Lab
+    Shared --> NFS[nfs]
+    NFS -->|media export| Plex
+    Frontends -->|private proxy| LastDash
+    Runners -->|executes workflows| Shared
+    Runners --> Lab
+    Runners --> Cmd
+    Runners --> Frontends
+    Runners --> LastDash
+    Runners --> Plex
+    Runners --> NFS
+    TFC[tfc] -->|manages workspaces| State[(HCP Terraform)]
 ```
 
-### Network Segments
+These arrows describe operational dependencies, not Terraform cross-state references. Deployment state remains separate.
 
-1. **Management VLAN (VLAN 10)**
-   - Hypervisor management interfaces
-   - Infrastructure services (DNS, DHCP)
-   - Administrative access
+## Important design decisions
 
-2. **Application VLAN (VLAN 20)**
-   - Kubernetes cluster nodes
-   - Application services
-   - Container workloads
+### Small state boundaries
 
-3. **Pod Network (Calico CNI)**
-   - Internal pod-to-pod communication
-   - Network policy enforcement
-   - Overlay network for Kubernetes
+Separating deployments keeps an unrelated provider or configuration change from producing a plan across the whole lab. It also makes ownership and recovery clearer: a Plex change belongs to the Plex workspace.
 
-### IP Addressing
+### Pinned module sources
 
-- Management Network: 10.0.10.0/24
-- Application Network: 10.0.20.0/24
-- Pod Network (Calico): 192.168.0.0/16 (default)
-- Service Network: 10.96.0.0/12 (Kubernetes ClusterIP range)
+Deployments consume the reusable Proxmox module by Git ref. A module change and a consumer upgrade are therefore separate, reviewable events. This costs some release overhead but avoids silently changing every VM when the module's default behavior evolves.
 
-## Technology Stack
+### Explicit lifecycle behavior
 
-### Infrastructure Layer
+Cloud-init file changes can cause a provider to see a replacement path through `user_data_file_id`. Long-lived guests and CI runners use explicit lifecycle decisions where an automatic rebuild would be more dangerous than configuration drift. When that protection is in place, the tradeoff is documented: template edits require a deliberate replacement to reach the guest.
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Hypervisor | Proxmox VE 7.x+ | Virtual machine management |
-| IaC | Terraform | Infrastructure provisioning |
-| Config Mgmt | Cloud-init, Ansible | Automated configuration |
-| Backup | Proxmox Backup Server | VM backup and recovery |
+### CI-first applies
 
-### Platform Layer
+Pull requests create the review surface. Merges create the deployment event. The manual replacement workflow exists for a narrow break-glass case and prints a fresh plan before applying.
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| OS | Ubuntu 24.04 LTS | Base operating system |
-| Container Runtime | Containerd | 1.6+ |
-| Orchestration | Kubernetes | v1.29 |
-| CNI | Calico | Latest |
-| Service Mesh | Future: Istio/Linkerd | - |
+## Current and historical components
 
-### Application Layer
+| Component | Status | Notes |
+| --- | --- | --- |
+| Proxmox Terraform deployments | Active | Production path for compute and shared artifacts |
+| Cloud-init templates | Active | First-boot provisioning for Linux VMs |
+| HCP Terraform state | Active | Workspace-per-deployment or tagged workspace selection |
+| GitHub Actions delivery | Active | Plans, applies, module tests, and repository checks |
+| Bitwarden Secrets Manager | Active | Resolves selected deployment secrets by identifier during CI |
+| Docker workloads | Active | Used inside selected guests and for the Windows media helper |
+| Internal gateway | Active configuration | Caddy and Homepage configuration is synchronized from `gateway/` |
+| Kubernetes bootstrap scripts | Reference | Retained under `scripts/`; not part of a current Terraform deployment |
+| Ansible | Planned | Directory exists, but no playbooks or roles are active |
+| Monitoring automation | Planned | Operational checks are not yet codified here |
+| Backup automation | Planned | Recovery expectations are documented; scripts are not implemented |
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| CI/CD | GitHub Actions | Automation pipelines |
-| Monitoring | Prometheus + Grafana | Metrics and visualization |
-| Logging | Future: ELK/Loki | Log aggregation |
-| Service Discovery | CoreDNS | DNS within cluster |
+## Failure domains
 
-### Network Layer
+- **Proxmox host:** affects all guests on the node.
+- **HCP Terraform or GitHub:** blocks automated changes but should not interrupt already-running services.
+- **Self-hosted runner:** blocks plans and applies that require access to the private environment.
+- **NFS service:** affects media availability while leaving the Plex guest itself running.
+- **Internal gateway:** affects convenient names and the portal, while direct recovery paths remain available.
+- **Router, DNS, or DHCP:** can make healthy guests unreachable without creating a Terraform diff.
+- **Individual deployment state:** limits most configuration mistakes to one stack.
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Firewall | OpnSense | Network security |
-| Switching | UniFi | Network connectivity |
-| VLANs | 802.1Q | Network segmentation |
-| CNI | Calico | Pod networking |
-
-## Data Flow
-
-### VM Provisioning Flow
-
-```
-GitHub Commit → GitHub Actions → Terraform Plan → Terraform Apply
-                                        ↓
-                                  Proxmox API
-                                        ↓
-                          Create VM with Cloud-init
-                                        ↓
-                            Boot VM + Run Cloud-init
-                                        ↓
-                     Install Packages + Configure K8s
-                                        ↓
-                           Join Kubernetes Cluster
-```
-
-### Application Deployment Flow
-
-```
-Developer Push → Git Repository → CI/CD Pipeline
-                                        ↓
-                                  Build Container
-                                        ↓
-                               Push to Registry
-                                        ↓
-                              Deploy to Kubernetes
-                                        ↓
-                          Schedule Pods on Workers
-                                        ↓
-                          Expose via Service/Ingress
-```
-
-### Traffic Flow
-
-```
-External User → Internet → Firewall → Load Balancer
-                                            ↓
-                                  Kubernetes Service
-                                            ↓
-                              Pod (via Calico CNI)
-                                            ↓
-                                   Application
-```
-
-## Scalability Considerations
-
-### Horizontal Scaling
-- Add more Kubernetes worker nodes via Terraform
-- Scale pod replicas using Kubernetes Deployments
-- Load balancing across multiple pods
-
-### Vertical Scaling
-- Adjust VM memory and CPU allocations
-- Configure Kubernetes resource requests/limits
-- Storage expansion via Proxmox
-
-### High Availability (Future)
-- Multiple master nodes for control plane HA
-- etcd cluster with 3+ members
-- Load balancer for API server access
-- Distributed storage solution
-
-## Security Architecture
-
-### Network Security
-- VLAN segmentation for isolation
-- Firewall rules between network segments
-- Network policies in Kubernetes (Calico)
-- Private networks for pod communication
-
-### Access Control
-- SSH key-based authentication
-- Kubernetes RBAC for authorization
-- Proxmox user permissions
-- Principle of least privilege
-
-### Secrets Management
-- Kubernetes Secrets for sensitive data
-- Environment variables (not in code)
-- Future: HashiCorp Vault integration
-- No credentials in Git repository
-
-## Disaster Recovery
-
-### Backup Strategy
-- VM snapshots via Proxmox
-- Proxmox Backup Server for scheduled backups
-- etcd backup for Kubernetes state
-- Configuration stored in Git (GitOps)
-
-### Recovery Procedures
-- VM restoration from Proxmox backups
-- Kubernetes cluster recreation via Terraform
-- Application redeployment from Git
-- See [Runbook](runbook.md) for detailed procedures
-
-## Monitoring and Observability
-
-### Current Setup
-- GitHub Actions for CI/CD monitoring
-- Terraform state tracking
-- Basic Proxmox metrics
-
-### Planned Implementation
-- Prometheus for metrics collection
-- Grafana for visualization
-- AlertManager for alerting
-- Loki for log aggregation
-- Distributed tracing (Jaeger)
-
-## Related Documentation
-
-- [Runbook](runbook.md) - Deployment procedures and operations
-- [Network Setup](network-setup.md) - Detailed network configuration
-- [Service Deployment](service-deployment.md) - Application deployment guides
-- [Security Guidelines](security.md) - Security best practices
-- [Backup Strategy](backup-strategy.md) - Backup and recovery procedures
-
-## Configuration Files
-
-Key configuration files in this repository:
-
-- **Terraform**: `terraform/deployments/home-lab/main.tf`
-- **Cloud-init Master**: `scripts/deployment/cloud-init/setup-k8s-master.yml`
-- **Cloud-init Worker**: `scripts/deployment/cloud-init/setup-k8s-worker.yml`
-- **Calico Patch**: `scripts/deployment/cloud-init/calico-patch.sh`
-- **CI/CD**: `.github/workflows/terraform.yml`
-
----
-
-For deployment instructions and troubleshooting, see the [Runbook](runbook.md).
+Recovery procedures and verification commands are in the [runbook](runbook.md); data-protection assumptions are in the [backup strategy](backup-strategy.md).

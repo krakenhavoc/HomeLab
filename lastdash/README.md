@@ -1,79 +1,59 @@
 # LastDash
 
-Runtime configuration for [LastDash](https://github.com/krakenhavoc/lastdash)
-on the `lastdash-prod` VM, served at **https://lastdash.labxp.io** through the
-gateway. LAN/VPN only — see *Access* below.
+This directory contains runtime configuration for [LastDash](https://github.com/krakenhavoc/lastdash). The application runs on a dedicated VM and is available only through the private gateway to trusted LAN and VPN clients.
 
-| Piece | Where |
+| Piece | Owner |
 | --- | --- |
-| VM, secrets | `terraform/deployments/lastdash` (applied by `deploy.yaml`) |
-| Compose stack (web, api, Postgres 16, Redis 7) | `lastdash/docker-compose.yaml` |
-| Reconcile loop | `lastdash/bootstrap/lastdash-sync` + timer (every 5 min) |
-| TLS + routing | `gateway/caddy/Caddyfile`, block `lastdash.labxp.io` |
-| Portal card | `gateway/homepage/services.yaml`, group *Apps* |
-| Images | `ghcr.io/krakenhavoc/lastdash-{api,web}`, built by the app repo |
+| VM and first boot | `terraform/deployments/lastdash` through `deploy.yaml` |
+| Web, API, Postgres, and Redis | `lastdash/docker-compose.yaml` |
+| Reconcile loop | `lastdash/bootstrap/` |
+| TLS and private routing | `gateway/caddy/Caddyfile` |
+| Portal entry | `gateway/homepage/services.yaml` |
+| Application images | LastDash application repository |
 
-## How it updates
+## How updates work
 
-Same shape as the gateway: **push, and the host follows.**
+The host periodically fetches `main`, validates the Compose configuration, pulls the selected application images, and reconciles the stack.
 
-- **Config** (this directory): `lastdash-sync` fetches `main`, validates the
-  compose file and runs `docker compose up -d` — within ~5 minutes.
-- **App**: a merge to LastDash `main` builds new `:latest` images; the next
-  sync pulls them. To hold a version, set `LASTDASH_TAG=<git sha>` in
-  `/etc/lastdash/env`.
-- **VM / secrets**: Terraform, but only for creation. The VM ignores
-  cloud-init changes (`lifecycle.ignore_changes = [initialization]`) because
-  it holds the database — so editing a secret in GitHub does **not** reach a
-  running host. Edit `/etc/lastdash/env` on the host and run
-  `sudo systemctl start lastdash-sync`.
+Infrastructure and application delivery are intentionally separate:
 
-## First deploy checklist
+- Terraform creates the VM and supplies first-boot inputs.
+- The sync service delivers routine Compose changes without rebuilding the VM.
+- The application repository builds the web and API images.
+- A pinned image tag can hold a known version during investigation or rollback.
 
-1. GitHub environment **`prd`** on this repo with secrets
-   `LASTDASH_TOKEN_ENCRYPTION_SECRET` (the dev value — see *Data*),
-   `LASTDASH_NEXTAUTH_SECRET`, `LASTDASH_POSTGRES_PASSWORD`,
-   `LASTDASH_GHCR_TOKEN` (classic PAT, `read:packages` only).
-2. Terraform Cloud workspace **`lastdash-prd`** in `LabXPIO` (managed in `terraform/deployments/tfc`),
-   **execution mode: Local** (the runner reaches Proxmox over SSH).
-3. Firewall: a **static DHCP lease** on VLAN 201 for MAC
-   `BC:24:11:00:02:50` (pinned in `env/prd/terraform.tfvars`), and
-   that address as the upstream in the Caddyfile block. pfe → the VM is
-   same-VLAN, no rule needed.
-4. The VM gets its resolvers from the lease; make sure VLAN 201 DHCP clients
-   can reach them (as they already do for other DHCP hosts there).
-5. Pi-hole: host record `lastdash.labxp.io` → `192.168.201.14` on **both**
-   Pi-holes.
-6. Merge. Terraform creates the VM; cloud-init installs Docker, logs in to
-   GHCR and starts the sync.
+The VM protects its initialization settings because it owns a database. Changing a cloud-init value does not update an existing host; runtime credentials must be rotated through the host's secret-management path.
 
-## Data
+## Deployment checklist
 
-Prod starts from a copy of the dev database, so existing Slack/Teams
-connections keep working. That only works because
-`LASTDASH_TOKEN_ENCRYPTION_SECRET` equals the dev API's
-`TOKEN_ENCRYPTION_SECRET` — stored tokens are encrypted with it.
+1. Confirm the production GitHub environment can resolve the required Bitwarden items.
+2. Confirm the HCP Terraform workspace exists in local execution mode.
+3. Reserve a stable address without documenting it in the public repository.
+4. Add the private gateway route, explicit internal DNS record, and narrow firewall path.
+5. Verify the application remains inaccessible from public networks.
+6. Review the Terraform plan for replacement before merging.
+7. Confirm cloud-init, the sync service, database health, and the gateway route after deployment.
 
-```bash
-# dev (inside the devcontainer)
-pg_dump -h postgres -U lastdash -Fc lastdash > /tmp/lastdash.dump
-scp /tmp/lastdash.dump lastdash@<vm>:/tmp/
+## Data migration
 
-# on the VM
-cd /opt/lastdash/live
-sudo docker compose --env-file /etc/lastdash/env stop api web
-sudo docker compose --env-file /etc/lastdash/env exec -T postgres \
-  pg_restore -U lastdash -d lastdash --clean --if-exists --no-owner < /tmp/lastdash.dump
-sudo docker compose --env-file /etc/lastdash/env start api web
-rm /tmp/lastdash.dump
-```
+Production may be initialized from an existing database dump. Preserve the application encryption key when migrating encrypted integration tokens; without the original key, copied ciphertext cannot be recovered.
 
-## Access
+A safe migration follows this order:
 
-LastDash has no real login yet: one dev user, and its API trusts an
-`X-User-Id` header. It is safe only because the gateway is LAN/VPN-only.
-**Do not publish this name** (no Cloudflare Tunnel, no public DNS) until the
-app has real authentication.
+1. Quiesce application writers.
+2. Create a custom-format Postgres dump.
+3. Transfer it over the trusted management path.
+4. Stop the API and web containers.
+5. Restore into the intended database with ownership normalized.
+6. Restart the application and verify integrations before reopening access.
+7. Remove temporary dumps from both systems.
 
-Browser-session connect needs the LastDash companion extension ≥ 0.2.0, which
-knows `https://lastdash.labxp.io`.
+Do not put database dumps, environment files, tokens, internal addresses, or credential identifiers in Git or workflow logs.
+
+## Access boundary
+
+LastDash does not yet provide a production-grade authentication boundary. Its API trusts identity supplied by the client integration, so network placement is part of the security model.
+
+Keep the service behind the private gateway and limit it to trusted LAN and VPN clients. Do not create public DNS or a public tunnel until the application has independent authentication and authorization.
+
+Internal names, addresses, network identifiers, and secret names are intentionally omitted from this public guide.

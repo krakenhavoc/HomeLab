@@ -1,137 +1,24 @@
-# Infrastructure Diagrams
+# Infrastructure diagrams
 
-This directory contains infrastructure architecture diagrams for the homelab.
+The infrastructure views are rendered from Mermaid in Markdown:
 
-## Diagrams Available
+- [Platform architecture](platform.md)
+- [Deployment and service map](deployments.md)
+- [Infrastructure delivery](delivery.md)
+- [Recovery decision flow](recovery.md)
 
-### System Architecture
-- **infrastructure-overview.drawio**: High-level infrastructure overview
-- **infrastructure-overview.png**: Visual representation of all systems
+Compact versions also appear in the [architecture overview](../../docs/overview.md), [root project overview](../../README.md#architecture-at-a-glance), and [backup strategy](../../docs/backup-strategy.md).
 
-### Virtualization Architecture
-- **proxmox-cluster.drawio**: Proxmox cluster architecture
-- **docker-swarm.drawio**: Docker container architecture
-- **kubernetes-cluster.drawio**: K3s cluster topology
+Use this directory if a future diagram needs a format Mermaid cannot express. Commit the editable source together with a GitHub-viewable export, and state which one is authoritative.
 
-### Storage Architecture
-- **storage-layout.drawio**: Storage pools and volumes
-- **backup-architecture.drawio**: Backup infrastructure flow
+Useful conventions:
 
-### Service Architecture
-- **service-map.drawio**: Service dependencies and relationships
-- **monitoring-stack.drawio**: Monitoring and observability architecture
+| Type | Color |
+| --- | --- |
+| Compute | Blue |
+| Storage | Orange |
+| Network | Green |
+| Security boundary | Red |
+| External service | Gray |
 
-## Infrastructure Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Proxmox Cluster                      │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
-│  │  Node 1  │  │  Node 2  │  │  Node 3  │             │
-│  │ (Master) │  │          │  │          │             │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘             │
-│       │             │             │                     │
-│       └─────────────┴─────────────┘                     │
-│                     │                                   │
-│              ┌──────┴───────┐                           │
-│              │   ZFS Pool   │                           │
-│              │   (Shared)   │                           │
-│              └──────────────┘                           │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│              Virtual Machines & Containers              │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐       │
-│  │   Docker   │  │     K8s    │  │    Apps    │       │
-│  │   Host     │  │   Cluster  │  │    VMs     │       │
-│  └────────────┘  └────────────┘  └────────────┘       │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│                   Storage Layer                         │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐       │
-│  │  TrueNAS   │  │   Backup   │  │   Cloud    │       │
-│  │    NAS     │  │   Server   │  │  Storage   │       │
-│  └────────────┘  └────────────┘  └────────────┘       │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Component Details
-
-### Compute Layer
-- **Proxmox VE**: Hypervisor for VMs
-- **Docker**: Container runtime
-- **Kubernetes (K3s)**: Container orchestration
-
-### Storage Layer
-- **Local Storage**: NVMe SSD for OS and critical VMs
-- **ZFS Pools**: Shared storage for VMs
-- **TrueNAS**: Network-attached storage
-- **PBS**: Proxmox Backup Server
-
-### Network Layer
-- **Management Network**: 1 Gbps
-- **Storage Network**: 10 Gbps (iSCSI/NFS)
-- **VM Network**: 1 Gbps
-- **External Network**: 1 Gbps WAN
-
-## Diagram Formats
-
-### Draw.io Diagrams
-- Editable source files
-- Can be opened at https://app.diagrams.net/
-- Version controlled for change tracking
-
-### PNG Exports
-- High-resolution images for documentation
-- Easy viewing in GitHub
-- Embedded in markdown docs
-
-### PlantUML Source
-- Text-based diagram definitions
-- Version control friendly
-- Automated rendering possible
-
-## Creating New Diagrams
-
-### Standard Colors
-- **Network Devices**: Blue (#2196F3)
-- **Servers**: Green (#4CAF50)
-- **Storage**: Orange (#FF9800)
-- **Security**: Red (#F44336)
-- **Virtual**: Purple (#9C27B0)
-- **Monitoring**: Yellow (#FFC107)
-
-### Icon Sources
-- [Font Awesome](https://fontawesome.com/)
-- [Material Design Icons](https://materialdesignicons.com/)
-- [Cisco Icons](https://www.cisco.com/c/en/us/about/brand-center/network-topology-icons.html)
-
-## Documentation Integration
-
-Reference diagrams in documentation using:
-
-```markdown
-![Infrastructure Overview](../diagrams/infrastructure/infrastructure-overview.png)
-```
-
-## Maintenance
-
-- Update diagrams when infrastructure changes
-- Review diagrams quarterly
-- Ensure consistency across all diagrams
-- Keep source files and exports in sync
-
-## Tools and Resources
-
-- **draw.io**: Free diagramming tool
-- **PlantUML**: Text-based diagrams
-- **Mermaid**: Markdown-native diagrams
-- **Visio**: Professional diagramming (optional)
-
-## Future Enhancements
-
-- Automated diagram generation from infrastructure
-- Interactive diagrams with links
-- Real-time status indicators
-- Integration with monitoring systems
+Avoid turning a diagram into an inventory dump. A useful infrastructure view should make a dependency, trust boundary, or failure domain clearer than the accompanying text.

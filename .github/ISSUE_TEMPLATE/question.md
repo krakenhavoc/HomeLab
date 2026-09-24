@@ -1,22 +1,18 @@
 ---
 name: Question
-about: Ask a usage or design question about the HomeLab project
-title: "[QUESTION] "
+about: Ask about usage, design, or an operational decision
+title: "question: "
 labels: question
 ---
 
-# Question
+## Question
 
-Use this template when you have usage or design questions.
+## Context
 
-**Summary**
-One-line summary of your question.
+<!-- Name the relevant document, deployment, or resource. -->
 
-**What I have tried**
-Describe what you tried, commands you ran, and results.
+## What I checked
 
-**Details / Context**
-Provide config files, relevant snippets, environment, and any other info helpful to answer the question.
+<!-- Include commands and sanitized output where useful. Do not include credentials or private keys. -->
 
-**Desired outcome**
-What would you consider a satisfactory answer?
+## Desired outcome

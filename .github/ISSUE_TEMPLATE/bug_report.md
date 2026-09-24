@@ -1,35 +1,29 @@
 ---
-name: Bug Report
-about: Report a bug or issue with the HomeLab project
-title: "[BUG] "
+name: Bug report
+about: Report reproducible incorrect behavior
+title: "bug: "
 labels: bug
 ---
 
-# Bug report
+## What happened?
 
-Thanks for taking the time to file a bug. Please provide the following information to help us reproduce and fix the issue.
+<!-- Include the observed behavior and a concise error message. Remove secrets and private addresses from logs. -->
 
-**Summary**
-A short, descriptive title for the issue.
+## What did you expect?
 
-**Steps to reproduce**
+## How can it be reproduced?
+
 1.
 2.
 3.
 
-**Expected behavior**
-What you expected to happen.
+## Environment
 
-**Actual behavior**
-What actually happened (including error messages or stack traces).
+- Commit or tag:
+- Deployment / workspace:
+- Terraform and provider versions:
+- Relevant host or runner OS:
 
-**Environment**
-- Repository commit / tag:
-- OS / distro:
-- Versions (e.g. Docker, Python, etc.):
+## Evidence
 
-**Logs / Screenshots**
-Paste logs or attach screenshots if helpful.
-
-**Additional context**
-Any other information that might help debug the problem.
+<!-- Add a sanitized plan excerpt, workflow run, log, or screenshot if it helps. -->

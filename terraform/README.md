@@ -1,296 +1,171 @@
-# Terraform Infrastructure as Code
+# Terraform
 
-This directory contains Terraform configurations for managing homelab infrastructure.
+Terraform is the production control plane for compute in this lab. Each deployment is a separate root module, HCP Terraform stores remote state, and GitHub Actions provides the normal plan-and-apply path.
 
-## Directory Structure
+## Layout
 
-```
+```text
 terraform/
-├── network/          # Network infrastructure
-├── compute/          # Virtual machines and compute resources
-└── storage/          # Storage configurations
+├── deployments/
+│   ├── cmd-and-ctrl/  Application hosts, ingress, and backup buckets
+│   ├── frontends/     Internal gateway and private frontend host
+│   ├── gh-runner/     Self-hosted Actions controller and workers
+│   ├── lab/           Lab and interactive VMs
+│   ├── lastdash/      Stateful LastDash host
+│   ├── nfs/           NFS LXC containers
+│   ├── plex/          Plex development and production VMs
+│   ├── shared/        Templates, drivers, and installation media
+│   └── tfc/           HCP Terraform projects and workspaces
+├── modules/
+│   ├── compute/       Reusable Proxmox VM modules
+│   └── network/       Reserved for future network modules
+└── install.sh         Terraform installer for Debian/Ubuntu
 ```
 
-## Prerequisites
+## Deployment matrix
 
-- Terraform >= 1.0
-- Appropriate provider credentials
-- Network access to infrastructure
+| Deployment | Environments / workspaces | Main resources |
+| --- | --- | --- |
+| `cmd-and-ctrl` | `cmd-and-ctrl-dev`, `cmd-and-ctrl-prd` | Application VMs, Cloudflare Tunnels/DNS, and R2 buckets |
+| `frontends` | `frontends-prd` | Gateway VM, cloud-init, and Docker Compose bootstrap |
+| `gh-runner` | `GH-Controller`, `GH-Worker` | Runner VMs and cloud-init snippets |
+| `lab` | `lab` | OpenClaw, pwnbox, and Windows VMs |
+| `lastdash` | `lastdash-prd` | Stateful application VM and first-boot bootstrap |
+| `nfs` | `nfs-dev`, `nfs-prd` | Privileged LXC containers and NFS provisioning |
+| `plex` | `plex-dev`, `plex-prd` | Ubuntu VMs and Plex Compose configuration |
+| `shared` | `shared` | Ubuntu LXC template, VirtIO ISO, optional Windows ISO |
+| `tfc` | `tfc` | HCP Terraform projects, workspaces, tags, and settings |
 
-## Getting Started
+The shared deployment provides artifacts that other deployments expect, but the stacks do not share a Terraform state file.
 
-### Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
+## Requirements
+
+- Terraform `~> 1.14.3` for root deployments
+- access to the configured HCP Terraform organization
+- Proxmox API credentials
+- SSH agent access for deployments that upload snippets or perform provider-side disk work
+- Bitwarden Secrets Manager access for deployments that resolve secret values by identifier
+- Cloudflare credentials for deployments that manage tunnels, DNS, certificates, or R2
+
+Install Terraform on Debian or Ubuntu with:
 
 ```bash
-# macOS
-brew tap hashicorp/tap
-brew install hashicorp/tap/terraform
-
-# Linux (Ubuntu/Debian)
-curl -fsSL https://raw.githubusercontent.com/krakenhavoc/HomeLab/refs/heads/main/terraform/install.sh | bash
+sudo ./terraform/install.sh 1.14.3
 ```
 
-```ps
-# Windows
-choco install terraform
-```
+Review the script before running it; it adds HashiCorp's apt repository and installs a system package.
 
-### Verify Installation
+## Work locally
+
+Initialize only the deployment you are changing:
 
 ```bash
-terraform version
-```
+cd terraform/deployments/plex
+export TF_WORKSPACE=plex-dev
 
-## Usage
-
-### Initialize Terraform
-
-```bash
-cd terraform/compute
 terraform init
-```
-
-### Plan Changes
-
-```bash
-terraform plan -out=tfplan
-```
-
-### Apply Changes
-
-```bash
-terraform apply tfplan
-```
-
-### Destroy Resources
-
-```bash
-terraform destroy
-```
-
-## Environment Variables
-
-Create a `.env` file (never commit this):
-
-```bash
-# Proxmox
-export PM_API_URL="https://proxmox.homelab.local:8006/api2/json"
-export PM_API_TOKEN_ID="terraform@pam!terraform"
-export PM_API_TOKEN_SECRET="your-secret-here"
-
-# Other providers
-export TF_VAR_api_key="your-api-key"
-```
-
-## Best Practices
-
-### State Management
-
-- Use remote state backend for team collaboration
-- Enable state locking
-- Regular state backups
-
-```hcl
-terraform {
-  backend "s3" {
-    bucket = "terraform-state"
-    key    = "homelab/terraform.tfstate"
-    region = "us-east-1"
-  }
-}
-```
-
-### Variable Management
-
-- Use `terraform.tfvars` for environment-specific values
-- Never commit sensitive values
-- Use variable validation
-
-```hcl
-variable "vm_count" {
-  description = "Number of VMs to create"
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.vm_count > 0 && var.vm_count <= 10
-    error_message = "VM count must be between 1 and 10."
-  }
-}
-```
-
-### Module Usage
-
-- Create reusable modules
-- Version module sources
-- Document module inputs/outputs
-
-```hcl
-module "web_servers" {
-  source = "./modules/vm"
-
-  count         = 3
-  vm_name       = "web-server"
-  cpu_cores     = 2
-  memory_mb     = 4096
-  disk_size_gb  = 50
-}
-```
-
-## Providers Used
-
-### Proxmox Provider
-
-```hcl
-terraform {
-  required_providers {
-    proxmox = {
-      source  = "telmate/proxmox"
-      version = "~> 2.9"
-    }
-  }
-}
-
-provider "proxmox" {
-  pm_api_url          = var.proxmox_api_url
-  pm_api_token_id     = var.proxmox_api_token_id
-  pm_api_token_secret = var.proxmox_api_token_secret
-  pm_tls_insecure     = true
-}
-```
-
-### Other Providers
-
-- **Docker**: Container management
-- **Kubernetes**: K8s resources
-- **Local**: Local file management
-- **External**: External data sources
-
-## Common Commands
-
-```bash
-# Format code
-terraform fmt -recursive
-
-# Validate configuration
+terraform fmt -check -recursive
 terraform validate
+terraform plan -var-file=env/dev/terraform.tfvars
+```
 
-# Show current state
-terraform show
+Use environment variables for credentials. A typical provider token uses the name expected by its provider or a `TF_VAR_...` variable already declared by the deployment.
 
-# List resources
+Never commit local state, saved plans, crash logs, or credential files. The repository `.gitignore` files cover common cases, but they are not a security boundary.
+
+## State model
+
+Backends use HCP Terraform. Some deployments select a fixed workspace; others select from workspaces grouped by tags. CI sets `TF_WORKSPACE` from the workflow environment.
+
+State rules:
+
+- one deployment owns a resource
+- do not copy a resource between state files by editing configuration alone
+- back up state before a manual move or import
+- quote addresses containing `for_each` keys
+- treat state and plan files as sensitive
+
+Useful read-only commands:
+
+```bash
+terraform workspace show
 terraform state list
-
-# Import existing resource
-terraform import proxmox_vm_qemu.example 100
-
-# Refresh state
-terraform refresh
-
-# Output values
-terraform output
+terraform state show '<resource-address>'
+terraform show
 ```
 
-## Workflows
+## Delivery model
 
-### Creating New VMs
+The central `deploy.yaml` workflow detects changed tiered deployments and calls the reusable Terraform CI and CD workflows:
 
-1. Define VM configuration in `compute/vms.tf`
-2. Set variables in `compute/terraform.tfvars`
-3. Run `terraform plan` to preview
-4. Run `terraform apply` to create
-5. Verify VM creation in Proxmox UI
+1. initialize and validate the selected deployment
+2. create a saved plan
+3. resolve the environment's Bitwarden secret identifiers
+4. post a change summary on pull requests
+5. encrypt and upload the saved plan as a short-lived artifact
+6. after merge, retrieve and apply the successful pull-request plan without replanning `main`
 
-### Network Changes
+The shared CD workflow independently checks that the event targets `main`. The `shared`, `tfc`, and runner stacks keep dedicated workflows because they are platform deployments rather than ordinary tiered applications.
 
-1. Update network configuration in `network/`
-2. Plan and review changes
-3. Apply during maintenance window
-4. Verify connectivity
+The runner deployment is different because it manages the infrastructure that runs the other workflows. It is manually dispatched, defaults to `dry_run: true`, rejects deletes, and checks for duplicate runner registrations before applying.
 
-### Storage Provisioning
+## Cloud-init lifecycle
 
-1. Define storage resources in `storage/`
-2. Consider backup implications
-3. Apply changes
-4. Update backup configurations
+The BPG Proxmox provider stores a cloud-init snippet as a file resource and refers to its ID from the VM's `initialization` block. Replacing a snippet can make that ID unknown during planning, which can cascade into a VM replacement.
 
-## Troubleshooting
+For disposable guests that may be acceptable. For long-lived services and registered runners it is not, so selected raw VM resources ignore initialization changes. The tradeoff is important: later edits to the cloud-init template no longer reach those existing guests. Use an application update path or a deliberate rebuild.
 
-### Common Issues
+Always inspect changes to:
 
-**Provider Authentication Fails**
+- `initialization`
+- `user_data_file_id`
+- clone source and disk blocks
+- a resource's `for_each` key or address
+- `moved` blocks
+- lifecycle rules
+
+## Shared compute module
+
+`modules/compute/pm-cloudinit-vm` is the current BPG Proxmox module. It creates a full-clone Linux VM with:
+
+- QEMU agent support
+- configurable CPU, memory, disk, BIOS, tags, bridge, and VLAN
+- a caller-provided cloud-init file ID
+- DHCP by default
+- optional static IPv4, gateway, DNS, search domain, and pinned MAC address
+
+Deployments consume it by versioned Git reference. See the [compute module guide](modules/compute/README.md) for usage and release notes.
+
+`modules/compute/pve-cloudinit-vm` is the earlier Telmate-provider implementation. It remains for historical compatibility but is not the preferred module for new deployments.
+
+## Validate modules
+
 ```bash
-# Verify credentials
-echo $PM_API_TOKEN_SECRET
-# Check API endpoint
-curl -k $PM_API_URL
+cd terraform/modules/compute/pm-cloudinit-vm
+terraform init -backend=false
+terraform validate
+terraform test
 ```
 
-**State Lock Issues**
-```bash
-# Force unlock (use with caution)
-terraform force-unlock <lock-id>
-```
+The repository discovers modules with a `tests/` directory and runs them in GitHub Actions when module files change.
 
-**Resource Already Exists**
-```bash
-# Import existing resource
-terraform import <resource_type>.<name> <id>
-```
+## Intentional replacement
 
-## Security Considerations
+Use the manual replacement workflow only after confirming the exact state address, backup, downtime, and recovery path. It prints a plan and then performs an auto-approved apply, so a correct dispatch input is critical.
 
-- Never commit `.tfvars` files with secrets
-- Use environment variables for sensitive data
-- Implement RBAC for Terraform operations
-- Regular security audits of configurations
-- Use `terraform plan` before `apply`
+See the [operations runbook](../docs/runbook.md#intentional-replacement) for the procedure and current runner-stack limitation.
 
-## CI/CD Integration
+## Adding a deployment
 
-### GitHub Actions Example
+A new root module should include:
 
-```yaml
-name: Terraform
+- `backend.tf` with an intentional workspace boundary
+- `versions.tf` with Terraform and provider constraints
+- `providers.tf`
+- typed, described variables with validation where useful
+- non-secret environment values under `env/`
+- an `env/<tier>/terraform.tfvars` directory that the deployment matrix can discover
+- secret identifiers in `env/<tier>/secrets.env` when the stack needs them
+- a service verification and recovery note
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v2
-      - run: terraform init
-      - run: terraform validate
-      - run: terraform plan
-```
-
-## Documentation
-
-Each subdirectory contains:
-- `README.md`: Specific documentation
-- `variables.tf`: Input variables
-- `outputs.tf`: Output values
-- `main.tf`: Main configuration
-- `versions.tf`: Provider versions
-
-## Resources
-
-- [Terraform Documentation](https://www.terraform.io/docs)
-- [Proxmox Provider Docs](https://registry.terraform.io/providers/Telmate/proxmox/latest/docs)
-- [Terraform Best Practices](https://www.terraform-best-practices.com/)
-- [Learn Terraform](https://learn.hashicorp.com/terraform)
-
-## Future Enhancements
-
-- Implement Terraform Cloud for state management
-- Add automated testing with Terratest
-- Create custom provider for homelab devices
-- Implement policy as code with Sentinel
-- Add drift detection automation
+Start with the [service deployment guide](../docs/service-deployment.md) rather than copying an old stack wholesale.
