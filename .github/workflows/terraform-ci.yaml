@@ -63,7 +63,6 @@ jobs:
       NODE_OPTIONS: "--no-network-family-autoselection"
       PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
       PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -87,27 +86,14 @@ jobs:
           terraform_version: ${{ inputs.terraform_version }}
           cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-      # Vars and TFSECRET_<NAME> below become TF_VAR_<lowercased name>.
-      # Allowlist on purpose: the whole secrets context would reach the runner otherwise.
-      # New app secret: add one line.
+      # Repo/env vars become TF_VAR_<lowercased name>. Secrets come from
+      # Bitwarden (env/<env>/secrets.env), never the whole secrets context.
       - name: Export TF_VAR_*
         env:
           VARS: ${{ toJSON(vars) }}
-          TFSECRET_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TFSECRET_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TFSECRET_CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-          TFSECRET_CMD_AND_CTRL_ADMIN_TOKEN: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_DEV_ADMIN_TOKEN: ${{ secrets.CMD_AND_CTRL_DEV_ADMIN_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_GITHUB_TOKEN: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_TUNNEL_TOKEN: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
-          TFSECRET_LASTDASH_GHCR_TOKEN: ${{ secrets.LASTDASH_GHCR_TOKEN }}
-          TFSECRET_LASTDASH_NEXTAUTH_SECRET: ${{ secrets.LASTDASH_NEXTAUTH_SECRET }}
-          TFSECRET_LASTDASH_POSTGRES_PASSWORD: ${{ secrets.LASTDASH_POSTGRES_PASSWORD }}
-          TFSECRET_LASTDASH_TOKEN_ENCRYPTION_SECRET: ${{ secrets.LASTDASH_TOKEN_ENCRYPTION_SECRET }}
         run: .github/scripts/export-tf-vars.sh >> "$GITHUB_ENV"
 
       # env/<env>/secrets.env: NAME=<bitwarden secret id> -> TF_VAR_<name>.
-      # Runs after the list above so Bitwarden wins.
       - name: Read Bitwarden secret ids
         id: bws
         env:

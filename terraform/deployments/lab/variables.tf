@@ -150,14 +150,6 @@ variable "pwnbox" {
   default = {}
 }
 
-# Only kept so lab can forget the cmd_and_ctrl Cloudflare resources. Drop it
-# with the provider once that has applied.
-variable "cloudflare_api_token" {
-  description = "Cloudflare token (unused by lab's own resources)"
-  type        = string
-  sensitive   = true
-}
-
 variable "windows11" {
   description = "Object containing the Windows 11 VM configuration"
   type = object({

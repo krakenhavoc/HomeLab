@@ -33,7 +33,6 @@ jobs:
       TF_WORKSPACE: ${{ inputs.app == inputs.env && inputs.app || format('{0}-{1}', inputs.app, inputs.env) }}
       NODE_OPTIONS: "--no-network-family-autoselection"
       PROXMOX_VE_PASSWORD: ${{ secrets.PROXMOX_VE_PASSWORD }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -62,21 +61,9 @@ jobs:
           terraform_version: ${{ inputs.terraform_version }}
           cli_config_credentials_token: ${{ secrets.HCP_API_TOKEN }}
 
-      # Keep in step with terraform-ci's list.
       - name: Export TF_VAR_*
         env:
           VARS: ${{ toJSON(vars) }}
-          TFSECRET_CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TFSECRET_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TFSECRET_CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-          TFSECRET_CMD_AND_CTRL_ADMIN_TOKEN: ${{ secrets.CMD_AND_CTRL_ADMIN_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_DEV_ADMIN_TOKEN: ${{ secrets.CMD_AND_CTRL_DEV_ADMIN_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_GITHUB_TOKEN: ${{ secrets.CMD_AND_CTRL_GITHUB_TOKEN }}
-          TFSECRET_CMD_AND_CTRL_TUNNEL_TOKEN: ${{ secrets.CMD_AND_CTRL_TUNNEL_TOKEN }}
-          TFSECRET_LASTDASH_GHCR_TOKEN: ${{ secrets.LASTDASH_GHCR_TOKEN }}
-          TFSECRET_LASTDASH_NEXTAUTH_SECRET: ${{ secrets.LASTDASH_NEXTAUTH_SECRET }}
-          TFSECRET_LASTDASH_POSTGRES_PASSWORD: ${{ secrets.LASTDASH_POSTGRES_PASSWORD }}
-          TFSECRET_LASTDASH_TOKEN_ENCRYPTION_SECRET: ${{ secrets.LASTDASH_TOKEN_ENCRYPTION_SECRET }}
         run: .github/scripts/export-tf-vars.sh >> "$GITHUB_ENV"
 
       # Same as terraform-ci.
