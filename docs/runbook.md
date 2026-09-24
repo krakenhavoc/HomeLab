@@ -1,637 +1,231 @@
-# Operations Runbook
+# Operations runbook
 
-This runbook provides step-by-step procedures for deploying, operating, and troubleshooting the HomeLab infrastructure.
+This runbook covers the routine path from a Terraform change to a healthy service, plus the checks to make before any intentional replacement.
 
-## Table of Contents
+> **Default rule:** plan locally if useful, but apply through GitHub Actions. A clean plan is necessary; a reviewed plan is what makes it safe.
 
-- [Prerequisites](#prerequisites)
-- [Initial Setup](#initial-setup)
-- [Deployment Procedures](#deployment-procedures)
-- [Required Secrets and Variables](#required-secrets-and-variables)
-- [Common Operations](#common-operations)
-- [Troubleshooting](#troubleshooting)
-- [Maintenance Tasks](#maintenance-tasks)
-- [Emergency Procedures](#emergency-procedures)
+## Before you begin
 
-## Prerequisites
+You need:
 
-### Required Software
+- Terraform `1.14.3`
+- access to the configured HCP Terraform organization
+- the appropriate GitHub environment and Bitwarden Secrets Manager access
+- access to a self-hosted runner for workflows that reach Proxmox
+- SSH agent access to the Proxmox key when a provider operation requires it
 
-Ensure the following tools are installed on your workstation:
+Install the repository checks once:
 
 ```bash
-# Terraform (Infrastructure as Code)
-terraform --version  # Should be >= 1.0
-
-# kubectl (Kubernetes CLI)
-kubectl version --client  # Should be >= 1.29
-
-# SSH client
-ssh -V
-
-# Git
-git --version
+pre-commit install
 ```
 
-### Required Access
-
-- Proxmox VE admin credentials
-- SSH access to Proxmox host
-- GitHub repository access
-- Network access to management VLAN
-
-### Proxmox Requirements
-
-- Proxmox VE 7.x or later installed and configured
-- Storage pool configured (e.g., `local-lvm` for VM disks)
-- Snippets storage configured (e.g., `local:snippets`)
-- Ubuntu 22.04 cloud-init template created
-- Network bridge configured (e.g., `vmbr0`)
-
-## Initial Setup
-
-### 1. Clone Repository
+Run them before pushing:
 
 ```bash
-git clone https://github.com/krakenhavoc/HomeLab.git
-cd HomeLab
+pre-commit run --all-files
 ```
 
-### 2. Configure Terraform Backend
+## Deployment inventory
 
-Edit `terraform/deployments/home-lab/backend.tf` if using remote state:
+| Stack | Terraform root | Variable files | State selection |
+| --- | --- | --- | --- |
+| Lab | `terraform/deployments/lab` | `env/lab/terraform.tfvars` | `lab` |
+| Cmd and Ctrl | `terraform/deployments/cmd-and-ctrl` | `env/{dev,prd}/terraform.tfvars` | `cmd-and-ctrl-{dev,prd}` |
+| Frontends | `terraform/deployments/frontends` | `env/prd/terraform.tfvars` | `frontends-prd` |
+| LastDash | `terraform/deployments/lastdash` | `env/prd/terraform.tfvars` | `lastdash-prd` |
+| Plex | `terraform/deployments/plex` | `env/{dev,prd}/terraform.tfvars` | `plex-{dev,prd}` |
+| NFS | `terraform/deployments/nfs` | `env/{dev,prd}/terraform.tfvars` | `nfs-{dev,prd}` |
+| Shared artifacts | `terraform/deployments/shared` | `env/shared/terraform.tfvars` | `shared` |
+| GitHub runners | `terraform/deployments/gh-runner` | `env/gh-{controller,worker}.tfvars` | `GH-Controller` or `GH-Worker` |
+| Terraform Cloud | `terraform/deployments/tfc` | `env/tfc/terraform.tfvars` | `tfc` |
 
-```hcl
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-  # Or use remote backend:
-  # backend "s3" {
-  #   bucket = "my-terraform-state"
-  #   key    = "homelab/terraform.tfstate"
-  #   region = "us-east-1"
-  # }
-}
-```
+## Plan a change locally
 
-### 3. Configure Terraform Variables
-
-Create `terraform/deployments/home-lab/terraform.tfvars`:
-
-```hcl
-# Proxmox connection settings
-proxmox_api_url = "https://proxmox.example.com:8006/api2/json"
-proxmox_node    = "pve"
-
-# VM root password (use environment variable or secure vault)
-cloudinit-example_root-password = "your-secure-password"
-
-# Network settings
-vm_network_bridge = "vmbr0"
-vm_network_vlan   = 20
-```
-
-**Security Note**: Never commit `terraform.tfvars` to Git. Use environment variables or a secrets manager.
-
-### 4. Prepare Cloud-init Snippets
-
-Upload cloud-init configurations to Proxmox snippets storage:
+Choose one deployment and initialize it in place:
 
 ```bash
-# SSH to Proxmox host
-ssh root@proxmox.example.com
-
-# Navigate to snippets directory
-cd /var/lib/vz/snippets/
-
-# Copy cloud-init files (or upload via web UI)
-# Files needed:
-# - setup_k8s_master.yml
-# - setup_k8s_worker.yml
-# - calico-patch.sh
-```
-
-Alternatively, use Proxmox web UI:
-1. Go to Datacenter → Storage → local
-2. Click "Content" → "Snippets"
-3. Upload the files from `scripts/deployment/cloud-init/`
-
-## Deployment Procedures
-
-### Deploy Kubernetes Cluster
-
-#### Step 1: Initialize Terraform
-
-```bash
-cd terraform/deployments/home-lab
-
-# Initialize Terraform (download providers, modules)
+cd terraform/deployments/<deployment>
 terraform init
-
-# Validate configuration
+terraform fmt -check -recursive
 terraform validate
+terraform plan -var-file=env/<environment>/terraform.tfvars
 ```
 
-#### Step 2: Plan Infrastructure Changes
+The `gh-runner` stack uses flat variable files instead:
 
 ```bash
-# Generate and review execution plan
-terraform plan
-
-# Save plan to file for review
-terraform plan -out=tfplan
-
-# Review the plan
-terraform show tfplan
+cd terraform/deployments/gh-runner
+TF_WORKSPACE=GH-Worker terraform plan \
+  -var-file=env/gh-worker.tfvars \
+  -var='gh_registration_token=<short-lived-token>'
 ```
 
-Expected output:
-- 1 master node VM to be created
-- 2 worker node VMs to be created
-- Total: 3 resources to add
+Supply secrets through environment variables or the configured Bitwarden/GitHub secret path. Do not place values in `.tfvars`, `secrets.env`, shell history, a plan pasted into an issue, or documentation. Files named `secrets.env` contain secret identifiers, not secret values.
 
-#### Step 3: Apply Infrastructure
+## Read the plan
+
+Do not stop at the summary line. For every changed resource, answer:
+
+1. Is this the deployment and environment I intended to change?
+2. Is every create, update, delete, or replacement expected?
+3. Does an `initialization` or cloud-init diff imply a guest restart or rebuild?
+4. Is persistent data on a disk, mount, or external backup that survives the action?
+5. Can the service be verified and rolled back after the apply?
+
+An unexpected replacement of `openclaw-2`, either `cmd_and_ctrl` environment, the gateway, or LastDash is a stop condition. These guests contain manual identity or persistent state that deserves an explicit recovery decision before replacement.
+
+Useful inspection commands:
 
 ```bash
-# Apply the planned changes
-terraform apply
-
-# Or apply saved plan
-terraform apply tfplan
+terraform show
+terraform state list
+terraform state show '<resource-address>'
 ```
 
-This will:
-1. Create VMs in Proxmox
-2. Configure cloud-init
-3. Boot VMs
-4. Install Kubernetes components
-5. Initialize the cluster
+`terraform state` commands are diagnostic here. Do not move, remove, or import state as a speculative fix.
 
-**Wait Time**: Initial deployment takes 5-10 minutes for VMs to boot and complete cloud-init.
+## Normal deployment flow
 
-#### Step 4: Verify Deployment
+Most deployment workflows follow the same lifecycle:
 
-```bash
-# SSH to master node
-ssh root@k8s-master-1
+```mermaid
+sequenceDiagram
+    participant Dev as Maintainer
+    participant GH as GitHub Actions
+    participant TF as Terraform
+    participant PVE as Proxmox
 
-# Check node status
-kubectl get nodes
-
-# Expected output:
-# NAME           STATUS   ROLES           AGE   VERSION
-# k8s-master-1   Ready    control-plane   5m    v1.29.x
-# k8s-worker-2   Ready    <none>          4m    v1.29.x
-# k8s-worker-3   Ready    <none>          4m    v1.29.x
-
-# Check all pods
-kubectl get pods -A
-
-# Check Calico networking
-kubectl get pods -n kube-system | grep calico
+    Dev->>GH: Open or update pull request
+    GH->>TF: Resolve secrets, init, validate, and plan
+    TF-->>GH: Encrypted saved plan and PR summary
+    Dev->>GH: Review and merge
+    GH->>TF: Apply saved plan
+    TF->>PVE: Reconcile resources
+    Dev->>PVE: Verify guest and service health
 ```
 
-### Deploy Additional Applications
+Pull requests must not apply infrastructure. The central deployment workflow plans changed tiered stacks, encrypts the saved plans, and applies those exact pull-request artifacts only after the commit reaches `main`. Dedicated platform workflows must preserve the same review and event gates.
 
-#### Deploy a Test Application
+## Verify an apply
 
-```bash
-# Create deployment
-kubectl create deployment nginx --image=nginx:latest --replicas=3
+Start at the infrastructure layer and move upward:
 
-# Expose the deployment
-kubectl expose deployment nginx --port=80 --type=NodePort
+1. Confirm the workflow completed successfully.
+2. Confirm the expected resource exists and is running in Proxmox.
+3. For a new Linux guest, inspect cloud-init:
 
-# Get service details
-kubectl get svc nginx
-
-# Test access
-curl http://<worker-node-ip>:<node-port>
-```
-
-#### Deploy Using Manifests
-
-```bash
-# Apply manifest
-kubectl apply -f deployment.yaml
-
-# Check status
-kubectl rollout status deployment/myapp
-```
-
-## Required Secrets and Variables
-
-### Environment Variables
-
-Set these environment variables before running Terraform:
-
-```bash
-# Proxmox credentials
-export PROXMOX_VE_USERNAME="root@pam"
-export PROXMOX_VE_PASSWORD="your-password"
-
-# Or use API token (recommended)
-export PROXMOX_VE_API_TOKEN="user@realm!tokenname=uuid"
-
-# VM root password
-export TF_VAR_cloudinit_root_password="secure-password"
-```
-
-### Terraform Variables
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `proxmox_api_url` | Proxmox API endpoint | Yes | - |
-| `proxmox_node` | Target Proxmox node | Yes | - |
-| `cloudinit-example_root-password` | VM root password | Yes | - |
-| `vm_network_bridge` | Network bridge | No | `vmbr0` |
-| `vm_network_vlan` | VLAN tag | No | `20` |
-| `vm_memory` | Memory allocation (MB) | No | `4096` |
-
-### Kubernetes Secrets
-
-Create secrets for applications:
-
-```bash
-# Create secret from literal
-kubectl create secret generic db-password \
-  --from-literal=password='myP@ssw0rd'
-
-# Create secret from file
-kubectl create secret generic tls-cert \
-  --from-file=tls.crt=./cert.crt \
-  --from-file=tls.key=./cert.key
-
-# Create docker registry secret
-kubectl create secret docker-registry regcred \
-  --docker-server=registry.example.com \
-  --docker-username=user \
-  --docker-password=password
-```
-
-## Common Operations
-
-### Scale Worker Nodes
-
-To add more worker nodes, edit `terraform/deployments/home-lab/main.tf`:
-
-```hcl
-module "k8s_workers" {
-  source   = "../../modules/compute/pve-cloudinit-vm"
-  for_each = toset(["2", "3", "4"])  # Add "4" for new node
-
-  vm_name      = "k8s-worker-${each.key}"
-  memory_bytes = 4096
-  ci_user_data = "vendor=local:snippets/setup_k8s_worker.yml"
-  cloudinit-example_root-password = var.cloudinit-example_root-password
-}
-```
-
-Then apply:
-
-```bash
-terraform plan
-terraform apply
-```
-
-### Update Kubernetes
-
-```bash
-# SSH to master node
-ssh root@k8s-master-1
-
-# Check current version
-kubectl version
-
-# Update kubeadm
-apt-mark unhold kubeadm
-apt-get update && apt-get install -y kubeadm=1.29.x-00
-apt-mark hold kubeadm
-
-# Plan upgrade
-kubeadm upgrade plan
-
-# Apply upgrade
-kubeadm upgrade apply v1.29.x
-
-# Drain node
-kubectl drain k8s-master-1 --ignore-daemonsets
-
-# Update kubelet and kubectl
-apt-mark unhold kubelet kubectl
-apt-get update && apt-get install -y kubelet=1.29.x-00 kubectl=1.29.x-00
-apt-mark hold kubelet kubectl
-
-# Restart kubelet
-systemctl daemon-reload
-systemctl restart kubelet
-
-# Uncordon node
-kubectl uncordon k8s-master-1
-```
-
-### Backup Cluster State
-
-```bash
-# Backup etcd
-ETCDCTL_API=3 etcdctl snapshot save snapshot.db \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-  --cert=/etc/kubernetes/pki/etcd/server.crt \
-  --key=/etc/kubernetes/pki/etcd/server.key
-
-# Verify snapshot
-ETCDCTL_API=3 etcdctl snapshot status snapshot.db
-
-# Backup important configs
-tar -czf k8s-configs-$(date +%Y%m%d).tar.gz \
-  /etc/kubernetes \
-  ~/.kube/config
-```
-
-### Restore from Backup
-
-```bash
-# Stop kube-apiserver
-mv /etc/kubernetes/manifests/kube-apiserver.yaml ~
-
-# Restore etcd
-ETCDCTL_API=3 etcdctl snapshot restore snapshot.db \
-  --data-dir=/var/lib/etcd-restore
-
-# Update etcd data directory
-# Edit /etc/kubernetes/manifests/etcd.yaml
-
-# Restart kube-apiserver
-mv ~/kube-apiserver.yaml /etc/kubernetes/manifests/
-```
-
-### Check Cluster Health
-
-```bash
-# Node status
-kubectl get nodes -o wide
-
-# Component status
-kubectl get cs
-
-# Pod health across all namespaces
-kubectl get pods -A
-
-# Events (recent issues)
-kubectl get events -A --sort-by='.lastTimestamp'
-
-# Resource usage
-kubectl top nodes
-kubectl top pods -A
-```
-
-### View Logs
-
-```bash
-# Pod logs
-kubectl logs <pod-name> -n <namespace>
-
-# Previous pod logs (after crash)
-kubectl logs <pod-name> -n <namespace> --previous
-
-# Follow logs
-kubectl logs -f <pod-name> -n <namespace>
-
-# Logs from all containers in pod
-kubectl logs <pod-name> -n <namespace> --all-containers
-
-# System logs on node
-ssh root@k8s-master-1
-journalctl -u kubelet -f
-```
-
-## Troubleshooting
-
-### Pods Not Starting
-
-**Symptom**: Pods stuck in `Pending` or `ContainerCreating` state
-
-```bash
-# Describe pod for events
-kubectl describe pod <pod-name> -n <namespace>
-
-# Check node resources
-kubectl describe nodes
-
-# Check pod scheduling
-kubectl get events -n <namespace>
-```
-
-**Common Causes**:
-- Insufficient resources (CPU/memory)
-- Image pull errors
-- Volume mount issues
-- Node selectors/taints
-
-### Networking Issues
-
-**Symptom**: Pods cannot communicate or reach external services
-
-```bash
-# Check Calico pods
-kubectl get pods -n kube-system | grep calico
-
-# Test pod-to-pod connectivity
-kubectl run -it --rm debug --image=busybox --restart=Never -- sh
-# Then inside pod:
-ping <other-pod-ip>
-
-# Check CNI configuration
-ssh root@k8s-master-1
-cat /etc/cni/net.d/10-calico.conflist
-
-# Check IP tables
-iptables -L -n -v
-```
-
-**Common Fixes**:
-- Restart Calico pods: `kubectl delete pods -n kube-system -l k8s-app=calico-node`
-- Verify network policies
-- Check firewall rules
-
-### Node Not Ready
-
-**Symptom**: Node shows `NotReady` status
-
-```bash
-# Check node status
-kubectl describe node <node-name>
-
-# SSH to node and check kubelet
-ssh root@<node-name>
-systemctl status kubelet
-journalctl -u kubelet -n 50
-
-# Check container runtime
-systemctl status containerd
-ctr version
-```
-
-**Common Fixes**:
-- Restart kubelet: `systemctl restart kubelet`
-- Check disk space: `df -h`
-- Verify containerd: `systemctl restart containerd`
-
-### Terraform Apply Failures
-
-**Symptom**: Terraform apply fails or times out
-
-```bash
-# Enable debug logging
-export TF_LOG=DEBUG
-export TF_LOG_PATH=terraform.log
-
-# Re-run apply
-terraform apply
-
-# Check Proxmox logs
-ssh root@proxmox.example.com
-tail -f /var/log/pve/tasks/active
-```
-
-**Common Issues**:
-- Proxmox API connectivity
-- Insufficient resources
-- Storage issues
-- Template not found
-
-### Cloud-init Not Running
-
-**Symptom**: VMs created but Kubernetes not installed
-
-```bash
-# SSH to VM
-ssh root@k8s-master-1
-
-# Check cloud-init status
-cloud-init status
-
-# View cloud-init logs
-cat /var/log/cloud-init.log
-cat /var/log/cloud-init-output.log
-
-# Re-run cloud-init (testing only)
-cloud-init clean
-cloud-init init
-```
-
-## Maintenance Tasks
-
-### Weekly Tasks
-
-```bash
-# Check cluster health
-kubectl get nodes
-kubectl get pods -A
-
-# Review events
-kubectl get events -A --sort-by='.lastTimestamp'
-
-# Check resource usage
-kubectl top nodes
-kubectl top pods -A
-```
-
-### Monthly Tasks
-
-```bash
-# Update system packages
-ssh root@k8s-master-1
-apt-get update
-apt-get upgrade -y
-
-# Review security updates
-apt list --upgradable
-
-# Backup etcd
-# (See backup procedures above)
-
-# Clean up old resources
-kubectl delete pods --field-selector status.phase=Succeeded -A
-kubectl delete pods --field-selector status.phase=Failed -A
-```
-
-### Quarterly Tasks
-
-- Review and update Kubernetes version
-- Audit security policies
-- Update documentation
-- Test disaster recovery procedures
-- Review resource quotas and limits
-
-## Emergency Procedures
-
-### Complete Cluster Failure
-
-1. **Assess the situation**
    ```bash
-   # Check all nodes
-   ping k8s-master-1
-   ping k8s-worker-2
-   ping k8s-worker-3
+   cloud-init status --long
+   sudo journalctl -u cloud-final --no-pager
    ```
 
-2. **Attempt recovery**
+4. Confirm the guest has the expected address and route:
+
    ```bash
-   # Try restarting services
-   ssh root@k8s-master-1
-   systemctl restart kubelet
-   systemctl restart containerd
+   ip -brief address
+   ip route
+   resolvectl status
    ```
 
-3. **Restore from backup** (if needed)
-   - Follow backup restoration procedures
-   - Redeploy from Terraform if VMs are corrupted
+5. Confirm the workload itself:
 
-4. **Rebuild cluster** (last resort)
    ```bash
-   # Destroy existing infrastructure
-   terraform destroy
-
-   # Redeploy
-   terraform apply
+   systemctl --failed
+   docker compose ps
    ```
 
-### Security Incident
+Use the command that matches the guest; not every VM runs Docker.
 
-1. **Isolate affected components**
-   ```bash
-   # Cordon node
-   kubectl cordon <node-name>
+## Intentional replacement
 
-   # Delete compromised pods
-   kubectl delete pod <pod-name> -n <namespace>
-   ```
+Replacement is a recovery or rollout operation, not routine configuration management. Before replacing a guest:
 
-2. **Collect evidence**
-   ```bash
-   # Save logs
-   kubectl logs <pod-name> -n <namespace> > incident-logs.txt
+- identify exactly which state address will be replaced
+- confirm the latest usable backup and restore path
+- record any manual state that cloud-init cannot recreate
+- verify the service's acceptable downtime
+- confirm the plan contains no collateral delete actions
 
-   # Export node data
-   kubectl get nodes -o yaml > nodes-state.yaml
-   ```
+For deployments that use the standard `env/<environment>/terraform.tfvars` layout, dispatch the **Terraform Replace** workflow with the full resource address, deployment name, and environment. The workflow prints a fresh plan and then performs an auto-approved replacement, so the inputs are the approval boundary.
 
-3. **Rotate credentials**
-   - Update all secrets
-   - Regenerate certificates
-   - Change passwords
+Example using the GitHub CLI:
 
-### Data Loss Prevention
+```bash
+gh workflow run terraform-replace.yaml \
+  -f replace_resource='module.example.proxmox_virtual_environment_vm.this' \
+  -f deployment_name=lab \
+  -f environment=lab \
+  -f terraform_version=1.14.3
+```
 
-- Always maintain recent backups
-- Use version control for all configurations
-- Document all manual changes
-- Test recovery procedures regularly
+The generic replacement workflow does not match the `gh-runner` stack's current flat variable-file layout. Rebuild runners through `gh-runner-deploy.yaml`, one controlled change at a time, and keep `dry_run` enabled until the plan has been inspected.
 
----
+## Common failure modes
 
-For architectural details, see [Architecture Overview](overview.md).
-For security guidelines, see [Security](security.md).
+### Terraform cannot select a workspace
+
+Check the deployment's backend block and set the expected workspace when it uses tags:
+
+```bash
+export TF_WORKSPACE=<workspace>
+terraform init -reconfigure
+```
+
+### Proxmox authentication fails
+
+Confirm the correct API credential is present in the GitHub environment or local shell. If the provider operation uploads snippets or touches disks over SSH, also confirm the SSH agent contains the Proxmox key:
+
+```bash
+ssh-add -l
+```
+
+Do not print token values while diagnosing authentication.
+
+### A new VM has no address
+
+Check, in order:
+
+1. VLAN ID and bridge in the environment's `.tfvars`
+2. DHCP availability on that VLAN, or the full static address/gateway/DNS set
+3. Proxmox guest console output
+4. `cloud-init status --long` and the cloud-init logs
+
+A static address must include its prefix length. A gateway must be a bare IPv4 address.
+
+### Cloud-init changes do not reach a guest
+
+That can be expected. Cloud-init is first-boot data, and protected resources intentionally ignore parts of `initialization` to prevent accidental replacement. Deliver application changes through the application's deployment path or schedule a deliberate VM rebuild.
+
+### NFS is available but Plex cannot see media
+
+Check the dependency from both ends:
+
+```bash
+# On the NFS server
+exportfs -v
+systemctl status nfs-kernel-server
+
+# On the Plex host
+findmnt -t nfs,nfs4
+mount | grep /mnt
+```
+
+Then verify VLAN policy and the environment-specific NFS address in the Plex `.tfvars` file.
+
+### A plan shows an unexpected replacement
+
+Stop. Save the plan output, identify the attribute marked `forces replacement`, and compare it with the current state. Common triggers in this repository include cloud-init file IDs, clone settings, initialization blocks, and changes to resource addressing. Do not solve an unexplained replacement with `-target`, `taint`, or state removal.
+
+## Incident notes
+
+For an outage, keep a short timeline with:
+
+- the first observed symptom and affected service
+- the last known good deployment
+- relevant workflow run and commit
+- containment action
+- recovery action and verification
+- follow-up issue for any missing guardrail
+
+The useful outcome is not a perfect narrative; it is enough context to avoid repeating the same failure.

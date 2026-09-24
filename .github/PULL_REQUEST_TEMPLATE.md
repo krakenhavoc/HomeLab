@@ -1,25 +1,25 @@
-# Pull request
+## What changed
 
-## Description
-Provide a summary of the changes and the motivation.
+<!-- Describe the problem and the smallest useful change that solves it. -->
 
-Closes: (if applicable) #ISSUE_NUMBER
+## Operational impact
 
-## Type of change
-- Bugfix
-- New feature
-- Documentation
-- Refactor
-- Chore
+<!-- Name the deployment, environment, downtime, and data implications. Write "None" where appropriate. -->
 
-## How has this been tested?
-Describe the test plan and which environments were used.
+- Deployment / environment:
+- Expected downtime:
+- Data or backup impact:
+
+## Verification
+
+<!-- List commands, tests, and post-deployment checks. For Terraform changes, summarize create/change/destroy actions. -->
 
 ## Checklist
-- [ ] I have read the contribution guidelines
-- [ ] My changes follow the project’s code style
-- [ ] I updated documentation where necessary
-- [ ] I added tests for my changes (if applicable)
 
-## Additional notes
-Anything else the reviewers should know.
+- [ ] I ran the relevant local checks.
+- [ ] I reviewed the Terraform plan, if applicable.
+- [ ] Every delete or replacement is expected and recoverable.
+- [ ] No secret or sensitive plan output is included.
+- [ ] I updated the documentation for behavior or architecture changes.
+
+Closes #

@@ -1,28 +1,26 @@
 ---
-name: Feature Request
-about: Suggest a new feature or enhancement for the HomeLab project
-title: "[FEATURE] "
+name: Feature request
+about: Propose an infrastructure or workflow improvement
+title: "feat: "
 labels: enhancement
 ---
 
-# Feature request
+## Problem
 
-Please fill out this template to help us evaluate and prioritize your request.
+<!-- What limitation or operational risk should this solve? -->
 
-**Summary**
-A short description of the requested feature.
+## Proposed outcome
 
-**Problem**
-What problem does this solve? Who is affected?
+<!-- Describe the desired behavior, not only a preferred tool. -->
 
-**Proposed solution**
-Describe the solution you'd like, including usage examples and any backwards-compatibility considerations.
+## Design considerations
 
-**Alternatives considered**
-Any alternative solutions you explored.
+- Deployment and state boundary:
+- Network or security impact:
+- Migration path:
+- Backup and rollback:
+- Alternatives considered:
 
-**Benefits**
-Why is this important / what value will it provide?
+## Definition of done
 
-**Notes**
-Any references, mockups, or related issues.
+<!-- What evidence would show this is working safely? -->

@@ -1,225 +1,121 @@
-# Service Deployment Guide
+# Service deployment guide
 
-## Overview
+Services in this lab are delivered in one of two ways: baked into first boot with cloud-init, or updated later through a service-specific workflow or maintenance script. Choosing the right path matters because cloud-init is not rerun as a general deployment engine.
 
-This guide covers the deployment and management of services running in the homelab environment.
+## Choose a deployment shape
 
-## Infrastructure Platform
+| Need | Preferred shape |
+| --- | --- |
+| New long-lived Linux host | Reusable `pm-cloudinit-vm` module plus a cloud-init template |
+| Guest with unusual hardware or lifecycle rules | Raw Proxmox resource with the reason documented inline |
+| Small containerized application | Docker Compose rendered into a dedicated VM |
+| Lightweight storage service | LXC container when its privilege and mount requirements are understood |
+| Application update on an existing host | Application pipeline or focused maintenance script |
+| First-boot package and account setup | Cloud-init |
 
-### Virtualization
-- **Proxmox VE**: Primary hypervisor for virtual machines
-- **Docker**: Container runtime for microservices
-- **Kubernetes**: Container orchestration (K3s)
+## Add a service
 
-## Core Services
+### 1. Pick the state boundary
 
-### 1. Proxmox Virtual Environment
+Add the service to an existing deployment only when it shares that stack's lifecycle and ownership. Otherwise create a new directory under `terraform/deployments/` with its own backend, providers, variables, version constraints, and environment files.
 
-#### Installation
-- Installed on bare metal servers
-- ZFS storage pools for VMs
-- High availability cluster configuration
+### 2. Define the guest
 
-#### VM Templates
-- Ubuntu Server 22.04 LTS
-- Debian 12
-- Rocky Linux 9
-- Windows Server 2022
+For a standard Ubuntu VM, use the current compute module:
 
-### 2. Docker Services
+```hcl
+module "service_host" {
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=<release>"
 
-#### Docker Compose Stack
-
-```yaml
-# Example docker-compose.yml structure
-version: '3.8'
-services:
-  # Service definitions
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    restart: unless-stopped
-    # ... configuration
+  vm_name                        = var.service_host.name_prefix
+  vm_node_name                   = var.pve.host
+  vm_description                 = var.service_host.description
+  vm_tags                        = var.service_host.tags
+  vm_bios                        = var.service_host.bios
+  clone_vm_id                    = data.proxmox_virtual_environment_vms.noble_template.vms[0].vm_id
+  vm_cpu_cores                   = var.service_host.cpu_cores
+  vm_memory_mb                   = var.service_host.memory_mb
+  vm_disk_datastore_id           = var.vm_disk_datastore_id
+  vm_disk_interface              = var.service_host.disk_interface
+  vm_disk_size                   = var.service_host.os_disk_size
+  vm_cloudinit_datastore_id      = var.vm_cloudinit_datastore_id
+  vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.service_cloudinit.id
+  vm_network_bridge              = var.service_host.network_bridge
+  vm_vlan_id                     = var.service_host.vlan_id
+}
 ```
 
-#### Common Services
-- **Portainer**: Docker management UI
-- **Nginx Proxy Manager**: Reverse proxy
-- **Pi-hole**: Network-wide ad blocking
-- **Home Assistant**: Home automation
-- **Plex/Jellyfin**: Media server
-- **Nextcloud**: File sync and share
+Pin the module to a release. Do not point production deployments at a moving branch.
 
-### 3. Kubernetes Cluster
+### 3. Write first-boot configuration
 
-#### Cluster Configuration
-- **Control Plane**: 3 nodes for HA
-- **Worker Nodes**: 3+ nodes for workloads
-- **Storage**: Longhorn for persistent volumes
-- **Networking**: Flannel CNI
+Keep cloud-init focused on reconstructing the host:
 
-#### Deployed Applications
-- **Monitoring Stack**
-  - Prometheus for metrics
-  - Grafana for visualization
-  - Alertmanager for notifications
+- create the service account
+- install the runtime and required packages
+- write configuration from non-secret inputs
+- enable the service
+- leave a clear completion message and logs
 
-- **Logging Stack**
-  - Loki for log aggregation
-  - Promtail for log collection
+Map required secret variables to Bitwarden item identifiers in the environment's `secrets.env` file. CI resolves the values at runtime. Avoid commands that echo those values or embed them in publicly readable files.
 
-- **Ingress**
-  - Traefik ingress controller
-  - Cert-manager for TLS certificates
+### 4. Place it on the network
 
-## Service Categories
+Choose the VLAN based on trust and dependency boundaries, not convenience. Document any new inter-VLAN flow. If a stable address is required, follow the checks in the [network guide](network-setup.md).
 
-### Infrastructure Services
+### 5. Add delivery
 
-1. **DNS & DHCP**
-   - Pi-hole for DNS filtering
-   - ISC DHCP server
-   - Automated DNS record management
+For a normal tiered application, use the standard `env/<tier>/terraform.tfvars` layout so `deploy.yaml` can discover it. Confirm that:
 
-2. **Monitoring & Observability**
-   - Prometheus + Grafana stack
-   - Uptime Kuma for service monitoring
-   - Netdata for real-time metrics
+- the application is represented in the Terraform Cloud workspace map
+- secret identifiers live beside the tier without exposing secret values
+- pull requests produce the expected plan summary and encrypted plan artifact
+- a merge applies the reviewed plan rather than creating a new one
+- the selected GitHub environment has the narrowest permissions and access possible
 
-3. **Backup & Storage**
-   - TrueNAS for NAS services
-   - Proxmox Backup Server
-   - Automated backup schedules
+Use a dedicated workflow only for platform stacks whose lifecycle does not fit the tiered deployment matrix. The runner workflow is deliberately manual because it manages the machines that execute the normal path.
 
-### Application Services
+### 6. Prove the change
 
-1. **Media Services**
-   - Plex/Jellyfin media server
-   - Sonarr/Radarr automation
-   - Transmission for downloads
-
-2. **Productivity**
-   - Nextcloud for file storage
-   - Bookstack for documentation
-   - Vaultwarden for password management
-
-3. **Development**
-   - GitLab CE for source control
-   - Jenkins for CI/CD
-   - Minio for object storage
-
-## Deployment Workflow
-
-### Standard Deployment Process
-
-1. **Planning**
-   - Define resource requirements
-   - Identify dependencies
-   - Plan network access
-
-2. **Infrastructure Provisioning**
-   ```bash
-   # Using Terraform
-   cd terraform/compute
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-3. **Configuration Management**
-   ```bash
-   # Using Ansible
-   cd ansible/playbooks
-   ansible-playbook -i ../inventory/production deploy-service.yml
-   ```
-
-4. **Validation**
-   - Health checks
-   - Service monitoring
-   - Log verification
-
-## Service Management
-
-### Starting/Stopping Services
+Before merge:
 
 ```bash
-# Docker services
-docker-compose up -d
-docker-compose down
-
-# Kubernetes services
-kubectl apply -f deployment.yaml
-kubectl delete -f deployment.yaml
-
-# Systemd services
-systemctl start service-name
-systemctl stop service-name
+terraform fmt -recursive terraform/
+pre-commit run --all-files
 ```
 
-### Updates and Maintenance
+Review the remote plan for replacement and secret-handling surprises. After apply, verify Proxmox state, cloud-init completion, network placement, and application health.
 
-- Weekly security updates
-- Monthly version upgrades
-- Quarterly service reviews
+## Updating an existing service
 
-## Backup Strategy
+Changing Terraform should represent an infrastructure change: sizing, disks, network attachment, provider-managed resources, or reconstructible first-boot configuration.
 
-### What's Backed Up
-- VM configurations and disks
-- Docker volumes
-- Application data
-- Configuration files
+Use an application delivery path for ordinary releases. Examples in this repository include the OpenClaw maintenance scripts under `scripts/deployments/openclaw/` and the external deployment pipeline used by `cmd_and_ctrl`.
 
-### Backup Schedule
-- **Daily**: Critical data
-- **Weekly**: Full VM backups
-- **Monthly**: Archive snapshots
+If a guest ignores `initialization` changes, that is an intentional safety choice. Decide whether the change can be delivered in place or whether the guest needs a scheduled replacement; do not remove lifecycle protection just to make the plan non-empty.
 
-## Monitoring and Alerts
+## Stateful services
 
-### Metrics Collected
-- CPU, memory, disk usage
-- Network traffic
-- Service uptime
-- Application-specific metrics
+Before adding state, decide where each class of data lives:
 
-### Alert Conditions
-- Service down > 5 minutes
-- Disk usage > 85%
-- High CPU/memory usage
-- Failed backups
+| Data | Recommended owner |
+| --- | --- |
+| Terraform resource state | HCP Terraform |
+| Rebuildable OS and packages | Template plus cloud-init |
+| Application release | Application repository or container registry |
+| Service data | Dedicated disk, network storage, or managed object storage |
+| Secrets | GitHub environment or service-specific secret store |
+| Backups | A different failure domain from the guest |
 
-## Troubleshooting
+A VM disk is persistence, not a backup. A cloud-init template is rebuild automation, not data recovery.
 
-### Common Issues
+## Definition of done
 
-1. **Container Won't Start**
-   - Check logs: `docker logs container-name`
-   - Verify port conflicts
-   - Check volume permissions
-
-2. **Service Unreachable**
-   - Verify firewall rules
-   - Check DNS resolution
-   - Validate reverse proxy config
-
-3. **Performance Issues**
-   - Review resource allocation
-   - Check for resource contention
-   - Analyze metrics in Grafana
-
-## Documentation
-
-Each service should maintain:
-- Deployment configuration
-- Environment variables
-- Backup procedures
-- Restore procedures
-- Troubleshooting guide
-
-## Future Enhancements
-
-- Implement GitOps with ArgoCD
-- Add automated testing
-- Enhance disaster recovery
-- Implement blue/green deployments
+- [ ] The deployment boundary and owner are clear.
+- [ ] The plan contains only expected changes.
+- [ ] Secrets never enter tracked files or logs.
+- [ ] Network access is no broader than the service needs.
+- [ ] First boot and subsequent application updates have separate paths.
+- [ ] Health checks and rollback are documented.
+- [ ] Stateful data has a tested recovery path.
+- [ ] The root README or architecture docs reflect a meaningful new capability.

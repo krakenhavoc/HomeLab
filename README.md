@@ -1,252 +1,147 @@
-# HomeLab Infrastructure Portfolio
+# HomeLab
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Terraform](https://img.shields.io/badge/Terraform-1.0+-623CE4?logo=terraform)](terraform/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.29-326CE5?logo=kubernetes)](scripts/deployment/cloud-init/)
-[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](.pre-commit-config.yaml)
+[![Terraform](https://img.shields.io/badge/Terraform-1.14-844FBA?logo=terraform&logoColor=white)](terraform/)
+[![Proxmox VE](https://img.shields.io/badge/Proxmox-VE-E57000?logo=proxmox&logoColor=white)](https://www.proxmox.com/en/products/proxmox-virtual-environment/overview)
+[![CI](https://img.shields.io/github/actions/workflow/status/krakenhavoc/HomeLab/pre-commit.yaml?branch=main&label=checks)](https://github.com/krakenhavoc/HomeLab/actions/workflows/pre-commit.yaml)
+[![License](https://img.shields.io/badge/license-MIT-2F80ED)](LICENSE)
 
-Welcome to my HomeLab infrastructure repository! This repository showcases my personal homelab setup, infrastructure automation, and technical capabilities.
+Production homelab infrastructure, kept as code.
 
-## 🏠 Overview
+This repository is both the source of truth for services I run at home and a record of how I approach infrastructure engineering: small reusable modules, repeatable builds, reviewable plans, segmented networks, and runbooks written for the person responding to a problem at 2 a.m.
 
-This repository contains documentation, diagrams, and code for my homelab environment. It demonstrates my skills in:
-- Network design and architecture
-- Infrastructure as Code (IaC) using Terraform
-- Configuration management with Ansible
-- Kubernetes cluster deployment and orchestration
-- Cloud-init automated provisioning
-- Automation and scripting
-- System administration and DevOps practices
+## What this lab demonstrates
 
-## 📰 Recent Changes
+| Area | Implementation |
+| --- | --- |
+| Infrastructure as code | Terraform modules and environment-specific deployments |
+| Virtualization | Proxmox VE virtual machines, containers, templates, and images |
+| Provisioning | Cloud-init templates for first-boot configuration |
+| Delivery | GitHub Actions plans pull requests and applies merged changes |
+| State | HCP Terraform workspaces separated by deployment |
+| Networking | VLAN-separated lab, application, service, and client workloads |
+| Workloads | Internal gateway, private applications, media services, NFS, lab systems, and self-hosted runners |
+| Guardrails | Pre-commit checks, module tests, saved plans, and deliberate replacement workflows |
 
-### Kubernetes Cluster Deployment (v0.1)
-The latest updates include a full Kubernetes cluster deployment using Terraform and cloud-init:
-- **Kubernetes v1.29** cluster with one master and two worker nodes
-- **Containerd** as the container runtime (following Kubernetes 1.24+ best practices)
-- **Calico** CNI for pod networking
-- Automated provisioning via **cloud-init** configuration
-- Terraform modules for VM deployment on Proxmox
-- CI/CD workflows for infrastructure validation
+## Architecture at a glance
 
-## 📁 Repository Structure
+```mermaid
+flowchart TB
+    Git[GitHub] -->|pull request| Plan[Terraform plan]
+    Plan -->|review and merge| Apply[Terraform apply]
+    Apply --> API[Proxmox API]
+    State[(HCP Terraform)] <--> Plan
+    State <--> Apply
 
-```
-HomeLab/
-├── .github/
-│   ├── workflows/               # GitHub Actions CI/CD pipelines
-│   └── ISSUE_TEMPLATE/          # Issue templates for bug reports and features
-├── docs/                        # Documentation and guides
-│   ├── overview.md              # Architecture overview
-│   ├── runbook.md               # Deployment and operations guide
-│   ├── network-setup.md         # Network configuration
-│   ├── service-deployment.md    # Service deployment guides
-│   ├── backup-strategy.md       # Backup procedures
-│   └── security.md              # Security guidelines
-├── diagrams/                    # Network and infrastructure diagrams
-│   ├── network/                 # Network topology diagrams
-│   └── infrastructure/          # Infrastructure architecture diagrams
-├── terraform/                   # Infrastructure as Code (Terraform)
-│   ├── deployments/             # Deployment configurations
-│   │   ├── lab/                 # Lab VMs (openclaw, pwnbox, cmd_and_ctrl, win11)
-│   │   ├── frontends/           # Private frontends (RedLib)
-│   │   ├── gh-runner/           # Self-hosted GitHub Actions runners
-│   │   ├── nfs/                 # NFS server
-│   │   ├── plex/                # Plex media host
-│   │   └── shared/              # Shared images and LXC templates
-│   └── modules/                 # Reusable Terraform modules
-│       └── compute/             # Compute resource modules
-│           └── pm-cloudinit-vm/   # Proxmox cloud-init VM module
-├── ansible/                     # Configuration management
-│   ├── playbooks/               # Ansible playbooks
-│   ├── roles/                   # Custom roles
-│   └── inventory/               # Inventory files
-└── scripts/                     # Utility scripts and automation
-    ├── backup/                  # Backup scripts
-    ├── monitoring/              # Monitoring scripts
-    └── deployment/              # Deployment automation
-        └── cloud-init/          # Cloud-init configurations for K8s
+    API --> Lab[Lab workloads<br/>isolated segment]
+    API --> Apps[Application workloads<br/>isolated segment]
+    API --> Services[Media + storage<br/>service segment]
+    API --> Clients[Client systems<br/>client segment]
+    API --> Runners[Self-hosted CI runners]
+
+    Images[Ubuntu templates<br/>Cloud-init snippets] --> API
 ```
 
-## 🔧 Technologies Used
+The Proxmox host provides compute and storage. Terraform describes each workload as a separate deployment, cloud-init handles first boot, and reusable GitHub Actions workflows keep planning and applying consistent. More detail lives in the [architecture overview](docs/overview.md).
 
-- **Virtualization**: Proxmox, Docker, Kubernetes
-- **Infrastructure as Code**: Terraform
-- **Configuration Management**: Ansible
-- **Networking**: VLANs, OpnSense, UniFi
-- **Monitoring**: Prometheus, Grafana
-- **Storage**: NAS, ZFS
-- **Scripting**: Bash, Python
+## Deployed stacks
 
-## 🚀 Getting Started
+| Deployment | What it manages | Delivery |
+| --- | --- | --- |
+| `lab` | OpenClaw hosts, a CTF workstation, and a Windows 11 VM | Plan on PR, apply after merge |
+| `cmd-and-ctrl` | Development and production game servers, ingress, and off-node backup buckets | Plan on PR, apply after merge |
+| `frontends` | The internal Caddy/Homepage gateway and private frontends | Plan on PR, apply after merge |
+| `lastdash` | A stateful application host with repository-driven runtime configuration | Plan on PR, apply after merge |
+| `plex` | Development and production Plex hosts backed by NFS storage | Plan on PR, apply after merge |
+| `nfs` | Development and production NFS containers | Plan on PR, apply after merge |
+| `shared` | Ubuntu container templates, VirtIO drivers, and installation media | Plan on PR, apply after merge |
+| `gh-runner` | Controller and worker VMs for self-hosted GitHub Actions | Manual, dry-run by default |
+| `tfc` | HCP Terraform projects and workspaces used by the deployment roots | Dedicated workflow |
 
-### Prerequisites
+The repository also retains earlier Kubernetes bootstrap scripts and space for future Ansible, monitoring, and backup automation. Those areas are labeled as such instead of being presented as deployed infrastructure.
 
-- **Terraform** >= 1.14
-- **Ansible** >= 2.9
-- **Python** >= 3.8
-- **Proxmox VE** (for infrastructure deployment)
-- **kubectl** (for Kubernetes cluster management)
-- Docker (optional, for local testing)
+## Repository map
 
-### Quick Start
+```text
+.
+├── .github/workflows/       Reusable CI/CD and deployment workflows
+├── ansible/                 Reserved configuration-management workspace
+├── diagrams/                Diagram conventions and architecture views
+├── gateway/                 Internal proxy and portal configuration
+├── lastdash/                LastDash runtime configuration
+├── docker/get-win-url/      Small containerized Windows media helper
+├── docs/                    Architecture, operations, security, and recovery
+├── scripts/                 Bootstrap and maintenance utilities
+└── terraform/
+    ├── deployments/         Independently planned infrastructure stacks
+    └── modules/compute/     Reusable Proxmox VM modules
+```
 
-1. **Clone this repository:**
-   ```bash
-   git clone https://github.com/krakenhavoc/HomeLab.git
-   cd HomeLab
-   ```
+## How changes reach the lab
 
-2. **Review the documentation:**
-   - Start with [Architecture Overview](docs/overview.md)
-   - Follow the [Runbook](docs/runbook.md) for deployment steps
+```mermaid
+flowchart LR
+    Change[Change infrastructure] --> Checks[Format, validate,<br/>lint, scan]
+    Checks --> PR[Pull request]
+    PR --> Saved[Encrypted saved Terraform plan]
+    Saved --> Review{Review plan}
+    Review -->|merge| Deploy[Apply saved plan]
+    Review -->|unexpected change| Fix[Revise configuration]
+    Fix --> Checks
+```
 
-3. **Plan a deployment locally:**
-   ```bash
-   # Pick a deployment under terraform/deployments/
-   cd terraform/deployments/lab
+The normal path is deliberately boring:
 
-   # Initialize Terraform (state lives in Terraform Cloud, org LabXPIO)
-   terraform init
+1. Make a focused change.
+2. Run the local checks.
+3. Open a pull request and inspect the plan summary.
+4. Merge only when the plan matches the intent.
+5. Let the deployment workflow apply the saved plan.
 
-   # Review planned changes against the environment's tfvars
-   terraform plan -var-file=env/lab/terraform.tfvars
-   ```
+Local `terraform apply` is not the standard deployment path. VM replacement is especially sensitive because cloud-init is first-boot configuration and some services keep state on their guests. Intentional rebuilds use the manual replacement workflow described in the [runbook](docs/runbook.md).
 
-4. **Apply through CI, not locally:**
+## Explore the project
 
-   Each deployment has a workflow that plans on pull requests and applies only
-   on a merge to `main` (see `.github/workflows/`). Applying by hand bypasses
-   that gate — it is how the production `cmd_and_ctrl` VM was destroyed on
-   2026-09-10. Use `terraform-replace.yaml` for a deliberate single-resource
-   rebuild.
+- [Documentation index](docs/README.md) — the best entry point for the written documentation
+- [Diagram gallery](diagrams/README.md) — platform, deployment, network, delivery, and recovery views
+- [Architecture overview](docs/overview.md) — boundaries, components, and design decisions
+- [Terraform guide](terraform/README.md) — deployments, modules, state, and local commands
+- [Operations runbook](docs/runbook.md) — planning, applying, replacing, and troubleshooting
+- [Network design](docs/network-setup.md) — VLAN roles and connectivity model
+- [Gateway plan](docs/gateway.md) — internal portal and reverse-proxy design
+- [Security model](docs/security.md) — credentials, access, CI, and incident response
+- [Backup strategy](docs/backup-strategy.md) — current recovery model and known gaps
 
-### Docker Example
+## Local validation
 
-For local testing and development:
+The checked-in lock files and remote state configuration are intended for Terraform `1.14.3`.
+
 ```bash
-# Run containerized applications
-docker run -d -p 8080:80 nginx
+git clone https://github.com/krakenhavoc/HomeLab.git
+cd HomeLab
+
+pre-commit install
+pre-commit run --all-files
 ```
 
-### Kubernetes Example
+To inspect one deployment:
 
-Deploy an application to your cluster:
 ```bash
-# Create a deployment
-kubectl create deployment nginx --image=nginx
-
-# Expose the deployment
-kubectl expose deployment nginx --port=80 --type=NodePort
-
-# Check the service
-kubectl get services
+cd terraform/deployments/lab
+terraform init
+terraform validate
+terraform plan -var-file=env/lab/terraform.tfvars
 ```
 
-## 📊 Infrastructure Components
+A useful plan ends with a careful reading, not an automatic apply. See [Contributing](CONTRIBUTING.md) before proposing a change.
 
-### Network Infrastructure
-- Core network topology with VLAN segmentation
-- Firewall rules and security policies (OpnSense)
-- DNS and DHCP configuration
-- UniFi network management
+## Design notes
 
-### Compute Resources
-- **Proxmox VE** hypervisor for virtualization
-- **Kubernetes cluster** (1 master + 2 worker nodes)
-  - Containerd runtime
-  - Calico CNI networking
-  - Cloud-init automated provisioning
-- Virtual machine templates and configurations
-- Resource allocation and auto-scaling
+- **Deployments are isolated.** A media-server change should not share a state file with a lab VM change.
+- **Modules remove repetition, not judgment.** Stateful guests can use raw resources when lifecycle behavior needs to be explicit.
+- **Cloud-init is treated as first-boot data.** Updating a template does not guarantee an existing guest changes in place.
+- **Production changes are reviewable.** Pull requests produce plans; merges trigger applies.
+- **Documentation names the gaps.** Planned capabilities are useful context, but they are not described as finished systems.
 
-### Services
-- **Kubernetes workloads** (microservices, applications)
-- Media servers (Plex, Jellyfin)
-- Development environments
-- **Monitoring stack** (Prometheus, Grafana)
-- Logging and observability
-- Backup and disaster recovery solutions
+## License
 
-## 📖 Documentation
-
-Detailed documentation for each component can be found in the `docs/` directory:
-- [Architecture Overview](docs/overview.md) - High-level system architecture and topology
-- [Runbook](docs/runbook.md) - Deployment procedures and troubleshooting
-- [Network Setup](docs/network-setup.md) - Network configuration details
-- [Service Deployment](docs/service-deployment.md) - Service deployment guides
-- [Gateway](docs/gateway.md) - Portal and internal reverse proxy plan
-- [Backup Strategy](docs/backup-strategy.md) - Backup procedures and recovery
-- [Security Guidelines](docs/security.md) - Security best practices
-
-## 🌐 Supported Platforms
-
-- **Hypervisor**: Proxmox VE 7.x+
-- **Operating Systems**: Ubuntu 22.04 LTS (cloud-init images)
-- **Container Runtime**: Containerd 1.6+
-- **Kubernetes**: v1.29
-- **Terraform**: 1.0+
-- **Ansible**: 2.9+
-
-## 💻 Language Composition
-
-- **HCL** (Terraform) - Infrastructure as Code
-- **YAML** - Cloud-init configurations, Kubernetes manifests, Ansible playbooks
-- **Bash** - Automation scripts
-- **Python** - Utility scripts and tooling
-- **Markdown** - Documentation
-
-## 🔐 Security & Best Practices
-
-- Secrets are managed using environment variables and secure vaults
-- No sensitive credentials are stored in this repository
-- Infrastructure follows the principle of least privilege
-- Regular security updates and patch management
-
-## 📈 Future Enhancements
-
-- [ ] Implement GitOps workflows (ArgoCD/Flux)
-- [ ] Expand CI/CD pipelines for automated testing
-- [ ] Add Helm charts for application deployments
-- [ ] Enhance monitoring with custom dashboards
-- [ ] Implement log aggregation (ELK/Loki)
-- [ ] Automated disaster recovery procedures
-- [ ] Service mesh integration (Istio/Linkerd)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-- Code of conduct
-- Development workflow
-- Pull request process
-- Code style guidelines
-
-To report bugs or request features, please use our [issue templates](.github/ISSUE_TEMPLATE/).
-
-## 📋 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes and releases.
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-This project is for portfolio and educational purposes.
-
-## 👤 Maintainer
-
-**krakenhavoc**
-- GitHub: [@krakenhavoc](https://github.com/krakenhavoc)
-
-## 📧 Contact
-
-For questions, suggestions, or collaboration opportunities:
-- Open an [issue](https://github.com/krakenhavoc/HomeLab/issues)
-- Start a [discussion](https://github.com/krakenhavoc/HomeLab/discussions)
-- Reach out through GitHub
-
----
-
-⭐ **Star this repository** if you find it helpful or interesting!
-
-*This repository is actively maintained and regularly updated with new features and improvements.*
+Released under the [MIT License](LICENSE).

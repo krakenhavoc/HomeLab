@@ -1,465 +1,84 @@
-# Compute Resources (Terraform)
+# Compute modules
 
-This directory contains Terraform configurations for compute resources including virtual machines and containers.
+This directory contains two generations of the Proxmox cloud-init VM module.
 
-## Overview
+| Module | Provider | Status |
+| --- | --- | --- |
+| [`pm-cloudinit-vm`](pm-cloudinit-vm/) | `bpg/proxmox` | Current; use for new Linux VM deployments |
+| [`pve-cloudinit-vm`](pve-cloudinit-vm/) | `Telmate/proxmox` | Legacy; retained for compatibility and reference |
 
-Manages compute infrastructure:
-- Proxmox virtual machines
-- VM templates
-- Resource pools
-- Container hosts
-- Compute clusters
+## Current module
 
-## Files
+`pm-cloudinit-vm` creates a full clone from an existing template and configures its compute, disk, agent, cloud-init, and network settings. The caller creates the cloud-init snippet and passes its Proxmox file ID into the module.
 
-- `main.tf`: Main compute configuration
-- `variables.tf`: Input variables
-- `outputs.tf`: Output values
-- `vms.tf`: Virtual machine definitions
-- `templates.tf`: VM template configurations
-- `versions.tf`: Provider version constraints
-
-## Proxmox Provider Configuration
-
-### Provider Setup (versions.tf)
+### Example
 
 ```hcl
-terraform {
-  required_version = ">= 1.0"
+module "example" {
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
 
-  required_providers {
-    proxmox = {
-      source  = "telmate/proxmox"
-      version = "~> 2.9"
-    }
-  }
-}
-
-provider "proxmox" {
-  pm_api_url          = var.proxmox_api_url
-  pm_api_token_id     = var.proxmox_api_token_id
-  pm_api_token_secret = var.proxmox_api_token_secret
-  pm_tls_insecure     = var.proxmox_tls_insecure
-  pm_parallel         = 2
-  pm_timeout          = 600
-  pm_log_enable       = true
-  pm_log_file         = "terraform-plugin-proxmox.log"
+  vm_name                        = "example"
+  vm_node_name                   = "pve"
+  vm_description                 = "Example service"
+  vm_tags                        = ["example"]
+  clone_vm_id                    = 9000
+  vm_cpu_cores                   = 2
+  vm_memory_mb                   = 4096
+  vm_disk_datastore_id           = "local-lvm"
+  vm_disk_size                   = 30
+  vm_cloudinit_datastore_id      = "local-lvm"
+  vm_cloudinit_user_data_file_id = proxmox_virtual_environment_file.example.id
+  vm_network_bridge              = "vmbr0"
+  vm_vlan_id                     = var.service_host.vlan_id
 }
 ```
 
-## Virtual Machine Configuration
+The released version used by most deployments may lag the module on `main`. Check the selected tag before using inputs that were added recently.
 
-### Basic VM (vms.tf)
+### Network behavior
 
-```hcl
-resource "proxmox_vm_qemu" "web_server" {
-  count       = var.web_server_count
-  name        = "web-server-${count.index + 1}"
-  target_node = var.proxmox_node
-  clone       = "ubuntu-2204-template"
-
-  # VM Settings
-  agent       = 1
-  cores       = 2
-  sockets     = 1
-  cpu         = "host"
-  memory      = 4096
-  scsihw      = "virtio-scsi-pci"
-  bootdisk    = "scsi0"
-
-  # Network
-  network {
-    bridge = "vmbr0"
-    model  = "virtio"
-    tag    = 10  # Server VLAN
-  }
-
-  # Disk
-  disk {
-    size    = "50G"
-    type    = "scsi"
-    storage = "local-zfs"
-    iothread = 1
-  }
-
-  # Cloud-init
-  os_type    = "cloud-init"
-  ipconfig0  = "ip=192.168.10.${10 + count.index}/24,gw=192.168.10.1"
-  nameserver = "192.168.1.2"
-
-  # SSH Keys
-  sshkeys = var.ssh_public_key
-
-  lifecycle {
-    ignore_changes = [
-      network,
-    ]
-  }
-}
-```
-
-### Advanced VM Configuration
+DHCP is the default. Static network inputs are optional:
 
 ```hcl
-resource "proxmox_vm_qemu" "database_server" {
-  name        = "db-server-01"
-  target_node = "pve-node-01"
-  clone       = "ubuntu-2204-template"
-
-  # High-performance settings
-  agent       = 1
-  cores       = 4
-  sockets     = 1
-  cpu         = "host"
-  memory      = 16384
-  balloon     = 0  # Disable ballooning for databases
-
-  # Multiple disks
-  disk {
-    size     = "100G"
-    type     = "scsi"
-    storage  = "nvme-pool"
-    iothread = 1
-    cache    = "writethrough"
-  }
-
-  disk {
-    size     = "500G"
-    type     = "scsi"
-    storage  = "ssd-pool"
-    iothread = 1
-    cache    = "writethrough"
-  }
-
-  # Network with multiple interfaces
-  network {
-    bridge   = "vmbr0"
-    model    = "virtio"
-    tag      = 10
-    firewall = true
-  }
-
-  network {
-    bridge   = "vmbr1"
-    model    = "virtio"
-    tag      = 100  # Storage network
-    firewall = false
-  }
-
-  # Cloud-init configuration
-  os_type    = "cloud-init"
-  ipconfig0  = "ip=192.168.10.20/24,gw=192.168.10.1"
-  ipconfig1  = "ip=10.0.100.20/24"
-  nameserver = "192.168.1.2,1.1.1.1"
-
-  sshkeys = var.ssh_public_key
-
-  # Custom cloud-init
-  cicustom = "user=local:snippets/db-cloud-init.yml"
-}
+  vm_ipv4_address = "192.0.2.20/24"
+  vm_ipv4_gateway = "192.0.2.1"
+  vm_dns_servers  = ["192.0.2.53", "198.51.100.53"]
+  vm_dns_domain   = "example.internal"
+  vm_mac_address  = "02:00:00:00:00:01"
 ```
 
-## VM Templates
+These examples use address ranges reserved for documentation and do not describe the lab network.
 
-### Creating Templates (templates.tf)
+The address must include a prefix. The gateway must not. Leaving every optional value unset renders the same DHCP configuration as the earlier module behavior: no gateway attribute, no DNS block, and no pinned MAC.
 
-```hcl
-resource "proxmox_vm_qemu" "ubuntu_template" {
-  name        = "ubuntu-2204-template"
-  target_node = var.proxmox_node
+Static cloud-init networking is consumed at first boot. Changing these inputs on an established VM may rewrite its cloud-init drive and restart the guest without reconfiguring the live OS as expected. Prefer choosing the address before creation or scheduling a deliberate rebuild.
 
-  # Template settings
-  template    = true
+### Lifecycle warning
 
-  # Download cloud image
-  iso         = "local:iso/ubuntu-22.04-server-cloudimg-amd64.img"
+The module cannot let a caller inject a Terraform `lifecycle` block. A long-lived guest that must ignore `initialization` changes may need a raw resource instead, with the duplicated attributes and the reason documented. This pattern is used selectively in the lab deployment; it should not become the default.
 
-  cores       = 2
-  memory      = 2048
-
-  disk {
-    size    = "32G"
-    type    = "scsi"
-    storage = "local-zfs"
-  }
-
-  network {
-    bridge = "vmbr0"
-    model  = "virtio"
-  }
-
-  os_type = "cloud-init"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-```
-
-## Variables Configuration
-
-### variables.tf
-
-```hcl
-variable "proxmox_api_url" {
-  description = "Proxmox API URL"
-  type        = string
-  default     = "https://proxmox.homelab.local:8006/api2/json"
-}
-
-variable "proxmox_api_token_id" {
-  description = "Proxmox API Token ID"
-  type        = string
-  sensitive   = true
-}
-
-variable "proxmox_api_token_secret" {
-  description = "Proxmox API Token Secret"
-  type        = string
-  sensitive   = true
-}
-
-variable "proxmox_tls_insecure" {
-  description = "Skip TLS verification"
-  type        = bool
-  default     = true
-}
-
-variable "proxmox_node" {
-  description = "Proxmox node name"
-  type        = string
-  default     = "pve-node-01"
-}
-
-variable "ssh_public_key" {
-  description = "SSH public key for VM access"
-  type        = string
-}
-
-variable "web_server_count" {
-  description = "Number of web servers"
-  type        = number
-  default     = 3
-
-  validation {
-    condition     = var.web_server_count > 0 && var.web_server_count <= 10
-    error_message = "Web server count must be between 1 and 10."
-  }
-}
-
-variable "vm_defaults" {
-  description = "Default VM settings"
-  type = object({
-    cores   = number
-    memory  = number
-    storage = string
-  })
-
-  default = {
-    cores   = 2
-    memory  = 4096
-    storage = "local-zfs"
-  }
-}
-```
-
-## Outputs
-
-### outputs.tf
-
-```hcl
-output "vm_ip_addresses" {
-  description = "IP addresses of created VMs"
-  value = {
-    for vm in proxmox_vm_qemu.web_server :
-    vm.name => vm.default_ipv4_address
-  }
-}
-
-output "vm_ids" {
-  description = "VM IDs in Proxmox"
-  value = {
-    for vm in proxmox_vm_qemu.web_server :
-    vm.name => vm.vmid
-  }
-}
-
-output "ssh_connection_strings" {
-  description = "SSH connection strings for VMs"
-  value = {
-    for vm in proxmox_vm_qemu.web_server :
-    vm.name => "ssh ubuntu@${vm.default_ipv4_address}"
-  }
-}
-```
-
-## Usage
-
-### Environment Variables
+### Test the module
 
 ```bash
-export TF_VAR_proxmox_api_token_id="terraform@pam!terraform"
-export TF_VAR_proxmox_api_token_secret="your-secret-here"
-export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
+cd terraform/modules/compute/pm-cloudinit-vm
+terraform init -backend=false
+terraform validate
+terraform test
 ```
 
-### Terraform Commands
+The test suite uses a mocked provider and covers defaults, VLAN behavior, BIOS and agent options, disk interfaces, and network validation.
 
-```bash
-# Initialize
-terraform init
+## Legacy module
 
-# Create execution plan
-terraform plan -out=compute.tfplan
+`pve-cloudinit-vm` uses the Telmate provider and an older input model. It includes guest credentials and cloud-init path conventions that do not match the current BPG-provider deployments. Do not migrate an existing consumer casually: provider and resource-type changes require an explicit state migration and a no-destroy plan.
 
-# Apply changes
-terraform apply compute.tfplan
+## Releasing changes
 
-# Destroy resources
-terraform destroy
-```
+Deployments reference modules by Git tag, so release in two stages:
 
-### Creating Specific VMs
+1. Merge and test the backwards-compatible module change.
+2. Tag the commit.
+3. Update consumers to that tag in a separate pull request.
+4. Inspect every consumer plan for initialization, disk, network, and replacement changes.
 
-```bash
-# Create only web servers
-terraform apply -target=proxmox_vm_qemu.web_server
-
-# Create single VM instance
-terraform apply -target=proxmox_vm_qemu.web_server[0]
-```
-
-## Modules
-
-### Reusable VM Module
-
-Create `modules/vm/main.tf`:
-
-```hcl
-variable "vm_name" {}
-variable "cores" { default = 2 }
-variable "memory" { default = 4096 }
-variable "disk_size" { default = "50G" }
-variable "vlan_tag" {}
-
-resource "proxmox_vm_qemu" "vm" {
-  name        = var.vm_name
-  target_node = var.proxmox_node
-  clone       = "ubuntu-2204-template"
-
-  cores       = var.cores
-  memory      = var.memory
-
-  disk {
-    size    = var.disk_size
-    storage = "local-zfs"
-  }
-
-  network {
-    bridge = "vmbr0"
-    tag    = var.vlan_tag
-  }
-}
-
-output "ip_address" {
-  value = proxmox_vm_qemu.vm.default_ipv4_address
-}
-```
-
-Use the module:
-
-```hcl
-module "app_servers" {
-  source = "./modules/vm"
-
-  count     = 3
-  vm_name   = "app-server-${count.index + 1}"
-  cores     = 4
-  memory    = 8192
-  disk_size = "100G"
-  vlan_tag  = 10
-}
-```
-
-## Best Practices
-
-1. **Resource Naming**
-   - Use consistent naming conventions
-   - Include environment in name
-   - Use descriptive names
-
-2. **Resource Organization**
-   - Group similar VMs
-   - Use modules for reusability
-   - Separate by function
-
-3. **State Management**
-   - Use remote state
-   - Enable state locking
-   - Regular state backups
-
-4. **Documentation**
-   - Comment complex configurations
-   - Document dependencies
-   - Maintain README files
-
-## Integration with Ansible
-
-After VM creation, configure with Ansible:
-
-```bash
-# Export inventory
-terraform output -json > /tmp/terraform-output.json
-
-# Run Ansible playbook
-cd ../../ansible
-ansible-playbook -i inventory/dynamic_terraform.py playbooks/configure-vms.yml
-```
-
-## Troubleshooting
-
-### VM Creation Fails
-
-```bash
-# Check Proxmox logs
-ssh root@proxmox "tail -f /var/log/pve/tasks/active"
-
-# Verify template exists
-ssh root@proxmox "qm list"
-
-# Check storage availability
-ssh root@proxmox "pvesm status"
-```
-
-### Network Issues
-
-```bash
-# Verify VLAN configuration
-# Check bridge settings
-# Test connectivity from host
-```
-
-## Security
-
-- Use API tokens (not passwords)
-- Restrict token permissions
-- Enable firewall on VMs
-- Use SSH keys only
-- Regular security updates
-
-## Monitoring
-
-After deployment, add VMs to monitoring:
-- Prometheus node exporters
-- Grafana dashboards
-- Alert rules
-- Log aggregation
-
-## Future Enhancements
-
-- Implement VM autoscaling
-- Add GPU passthrough configurations
-- Integrate with Kubernetes
-- Automated backup integration
-- Advanced networking (SR-IOV)
+Never reuse or move an existing tag.
