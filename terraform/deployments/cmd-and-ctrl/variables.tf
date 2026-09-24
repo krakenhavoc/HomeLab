@@ -41,7 +41,7 @@ variable "cmd_and_ctrl" {
     backup_bucket = string
     # Tunnel, ingress and DNS managed here (dev). prd's tunnel is hand-made.
     manage_tunnel = optional(bool, false)
-    # In-app bug reports (ADR 0017). Off for the low-trust preview.
+    # In-app bug reports (ADR 0017).
     bug_reports = optional(bool, false)
   })
 
