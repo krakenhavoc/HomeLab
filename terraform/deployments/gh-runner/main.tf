@@ -50,6 +50,8 @@ resource "proxmox_virtual_environment_vm" "gh_runner" {
     trim    = true
   }
 
+  # cpu/memory changes are in-place but need a reboot, which the provider does
+  # itself (reboot_after_update defaults to true). No hotplug, numa is off.
   cpu {
     cores = var.gh_runner.cpu_cores
     type  = "x86-64-v2-AES"
