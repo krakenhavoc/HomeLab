@@ -10,8 +10,8 @@ deployment_tag = "gh-controller"
 
 gh_runner = {
   name_prefix    = "gunner"
-  cpu_cores      = 2
-  memory_mb      = 4096
+  cpu_cores      = 4
+  memory_mb      = 8192
   template       = "noble-template"
   os_disk_size   = 50
   network_bridge = "vmbr0"

@@ -3,7 +3,7 @@
 
 # Instances are named by index (gunner-0 .. gunner-N-1). Only ever increase
 # this; lowering it destroys the highest-numbered runners.
-instance_count = 6
+instance_count = 8
 
 # gunner-0..3 were added to cmd_and_ctrl by hand; from gunner-4 on, cloud-init
 # registers them there too. Existing VMs never re-run cloud-init.
@@ -11,10 +11,13 @@ register_cmd_and_ctrl = true
 
 deployment_tag = "gh-worker"
 
+# Resizing is in place but needs a reboot (no cpu/memory hotplug), and
+# reboot_after_update defaults to true: an apply that changes these reboots
+# every existing worker at once. Apply when both repos are idle.
 gh_runner = {
   name_prefix    = "gunner"
-  cpu_cores      = 2
-  memory_mb      = 4096
+  cpu_cores      = 4
+  memory_mb      = 8192
   template       = "noble-template"
   os_disk_size   = 50
   network_bridge = "vmbr0"
