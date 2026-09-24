@@ -29,6 +29,6 @@ Known reasons to review them before reuse include pinned old versions, a manual 
 
 ## Windows media helper
 
-`shared/get_win_url.py` uses Selenium and Chrome to retrieve Microsoft's temporary Windows 11 ISO URL. The maintained container packaging lives under [`docker/get-win-url/`](../../docker/get-win-url/); the GitHub workflow builds and publishes that image.
+`shared/get_win_url.py` is an older copy of the Selenium helper and has drifted from the maintained version in [`docker/get-win-url/`](../../docker/get-win-url/), which the GitHub workflow builds and publishes. Use the container.
 
-Temporary media URLs expire. Pass the result to the manually dispatched shared deployment rather than committing it to a variable file.
+Temporary media URLs expire; do not commit them to a variable file. See the container's README for how the shared deployment currently handles the ISO.

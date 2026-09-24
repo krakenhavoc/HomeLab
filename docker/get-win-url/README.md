@@ -15,7 +15,9 @@ Successful output is a JSON object:
 {"url": "https://software.download.prss.microsoft.com/..."}
 ```
 
-The returned URL is temporary. Use it as the `win11_iso_url` input when manually dispatching the shared infrastructure workflow; do not commit it to Terraform variables.
+The returned URL is temporary; do not commit it to Terraform variables.
+
+The shared workflow's `win11_iso_url` dispatch input does not download the ISO today. A manual dispatch only plans (apply runs on push), and a push plans with an empty URL. The ISO on the host was placed outside Terraform state.
 
 ## Notes
 

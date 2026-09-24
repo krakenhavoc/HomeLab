@@ -8,7 +8,7 @@ This directory holds focused utilities that support provisioning and maintenance
 | --- | --- | --- |
 | [`deployments/openclaw/`](deployments/openclaw/) | Active | Update the two OpenClaw installation variants in place |
 | [`deployments/cloud-init/templates/`](deployments/cloud-init/templates/) | Active, destructive | Rebuild the Ubuntu Noble Proxmox template |
-| [`deployments/shared/get_win_url.py`](deployments/shared/get_win_url.py) | Reference | Obtain a temporary Windows 11 media URL with Selenium |
+| [`deployments/shared/get_win_url.py`](deployments/shared/get_win_url.py) | Stale | Older copy of the Windows media URL helper; use `docker/get-win-url/` |
 | [`deployments/cloud-init/kubernetes/`](deployments/cloud-init/kubernetes/) | Historical | Kubernetes/Calico bootstrap experiment, not a current deployment |
 | [`deployments/cloud-init/snippets/`](deployments/cloud-init/snippets/) | Historical | Earlier static cloud-init snippets |
 | [`backup/`](backup/) | Planned | Reserved for backup utilities |
