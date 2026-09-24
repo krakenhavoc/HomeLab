@@ -166,56 +166,6 @@ module "pwnbox" {
   vm_vlan_id                     = var.pwnbox.vlan_id
 }
 
-# cmd_and_ctrl moved to deployments/cmd-and-ctrl (imported there). Forget, don't destroy.
-removed {
-  from = proxmox_virtual_environment_vm.cmd_and_ctrl
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = proxmox_virtual_environment_file.cmd_and_ctrl_cloudinit
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = cloudflare_zero_trust_tunnel_cloudflared.cmd_and_ctrl_dev
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = cloudflare_zero_trust_tunnel_cloudflared_config.cmd_and_ctrl_dev
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = cloudflare_dns_record.cmd_and_ctrl_dev
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = cloudflare_r2_bucket.cmd_and_ctrl_backup
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
-  from = cloudflare_r2_bucket_lifecycle.cmd_and_ctrl_backup
-  lifecycle {
-    destroy = false
-  }
-}
-
 # -----------------------------------------------------------------------------
 # Windows 11 VM
 # -----------------------------------------------------------------------------

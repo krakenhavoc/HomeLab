@@ -8,7 +8,3 @@ provider "pve" {
     # You can also use password or private_key here
   }
 }
-
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
