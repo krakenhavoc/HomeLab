@@ -28,7 +28,7 @@ jobs:
           terraform_version: "1.14.0"
 
       - name: Set up Trivy
-        uses: aquasecurity/setup-trivy@v0.2.4
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
 
       - name: Set up Tflint
         uses: terraform-linters/setup-tflint@v6
