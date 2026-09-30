@@ -33,6 +33,11 @@ jobs:
       - name: Set up Tflint
         uses: terraform-linters/setup-tflint@v6
 
+      # nfs reads ~/.ssh/id_proxmox with file(), which validate evaluates. The
+      # self-hosted deploy runners have the real key; validate only needs it to exist.
+      - name: Stub Proxmox SSH key
+        run: install -D -m 600 /dev/null ~/.ssh/id_proxmox
+
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
         with:
