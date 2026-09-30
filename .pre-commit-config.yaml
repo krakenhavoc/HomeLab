@@ -27,6 +27,9 @@ repos:
         files: ^terraform/.*\.tf$
       - id: terraform_trivy
         files: ^terraform/.*\.tf$
+        # validate's init pulls git-sourced modules (this repo) into .terraform
+        args:
+          - --args=--skip-dirs="**/.terraform"
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.10.0
