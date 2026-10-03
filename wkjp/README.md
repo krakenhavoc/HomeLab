@@ -25,6 +25,8 @@ is reachable only through the private gateway.
   base-station (192.168.1.18:11434, `~/llm/local-compose.yaml` there). Only
   `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
   error and the rest of the app is unaffected.
+- The Talk mic records in the browser and posts the clip to `/stt/`, proxied
+  to speaches (Whisper large-v3-turbo, CPU) on base-station port 8001.
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.
