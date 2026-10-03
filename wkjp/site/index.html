@@ -113,6 +113,18 @@
   .statBox .v{font-size:1.4rem; font-weight:800;}
   .statBox .l{font-size:.72rem; color:var(--muted);}
   @media (max-width:480px){ .statGrid{grid-template-columns:repeat(3,1fr);} }
+
+  /* talk */
+  #talkLog{display:flex; flex-direction:column; gap:10px; max-height:55vh; overflow-y:auto; margin-bottom:12px;}
+  .msg{max-width:85%; padding:10px 12px; border-radius:12px; font-size:1rem; line-height:1.6;}
+  .msg.me{align-self:flex-end; background:var(--card2); border:1px solid var(--line);}
+  .msg.ai{align-self:flex-start; background:#22203a; border:1px solid #3b3366;}
+  .msg .en{font-size:.82rem; color:var(--muted); margin-top:4px;}
+  .msg .tools{display:flex; gap:6px; margin-top:6px;}
+  .msg .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:2px 8px; cursor:pointer; font-size:.75rem;}
+  .fix{align-self:flex-end; max-width:85%; background:#3a2b14; border:1px solid #6b4e1d; color:#ffd166; font-size:.85rem; padding:8px 10px; border-radius:10px;}
+  .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
+  #talkInput{font-size:1rem;}
 </style>
 </head>
 <body>
@@ -130,6 +142,7 @@
   <nav>
     <button id="tabPractice" class="active">Practice</button>
     <button id="tabSpeak">Speak</button>
+    <button id="tabTalk">Talk</button>
     <button id="tabStats">Stats</button>
     <button id="tabSettings">Settings</button>
   </nav>
@@ -235,6 +248,26 @@
     </section>
   </main>
 
+  <!-- ============ TALK VIEW ============ -->
+  <main id="viewTalk" class="hidden">
+    <section class="card">
+      <h2>Talk</h2>
+      <p>Chat in Japanese with a local model. It sticks to words you've learned and corrects your mistakes. Write Japanese, romaji or English.</p>
+      <div id="talkLog" style="margin-top:12px;"></div>
+      <textarea id="talkInput" rows="2" placeholder="こんにちは！"></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn primary" id="btnTalkSend">Send</button>
+        <button class="btn hidden" id="btnTalkMic" title="speak (Japanese)">🎤</button>
+        <button class="btn" id="btnTalkNew">New chat</button>
+        <label style="margin:0 0 0 auto; display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="chkTalkSpeak"> read replies aloud
+        </label>
+      </div>
+      <div id="talkErr" class="err hidden"></div>
+      <p class="note">enter sends · shift+enter new line</p>
+    </section>
+  </main>
+
   <!-- ============ STATS VIEW ============ -->
   <main id="viewStats" class="hidden">
     <section class="card">
@@ -305,6 +338,18 @@
         <button class="btn small" id="btnForget">Remove token &amp; data</button>
       </div>
       <p class="note" id="dataNote"></p>
+    </section>
+    <section class="card">
+      <h2>Conversation partner</h2>
+      <label for="llmUrl">Ollama URL</label>
+      <input type="text" id="llmUrl" placeholder="https://wkjp.labxp.io/llm">
+      <label for="llmModel">Model</label>
+      <select id="llmModel"></select>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn small" id="btnLlmConnect">Connect</button>
+        <span class="note" id="llmStatus" style="margin-top:0;"></span>
+      </div>
+      <p class="note">Runs on base-station's GPU, so Talk only works while that PC is on.</p>
     </section>
   </main>
 </div>
@@ -531,7 +576,8 @@ function load(key,fallback){ try{ const v=localStorage.getItem(key); return v?JS
 function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
-  engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false},load("wkl_settings",{}));
+  engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
+  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1080,8 +1126,129 @@ function renderStats(){
   });
 }
 
+/* ---------- Talk (Ollama) ---------- */
+const LLM_DEFAULT=location.protocol==="file:"?"http://localhost:11434":location.origin+"/llm";
+const llmBase=()=>((S.llmUrl||LLM_DEFAULT).trim()||LLM_DEFAULT).replace(/\/+$/,"");
+const str={type:"string"};
+const REPLY_SCHEMA={type:"object",required:["reply","english"],properties:{reply:str,english:str}};
+// errors first so the model looks before it corrects
+const CHECK_SCHEMA={type:"object",required:["errors","correction","note"],
+  properties:{errors:{type:"array",items:str},correction:str,note:str}};
+const isJa=t=>/[぀-ヿ一-鿿]/.test(t);
+const wkLevel=()=>DATA?DATA.user.level:1;
+let TALK=[],talkBusy=false;
+
+function talkSystem(){
+  const words=getPools().words.slice().sort((a,b)=>a.l-b.l).slice(0,800).map(w=>w.c);
+  return [
+    `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
+    "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
+    "Prefer the learner's known words below. Write any kanji word they don't know in hiragana. Keep grammar simple. Plain text only, no markdown.",
+    "If the learner writes English or romaji, just carry on the conversation in Japanese.",
+    "english: an English translation of your reply.",
+    words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words."
+  ].join("\n");
+}
+function checkSystem(ja){
+  if(ja) return [
+    "You check sentences written by a Japanese learner. You do not chat.",
+    "Go through the sentence piece by piece: each particle (は が を に で へ と), verb form, conjugation, word choice and politeness.",
+    "Common learner mistakes: を with 行く/来る/帰る (needs に or へ), に for where an action happens (needs で), wrong verb tense.",
+    "errors: each mistake found, in English. Empty list if none.",
+    "correction: the corrected sentence only. Empty if there are no errors.",
+    "note: one short English line about the main fix; empty if none."
+  ].join("\n");
+  return [
+    "A Japanese learner wrote this in English or romaji. Give the natural, polite Japanese (です/ます) for it.",
+    "errors: leave empty.",
+    `correction: the Japanese sentence only, using kanji a WaniKani level ${wkLevel()} learner would know and hiragana otherwise.`,
+    "note: one short English line with a tip about the phrasing; empty if nothing useful."
+  ].join("\n");
+}
+async function llmChat(messages,schema,temp){
+  const r=await fetch(llmBase()+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({model:S.llmModel,stream:false,think:false,format:schema,
+      options:{temperature:temp,num_ctx:8192},messages})});
+  if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"Ollama error "+r.status);
+  return JSON.parse((await r.json()).message.content);
+}
+function talkAdd(cls,html){
+  const d=document.createElement("div");
+  d.className=cls; d.innerHTML=html;
+  $("talkLog").appendChild(d);
+  $("talkLog").scrollTop=$("talkLog").scrollHeight;
+  return d;
+}
+function talkReply(r){
+  const d=talkAdd("msg ai",`<div>${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
+    <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button></div>`);
+  d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false);
+  d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true);
+  d.querySelector("[data-a=en]").onclick=()=>d.querySelector(".en").classList.toggle("hidden");
+  if(S.talkSpeak) speakText(r.reply,false);
+}
+async function talkSend(){
+  const box=$("talkInput"),text=box.value.trim(),err=$("talkErr");
+  if(!text||talkBusy) return;
+  err.classList.add("hidden");
+  talkBusy=true; $("btnTalkSend").disabled=true;
+  box.value="";
+  const me=talkAdd("msg me",esc(text));
+  TALK.push({role:"user",content:text});
+  const wait=talkAdd("msg ai","…");
+  // check runs alongside the reply; its note slots in under the learner's line
+  const ja=isJa(text);
+  llmChat([{role:"system",content:checkSystem(ja)},{role:"user",content:text}],CHECK_SCHEMA,0).then(c=>{
+    if(!c.correction||c.correction.trim()===text) return;
+    const d=document.createElement("div");
+    d.className="fix";
+    d.innerHTML=`${ja?"✏️":"🇯🇵"} ${esc(c.correction)}${c.note?`<div class="why">${esc(c.note)}</div>`:""}`;
+    me.after(d);
+  }).catch(()=>{});
+  try{
+    const out=await llmChat([{role:"system",content:talkSystem()}].concat(TALK.slice(-20)),REPLY_SCHEMA,0.7);
+    wait.remove();
+    talkReply(out);
+    TALK.push({role:"assistant",content:out.reply});
+  }catch(e){
+    wait.remove();
+    TALK.pop();
+    box.value=text;
+    err.textContent="⚠ "+(e.message||"no reply")+" — check Settings → Conversation partner.";
+    err.classList.remove("hidden");
+  }
+  talkBusy=false; $("btnTalkSend").disabled=false;
+  box.focus();
+}
+async function llmConnect(){
+  const st=$("llmStatus"),sel=$("llmModel");
+  st.textContent="connecting…";
+  try{
+    const r=await fetch(llmBase()+"/api/tags");
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const names=(await r.json()).models.map(m=>m.name);
+    sel.innerHTML="";
+    names.forEach(n=>{ const o=document.createElement("option"); o.value=n; o.textContent=n; sel.appendChild(o); });
+    if(!names.includes(S.llmModel)&&names.length){ S.llmModel=names[0]; saveS(); }
+    sel.value=S.llmModel;
+    st.textContent="✓ connected · "+names.length+" models";
+  }catch(e){
+    st.textContent="⚠ can't reach Ollama — is base-station on?";
+  }
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function talkMic(){
+  const rec=new SR();
+  rec.lang="ja-JP"; rec.interimResults=false;
+  $("btnTalkMic").textContent="⏺";
+  rec.onresult=e=>{ $("talkInput").value+=e.results[0][0].transcript; };
+  rec.onerror=e=>{ $("talkErr").textContent="⚠ mic: "+e.error; $("talkErr").classList.remove("hidden"); };
+  rec.onend=()=>{ $("btnTalkMic").textContent="🎤"; };
+  rec.start();
+}
+
 /* ---------- tabs & wiring ---------- */
-const views={tabPractice:"viewPractice",tabSpeak:"viewSpeak",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabPractice:"viewPractice",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
     Object.entries(views).forEach(([tab,view])=>{
@@ -1089,6 +1256,7 @@ Object.keys(views).forEach(t=>{
       $(view).classList.toggle("hidden",tab!==t);
     });
     if(t==="tabStats") renderStats();
+    if(t==="tabTalk"&&!$("llmStatus").textContent) llmConnect();
   };
 });
 function bindSeg(id,key,cb){
@@ -1245,6 +1413,21 @@ $("speakInput").addEventListener("input",()=>{
 $("speakInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); speakText($("speakInput").value,false); }
 });
+
+/* talk tab */
+$("btnTalkSend").onclick=talkSend;
+$("talkInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); talkSend(); }
+});
+$("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
+$("chkTalkSpeak").checked=S.talkSpeak;
+$("chkTalkSpeak").onchange=e=>{ S.talkSpeak=e.target.checked; saveS(); };
+if(SR){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
+$("llmUrl").value=S.llmUrl||LLM_DEFAULT;
+$("llmUrl").onchange=e=>{ S.llmUrl=e.target.value.trim(); saveS(); llmConnect(); };
+$("llmModel").innerHTML=`<option>${esc(S.llmModel)}</option>`;
+$("llmModel").onchange=e=>{ S.llmModel=e.target.value; saveS(); };
+$("btnLlmConnect").onclick=llmConnect;
 
 /* ---------- init ---------- */
 refreshVoices();
