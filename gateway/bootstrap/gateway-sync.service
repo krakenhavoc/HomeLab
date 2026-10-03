@@ -8,6 +8,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/gateway-sync
+# Oneshot has no start timeout by default; a hang blocks every later run.
+TimeoutStartSec=15min
 
 # A failed sync must not take the gateway down. The script validates the
 # incoming Caddyfile before publishing it and exits non-zero without touching

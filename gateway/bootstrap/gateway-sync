@@ -113,9 +113,12 @@ rsync -a --delete \
 
 cd "${LIVE_DIR}"
 
+# Bounded: a hung registry must not block the Caddy reload below.
+if ! timeout 300 docker compose pull --quiet; then
+  log "WARNING: image pull failed or timed out; using cached images"
+fi
 # --remove-orphans so a service deleted from the compose file actually stops,
 # rather than lingering and still holding its port.
-docker compose pull --quiet
 docker compose up -d --remove-orphans
 
 # --- Reload Caddy ------------------------------------------------------------

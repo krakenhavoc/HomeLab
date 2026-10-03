@@ -8,6 +8,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/wkjp-sync
+TimeoutStartSec=15min
 
 # A failed sync must not take the app down: the script validates the
 # incoming compose file first and exits non-zero without touching the running

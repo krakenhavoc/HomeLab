@@ -54,7 +54,10 @@ changed=$(rsync -a --delete --itemize-changes \
   "${SRC_DIR}/" "${LIVE_DIR}/")
 
 cd "${LIVE_DIR}"
-docker compose pull --quiet
+# Bounded: a hung registry must not block the sync.
+if ! timeout 300 docker compose pull --quiet; then
+  log "WARNING: image pull failed or timed out; using cached images"
+fi
 docker compose up -d --remove-orphans
 
 # The conf dir is mounted, but nginx only reads it on start or reload.
