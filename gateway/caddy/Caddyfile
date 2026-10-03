@@ -51,16 +51,16 @@
 	tls {
 		dns cloudflare {env.CF_DNS_API_TOKEN}
 
-		# Pin propagation checks to public resolvers. Caddy confirms its
-		# _acme-challenge TXT record is visible before asking Let's Encrypt
-		# to validate; left on the system resolver that check would go to
-		# Pi-hole, which holds local overrides for these very names, and a
-		# split-horizon answer makes the check fail or hang.
-		#
-		# The zone's own Cloudflare nameservers, not 1.1.1.1/9.9.9.9: the
-		# firewall blocks pfe from reaching 1.1.1.1 on :53, which made every
-		# issuance stall here. Update if the zone's nameservers change.
-		resolvers ace.ns.cloudflare.com kallie.ns.cloudflare.com
+		# Outbound DNS is blocked, so lookups go to the Pi-holes like
+		# everything else. They're only used to find the zone; nothing local
+		# exists under _acme-challenge.*.
+		resolvers 192.168.10.11 192.168.10.12
+
+		# No propagation self-check: it needs direct access to Cloudflare's
+		# nameservers, and through Pi-hole it reads a cached NXDOMAIN for up
+		# to 30 min. Cloudflare publishes in seconds; Caddy retries if not.
+		propagation_delay 30s
+		propagation_timeout -1
 	}
 }
 
