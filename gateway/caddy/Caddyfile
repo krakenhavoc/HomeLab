@@ -56,7 +56,11 @@
 		# to validate; left on the system resolver that check would go to
 		# Pi-hole, which holds local overrides for these very names, and a
 		# split-horizon answer makes the check fail or hang.
-		resolvers 1.1.1.1 9.9.9.9
+		#
+		# The zone's own Cloudflare nameservers, not 1.1.1.1/9.9.9.9: the
+		# firewall blocks pfe from reaching 1.1.1.1 on :53, which made every
+		# issuance stall here. Update if the zone's nameservers change.
+		resolvers ace.ns.cloudflare.com kallie.ns.cloudflare.com
 	}
 }
 
