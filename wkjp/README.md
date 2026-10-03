@@ -21,6 +21,10 @@ is reachable only through the private gateway.
   browser to WaniKani.
 - VOICEVOX is not published. nginx proxies an allowlist of endpoints under
   `/vv/` and drops the `Origin` header, which the engine would otherwise 403.
+- The Talk tab chats through `/llm/`, which nginx proxies to Ollama on
+  base-station (192.168.1.18:11434, `~/llm/local-compose.yaml` there). Only
+  `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
+  error and the rest of the app is unaffected.
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.
