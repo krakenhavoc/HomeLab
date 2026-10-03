@@ -42,23 +42,28 @@ pre-commit run --all-files
 
 ## Plan a change locally
 
-Choose one deployment and initialize it in place:
+Choose one deployment and environment, select the matching workspace, and initialize in place:
 
 ```bash
 cd terraform/deployments/<deployment>
+export TF_WORKSPACE=<workspace>   # "State selection" column above, e.g. plex-dev
 terraform init
 terraform fmt -check -recursive
 terraform validate
 terraform plan -var-file=env/<environment>/terraform.tfvars
 ```
 
-The `gh-runner` stack uses flat variable files instead:
+The workspace and the variable file must name the same environment. Most roots select their workspace by tag, so a dev variable file planned against a prd workspace is easy to do by accident.
+
+The `gh-runner` stack uses flat variable files instead. Worker plans register with two repositories, so both registration tokens are required, along with the Proxmox SSH key:
 
 ```bash
 cd terraform/deployments/gh-runner
-TF_WORKSPACE=GH-Worker terraform plan \
-  -var-file=env/gh-worker.tfvars \
-  -var='gh_registration_token=<short-lived-token>'
+export TF_WORKSPACE=GH-Worker
+export TF_VAR_proxmox_private_key=...           # from your secret store, not typed inline
+export TF_VAR_gh_registration_token=...
+export TF_VAR_cmd_and_ctrl_registration_token=...
+terraform plan -var-file=env/gh-worker.tfvars
 ```
 
 Supply secrets through environment variables or the configured Bitwarden/GitHub secret path. Do not place values in `.tfvars`, `secrets.env`, shell history, a plan pasted into an issue, or documentation. Files named `secrets.env` contain secret identifiers, not secret values.
@@ -73,7 +78,7 @@ Do not stop at the summary line. For every changed resource, answer:
 4. Is persistent data on a disk, mount, or external backup that survives the action?
 5. Can the service be verified and rolled back after the apply?
 
-An unexpected replacement of `openclaw-2`, either `cmd_and_ctrl` environment, the gateway, or LastDash is a stop condition. These guests contain manual identity or persistent state that deserves an explicit recovery decision before replacement.
+An unexpected replacement of `openclaw-2`, either `cmd_and_ctrl` environment, the gateway, LastDash, or the Plex prd host is a stop condition. These guests contain manual identity or persistent state that deserves an explicit recovery decision before replacement.
 
 Useful inspection commands:
 
@@ -105,7 +110,15 @@ sequenceDiagram
     Dev->>PVE: Verify guest and service health
 ```
 
-Pull requests must not apply infrastructure. The central deployment workflow plans changed tiered stacks, encrypts the saved plans, and applies those exact pull-request artifacts only after the commit reaches `main`. Dedicated platform workflows must preserve the same review and event gates.
+Pull requests never apply infrastructure. For tiered stacks, `deploy.yaml` plans on the pull request, encrypts the saved plans, and on merge applies those exact artifacts; `main` is not replanned.
+
+The merge itself is the gate. The `main` ruleset requires a pull request, squash merges, and a passing `plans` check on an up-to-date branch. It requires no approvals and no environment reviewer, so nothing but that check stands between merge and a prd apply. Read the plan summary before merging.
+
+These paths plan and apply in the same run, with no reviewed artifact:
+
+- a manual dispatch of `deploy.yaml` (see [A merge apply fails](#a-merge-apply-fails))
+- `shared.yaml` and `tfc.yaml`, which replan on push to `main` and apply that plan
+- `terraform-replace.yaml` and `gh-runner-deploy.yaml`, which are dispatched by hand
 
 ## Verify an apply
 
@@ -147,19 +160,23 @@ Replacement is a recovery or rollout operation, not routine configuration manage
 - verify the service's acceptable downtime
 - confirm the plan contains no collateral delete actions
 
-For deployments that use the standard `env/<environment>/terraform.tfvars` layout, dispatch the **Terraform Replace** workflow with the full resource address, deployment name, and environment. The workflow prints a fresh plan and then performs an auto-approved replacement, so the inputs are the approval boundary.
+For deployments that use the standard `env/<environment>/terraform.tfvars` layout, dispatch the **Terraform Replace** workflow with the full resource address, app, and environment. The workflow prints a fresh plan and then applies it with `-auto-approve`, so the inputs are the approval boundary. It checks none of the list above; that is on you. An empty `replace_resource` turns it into a plain unreviewed apply.
 
 Example using the GitHub CLI:
 
 ```bash
 gh workflow run terraform-replace.yaml \
   -f replace_resource='module.example.proxmox_virtual_environment_vm.this' \
-  -f deployment_name=lab \
-  -f environment=lab \
+  -f app=lab \
+  -f env=lab \
   -f terraform_version=1.14.3
 ```
 
-The generic replacement workflow does not match the `gh-runner` stack's current flat variable-file layout. Rebuild runners through `gh-runner-deploy.yaml`, one controlled change at a time, and keep `dry_run` enabled until the plan has been inspected.
+### GitHub runners
+
+Terraform Replace does not fit the `gh-runner` stack's flat variable-file layout, and `gh-runner-deploy.yaml` refuses any plan that deletes or replaces a resource. It only adds runners or changes them in place. No workflow rebuilds an existing runner; that is a deliberate local operation.
+
+CPU and memory changes apply in place but land as pending Proxmox changes. Each runner picks them up on its next full stop and start. Restart runners one at a time, only while idle in every repository they serve, and confirm each is back online before moving on.
 
 ## Common failure modes
 
@@ -212,6 +229,15 @@ mount | grep /mnt
 ```
 
 Then verify VLAN policy and the environment-specific NFS address in the Plex `.tfvars` file.
+
+### A merge apply fails
+
+The apply job after a merge needs the saved plan from the pull request's last successful `deploy.yaml` run. It fails when:
+
+- the commit on `main` did not come from a pull request, or that pull request has no successful plan run (`no successful plan run for PR head`)
+- another apply changed the same workspace after the plan was made, so Terraform rejects the saved plan as stale
+
+The preferred fix is a new pull request, even an empty follow-up, so the change gets a fresh reviewed plan. Break glass only when that is not practical: dispatch `deploy.yaml` with `app` and `env`, which plans and applies in one run with no review. Read the plan in the job log before assuming the apply did what you expected.
 
 ### A plan shows an unexpected replacement
 
