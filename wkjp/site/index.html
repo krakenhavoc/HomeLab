@@ -531,7 +531,9 @@ function load(key,fallback){ try{ const v=localStorage.getItem(key); return v?JS
 function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
-  engine:"webspeech",vvUrl:"http://localhost:50021",vvSpeaker:null,vvRandom:false},load("wkl_settings",{}));
+  engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false},load("wkl_settings",{}));
+// old builds saved the desktop default; hosted, the engine is proxied at /vv
+if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
 let DATA=load("wkl_data",null);
 let TOKEN=load("wkl_token",null);
