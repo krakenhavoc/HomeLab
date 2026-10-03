@@ -51,7 +51,7 @@ Internal DNS resolves approved service names to the gateway. Caddy terminates TL
 | Reach | Trusted networks and VPN only | The gateway creates no new public ingress path. |
 | Portal | Homepage | Service cards and layout remain reviewable as YAML. |
 | Proxy | Caddy with the Cloudflare DNS module | Certificates use DNS-01 without inbound validation traffic. |
-| Certificates | KrakenKey apex + wildcard (migrating) | No DNS credential on the gateway; one renewal for every name. |
+| Certificates | KrakenKey apex + wildcard | No DNS credential on the gateway; one renewal for every name. |
 | Placement | Existing private frontend host | No extra VM is required, but the portal and frontend share a failure domain. |
 | Naming | Explicit host records | A broad wildcard cannot accidentally shadow unrelated public or management names. |
 | Delivery | Pull and validate | The host does not need an inbound CI or SSH path. |
@@ -85,7 +85,7 @@ The wildcard is a deliberate trade. A stolen wildcard key can impersonate any na
 
 `krakenkey-renew` runs daily from a systemd timer that `gateway-sync` installs. It issues the certificate on the host, so the private key never leaves it. It renews with a third of the lifetime left, checks the result against the key and names before swapping it in, and force-reloads Caddy. A failure leaves the served files untouched.
 
-Rollout is staged: first the cert files and timer, then one site on the new certificate, then the rest, and finally removing the DNS token.
+Rollout is staged: first the cert files and timer, then every site on the new certificate at once, then removing the DNS token. Caddy can't canary one name: once a loaded certificate covers a name, it stops managing that name itself, so the wildcard takes over every site the moment any site loads it.
 
 Internal DNS should use explicit records on every resolver clients may query. Avoid a zone-wide wildcard or suffix override: it can capture public applications and infrastructure control-plane names that must continue resolving elsewhere.
 

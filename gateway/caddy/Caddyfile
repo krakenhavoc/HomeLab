@@ -1,12 +1,13 @@
 # Lab gateway. Terminates TLS for internal service names and proxies to the
 # services behind it. See docs/gateway.md.
 #
-# Certificates are real Let's Encrypt certificates obtained with the DNS-01
-# challenge against the labxp.io zone. DNS-01 proves control of a name by
-# writing a TXT record rather than by answering an inbound request, which is
-# why every name below works in a browser with a normal padlock while the lab
-# accepts no inbound connection from the internet and no internal CA root is
-# installed on any device.
+# Every site serves one KrakenKey certificate for labxp.io + *.labxp.io,
+# issued and renewed on this host by krakenkey-renew (gateway/bootstrap).
+# It's a real Let's Encrypt certificate obtained with DNS-01, which KrakenKey
+# answers in its own zone through the _acme-challenge CNAME. That is why every
+# name below works in a browser with a normal padlock while the lab accepts
+# no inbound connection from the internet, holds no DNS credentials, and has
+# no internal CA root installed on any device.
 #
 # TO ADD A SERVICE: copy a block, point it at the upstream, add the matching
 # A record to BOTH Pi-holes (192.168.10.11 and .12) pointing at
@@ -46,7 +47,8 @@
 	}
 }
 
-# Shared TLS configuration. Every site below imports it.
+# Previous TLS config, unused. Kept until the Cloudflare token is retired so
+# a revert is one commit; Caddy still has those certs in caddy_data.
 (tls_cloudflare) {
 	tls {
 		dns cloudflare {env.CF_DNS_API_TOKEN}
@@ -64,6 +66,12 @@
 	}
 }
 
+# All or nothing: once the wildcard is loaded, Caddy skips its own ACME for
+# every name it covers, whichever sites import it. So every site imports it.
+(tls_krakenkey) {
+	tls /certs/labxp.io.fullchain.pem /certs/labxp.io.key
+}
+
 # --- The portal -------------------------------------------------------------
 # The apex, not a subdomain. That is a deliberate choice with one consequence
 # worth knowing: both Pi-holes answer labxp.io with this host's address, so
@@ -73,18 +81,18 @@
 # exact name. See gateway/README.md; a dnsmasq `address=/labxp.io/...` line
 # would match every subdomain and take cmd.labxp.io down with it.
 labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy homepage:3000
 }
 
 # --- Private frontends ------------------------------------------------------
 redlib.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy redlib:8080
 }
 
 plex.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 
 	# Plex has two requirements here that pull in opposite directions, and
 	# satisfying either one the obvious way breaks the other.
@@ -135,7 +143,7 @@ plex.labxp.io {
 # Caddy to it cannot be verified. That hop stays inside the lab; the hop the
 # browser makes is the one that is properly secured.
 proxmox.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy https://pve.labxp.io:8006 {
 		transport http {
 			tls_insecure_skip_verify
@@ -159,7 +167,7 @@ proxmox.labxp.io {
 # stays inside the lab between two hosts it owns; the hop the browser makes,
 # which is the one worth protecting, is properly secured.
 dns01.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	redir / /admin
 	reverse_proxy https://192.168.10.11 {
 		transport http {
@@ -169,7 +177,7 @@ dns01.labxp.io {
 }
 
 dns02.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	redir / /admin
 	reverse_proxy https://192.168.10.12 {
 		transport http {
@@ -188,7 +196,7 @@ dns02.labxp.io {
 # unless told to expect one: set http.trusted_proxies in configuration.yaml to
 # 192.168.201.14 or the UI loads and then sits there failing to connect.
 hom01.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy 192.168.1.15:8123
 }
 
@@ -204,12 +212,12 @@ hom01.labxp.io {
 # firewall rules now name .37, so a rebuild breaks all four at once and none
 # of them will say why. Pin the address when those facts are available.
 orca.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	import openclaw_upstream 18789
 }
 
 workai.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	import openclaw_upstream 19789
 }
 
@@ -224,7 +232,7 @@ workai.labxp.io {
 # down. Reaching this page therefore says nothing about whether the VPN is
 # connected -- see the qBittorrent card on the portal for that.
 torrent.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy 192.168.1.201:8000
 }
 
@@ -245,7 +253,7 @@ torrent.labxp.io {
 # Dell ships a self-signed certificate (CN=idrac-DXCVF62), so this hop cannot
 # be verified -- the same trade already made for Proxmox, Pi-hole and Plex.
 idrac.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy https://192.168.200.22 {
 		header_up Host {host}
 
@@ -269,7 +277,7 @@ idrac.labxp.io {
 # LAN/VPN only on purpose: LastDash has no real login yet (one dev user, and
 # the API trusts an X-User-Id header). Do not publish this name.
 lastdash.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 
 	handle /api/auth/* {
 		reverse_proxy 192.168.201.19:3000
@@ -286,6 +294,6 @@ lastdash.labxp.io {
 # app and proxies /vv/ to VOICEVOX. Upstream is the static lease for MAC
 # BC:24:11:00:02:60; change both together. LAN only.
 wkjp.labxp.io {
-	import tls_cloudflare
+	import tls_krakenkey
 	reverse_proxy 192.168.201.20:80
 }
