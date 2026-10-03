@@ -1242,7 +1242,13 @@ function talkMic(){
   rec.lang="ja-JP"; rec.interimResults=false;
   $("btnTalkMic").textContent="⏺";
   rec.onresult=e=>{ $("talkInput").value+=e.results[0][0].transcript; };
-  rec.onerror=e=>{ $("talkErr").textContent="⚠ mic: "+e.error; $("talkErr").classList.remove("hidden"); };
+  rec.onerror=e=>{
+    // Chromium's recognizer is Google's cloud service; browsers without it report "network"
+    $("talkErr").textContent=e.error==="network"
+      ?"⚠ This browser has no speech service for the mic. Use Chrome or Edge, or type instead."
+      :"⚠ mic: "+e.error;
+    $("talkErr").classList.remove("hidden");
+  };
   rec.onend=()=>{ $("btnTalkMic").textContent="🎤"; };
   rec.start();
 }
@@ -1422,7 +1428,8 @@ $("talkInput").addEventListener("keydown",e=>{
 $("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
 $("chkTalkSpeak").checked=S.talkSpeak;
 $("chkTalkSpeak").onchange=e=>{ S.talkSpeak=e.target.checked; saveS(); };
-if(SR){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
+// Brave exposes SpeechRecognition but never wires up a backend
+if(SR&&!navigator.brave){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
 $("llmUrl").value=S.llmUrl||LLM_DEFAULT;
 $("llmUrl").onchange=e=>{ S.llmUrl=e.target.value.trim(); saveS(); llmConnect(); };
 $("llmModel").innerHTML=`<option>${esc(S.llmModel)}</option>`;
