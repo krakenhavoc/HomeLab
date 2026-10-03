@@ -3,14 +3,14 @@ name: Terraform Module Tests
 on:
   push:
     paths:
-      - 'terraform/modules/**'
-      - '.github/workflows/terraform-test*.yaml'
+      - "terraform/modules/**"
+      - ".github/workflows/terraform-test*.yaml"
     branches:
       - main
   pull_request:
     paths:
-      - 'terraform/modules/**'
-      - '.github/workflows/terraform-test*.yaml'
+      - "terraform/modules/**"
+      - ".github/workflows/terraform-test*.yaml"
 
 jobs:
   discover-modules:

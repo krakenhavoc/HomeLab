@@ -27,6 +27,13 @@ repos:
         files: ^terraform/.*\.tf$
       - id: terraform_trivy
         files: ^terraform/.*\.tf$
+        # validate's init pulls git-sourced modules (this repo) into .terraform.
+        # Embedded checks: the hook runs trivy per directory in parallel, and on
+        # a cold cache every run downloads and unpacks the same checks bundle
+        # over the others.
+        args:
+          - --args=--skip-dirs="**/.terraform"
+          - --args=--skip-check-update
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.10.0

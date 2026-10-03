@@ -3,37 +3,42 @@ name: Pre-commit Hooks
 on:
   pull_request:
     branches:
-    - main
+      - main
   push:
     branches:
-    - main
+      - main
 
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        ref: ${{ github.event.pull_request.head.ref }}
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
 
-    - name: Set up Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: "1.14.0"
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.14.3"
 
-    - name: Set up Trivy
-      uses: aquasecurity/setup-trivy@v0.2.4
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
 
-    - name: Set up Tflint
-      uses: terraform-linters/setup-tflint@v6
+      - name: Set up Tflint
+        uses: terraform-linters/setup-tflint@v6
 
-    - name: Run pre-commit
-      uses: pre-commit/action@v3.0.1
-      with:
-        extra_args: --all-files
+      # nfs reads ~/.ssh/id_proxmox with file(), which validate evaluates. The
+      # self-hosted deploy runners have the real key; validate only needs it to exist.
+      - name: Stub Proxmox SSH key
+        run: install -D -m 600 /dev/null ~/.ssh/id_proxmox
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files
