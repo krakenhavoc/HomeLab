@@ -51,7 +51,15 @@ The standard infrastructure path separates review from execution:
 4. A merge to `main` identifies the successful plan run for the pull-request head.
 5. The apply job decrypts and uses that exact saved plan instead of replanning.
 
-The central workflow and reusable CD workflow both enforce the `main` event boundary. Platform-specific workflows need equivalent gates because reusable workflows may also be invoked manually.
+The `main` ruleset is the merge gate. It requires a pull request, squash merges, a passing `plans` check on an up-to-date branch, and clean CodeQL and code-quality results. It does not require approvals, and the `prd` environment has no reviewer. A merge therefore applies prd directly, and reading the plan summary is the review.
+
+Only merges through `deploy.yaml` apply a reviewed artifact. These paths plan and apply in one run:
+
+- a manual dispatch of `deploy.yaml`
+- `shared.yaml` and `tfc.yaml` on push to `main`
+- `terraform-replace.yaml`
+
+The reusable CD workflow still refuses to run outside `main`.
 
 The GitHub runner deployment is manual, uses short-lived registration tokens, rejects destroy actions, checks for duplicate registered runner names, and defaults to plan-only execution.
 

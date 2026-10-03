@@ -1,6 +1,6 @@
 # Deployment and service map
 
-Each colored boundary below represents a Terraform root module with separate state selection. Arrows between boundaries are runtime or provisioning dependencies, not shared Terraform state.
+Each colored boundary below, apart from the Proxmox prerequisites, represents a Terraform root module with separate state selection. Arrows between boundaries are runtime or provisioning dependencies, not shared Terraform state.
 
 ```mermaid
 flowchart TB
@@ -26,14 +26,14 @@ flowchart TB
         CmdDev["development host"]
         R2Prod[("R2 backup bucket<br/>production")]
         R2Dev[("R2 backup bucket<br/>development")]
-        IngressProd["Cloudflare Tunnel<br/>production"]
         IngressDev["Cloudflare Tunnel<br/>development"]
 
         CmdProd -.->|application-owned restic| R2Prod
         CmdDev -.->|application-owned restic| R2Dev
-        IngressProd --> CmdProd
         IngressDev --> CmdDev
     end
+
+    IngressProd["Cloudflare Tunnel<br/>production (managed by hand)"] --> CmdProd
 
     subgraph Frontends["frontends"]
         PFE["Private frontend host"]
@@ -113,7 +113,7 @@ flowchart TB
 - `shared` publishes the LXC image and installation media; it does not own the guests that consume them.
 - Linux VMs clone a Proxmox template prepared outside the shared Terraform state.
 - Development and production Plex hosts use their matching NFS environment.
-- The `cmd-and-ctrl` deployment owns its guests, ingress, and R2 buckets, while the application owns backup scheduling and retention.
+- The `cmd-and-ctrl` deployment owns its guests, the development tunnel, and the R2 buckets, while the application owns backup scheduling and retention. The production tunnel is managed by hand.
 - The frontend gateway provides private named access to LastDash and other selected services without owning those upstreams.
 - The `tfc` stack manages HCP Terraform projects and workspaces, not the resources stored in their state.
 - The runner stack is manually dispatched because it manages the machines that execute the rest of the delivery workflows.

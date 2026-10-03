@@ -160,7 +160,13 @@ The portal and proxy are not the source of truth for the services behind them. I
 - use direct management paths from a trusted network
 - preserve the certificate volumes before destructive Compose operations
 - rebuild the host from Terraform and cloud-init only when in-place repair is unsuitable
-- restore runtime credentials through the secret-management path
+- restore runtime credentials on the host by hand (see below)
 - let `gateway-sync` repopulate public configuration from the repository
+
+### Credential rotation
+
+The gateway's cloud-init snippet is frozen: `frontends` ignores changes to its content, so editing the snippet never replaces the host. A rotated token therefore never reaches the gateway through Terraform. Update `/etc/gateway/caddy.env` on the host, then recreate the containers that read it (`docker compose up -d`).
+
+A rebuild renders the snippet as it was last applied, not from the current secret store, so it can bring back a revoked token. Before a planned rebuild, remove the freeze in the same change so the snippet is re-rendered with current values, then put the freeze back.
 
 Internal addresses, DNS names, firewall rules, and credential identifiers are intentionally omitted from this public design document. The executable configuration and private network platform remain authoritative for those details.
