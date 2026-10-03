@@ -257,7 +257,7 @@
       <textarea id="talkInput" rows="2" placeholder="こんにちは！"></textarea>
       <div class="row" style="margin-top:10px;">
         <button class="btn primary" id="btnTalkSend">Send</button>
-        <button class="btn hidden" id="btnTalkMic" title="speak (Japanese)">🎤</button>
+        <button class="btn hidden" id="btnTalkMic" title="record Japanese; click again to stop">🎤</button>
         <button class="btn" id="btnTalkNew">New chat</button>
         <label style="margin:0 0 0 auto; display:flex; align-items:center; gap:6px; cursor:pointer;">
           <input type="checkbox" id="chkTalkSpeak"> read replies aloud
@@ -1236,21 +1236,41 @@ async function llmConnect(){
     st.textContent="⚠ can't reach Ollama — is base-station on?";
   }
 }
-const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-function talkMic(){
-  const rec=new SR();
-  rec.lang="ja-JP"; rec.interimResults=false;
-  $("btnTalkMic").textContent="⏺";
-  rec.onresult=e=>{ $("talkInput").value+=e.results[0][0].transcript; };
-  rec.onerror=e=>{
-    // Chromium's recognizer is Google's cloud service; browsers without it report "network"
-    $("talkErr").textContent=e.error==="network"
-      ?"⚠ This browser has no speech service for the mic. Use Chrome or Edge, or type instead."
-      :"⚠ mic: "+e.error;
-    $("talkErr").classList.remove("hidden");
+// Mic records locally and transcribes with Whisper on base-station (/stt/).
+const STT_BASE=location.protocol==="file:"?"http://localhost:8001":location.origin+"/stt";
+const STT_MODEL="deepdml/faster-whisper-large-v3-turbo-ct2";
+const canRecord=!!(navigator.mediaDevices&&window.MediaRecorder);
+let micRec=null,micStop=null;
+function talkErr(msg){ $("talkErr").textContent="⚠ "+msg; $("talkErr").classList.remove("hidden"); }
+async function talkMic(){
+  const btn=$("btnTalkMic");
+  if(micRec){ micRec.stop(); return; }
+  let stream;
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch(e){ talkErr("mic blocked: "+(e.message||e.name)); return; }
+  const chunks=[];
+  micRec=new MediaRecorder(stream);
+  micRec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+  micRec.onstop=async()=>{
+    clearTimeout(micStop);
+    stream.getTracks().forEach(t=>t.stop());
+    micRec=null;
+    btn.textContent="…"; btn.disabled=true;
+    try{
+      const fd=new FormData();
+      fd.append("file",new Blob(chunks,{type:chunks[0]?chunks[0].type:"audio/webm"}),"talk.webm");
+      fd.append("model",STT_MODEL);
+      fd.append("language","ja");
+      const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
+      if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"speech-to-text error "+r.status);
+      const text=((await r.json()).text||"").trim();
+      if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; box.focus(); }
+    }catch(e){ talkErr(e.message||"speech-to-text failed"); }
+    btn.textContent="🎤"; btn.disabled=false;
   };
-  rec.onend=()=>{ $("btnTalkMic").textContent="🎤"; };
-  rec.start();
+  micRec.start();
+  btn.textContent="⏹";
+  micStop=setTimeout(()=>{ if(micRec) micRec.stop(); },30000);
 }
 
 /* ---------- tabs & wiring ---------- */
@@ -1428,8 +1448,7 @@ $("talkInput").addEventListener("keydown",e=>{
 $("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
 $("chkTalkSpeak").checked=S.talkSpeak;
 $("chkTalkSpeak").onchange=e=>{ S.talkSpeak=e.target.checked; saveS(); };
-// Brave exposes SpeechRecognition but never wires up a backend
-if(SR&&!navigator.brave){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
+if(canRecord){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
 $("llmUrl").value=S.llmUrl||LLM_DEFAULT;
 $("llmUrl").onchange=e=>{ S.llmUrl=e.target.value.trim(); saveS(); llmConnect(); };
 $("llmModel").innerHTML=`<option>${esc(S.llmModel)}</option>`;
