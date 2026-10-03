@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+#
+# Keep the gateway's KrakenKey certificate (labxp.io + *.labxp.io) current.
+#
+# KrakenKey runs the DNS-01 challenge in its own zone through the
+# _acme-challenge CNAME, so this host needs no DNS credentials and no DNS
+# lookups beyond reaching the API. The key is generated here and never leaves.
+#
+# Each run, in order:
+#   - no cert on disk         -> issue one
+#   - on-disk cert not due    -> nothing
+#   - KrakenKey already holds a newer cert (an earlier run renewed but
+#     failed to install it)   -> download it, don't renew again
+#   - otherwise               -> renew, then download
+#
+# The free tier allows 5 issuances a month, so a run never renews twice
+# for the same expiry. Anything that fails leaves the served files alone.
+#
+# Run by krakenkey-renew.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+CERT_DIR=/etc/gateway/certs
+NAME=labxp.io
+SANS=('*.labxp.io')
+CLI_IMAGE=ghcr.io/krakenkey/cli:v0.4.0
+
+KEY="${CERT_DIR}/${NAME}.key"
+CRT="${CERT_DIR}/${NAME}.fullchain.pem"
+ID_FILE="${CERT_DIR}/${NAME}.id"
+
+log() { echo "[krakenkey-renew] $*"; }
+die() { log "ERROR: $*"; exit 1; }
+
+if [[ -z "${KK_API_KEY:-}" ]]; then
+  die "KK_API_KEY not set; place it in /etc/gateway/krakenkey.env"
+fi
+
+install -d -m 0700 "${CERT_DIR}"
+
+# Same filesystem as the served files so the final mv is atomic.
+WORK=$(mktemp -d "${CERT_DIR}/.work.XXXXXX")
+trap 'rm -rf "${WORK}"' EXIT
+
+kk() {
+  docker run --rm --user 0:0 \
+    -e KK_API_KEY -e KK_OUTPUT=json \
+    -v "${WORK}:/out" \
+    "${CLI_IMAGE}" "$@"
+}
+
+json_field() { python3 -c 'import json,sys; v=json.load(sys.stdin).get(sys.argv[1]); print("" if v is None else v)' "$1"; }
+
+not_after() { date -d "$(openssl x509 -noout -enddate -in "$1" | cut -d= -f2)" +%s; }
+
+# Renew with a third of the lifetime left, like certbot. Survives the CA
+# moving to shorter certs without touching this file.
+is_due() {
+  local start end now
+  start=$(date -d "$(openssl x509 -noout -startdate -in "$1" | cut -d= -f2)" +%s)
+  end=$(not_after "$1")
+  now=$(date +%s)
+  (( end - now < (end - start) / 3 ))
+}
+
+# Refuse anything that wouldn't serve: wrong key, wrong names, or not
+# actually newer than what's live.
+check() {
+  local crt=$1 key=$2 h
+  openssl x509 -noout -in "${crt}" 2>/dev/null || { log "not a certificate"; return 1; }
+  if [[ "$(openssl x509 -noout -pubkey -in "${crt}")" != "$(openssl pkey -pubout -in "${key}")" ]]; then
+    log "certificate does not match the key"
+    return 1
+  fi
+  # a wildcard SAN is checked with a made-up label under it
+  for h in "${NAME}" "${SANS[@]/#\*./check.}"; do
+    openssl x509 -noout -checkhost "${h}" -in "${crt}" | grep -q 'does match' \
+      || { log "certificate does not cover ${h}"; return 1; }
+  done
+  openssl x509 -noout -checkend 86400 -in "${crt}" >/dev/null \
+    || { log "certificate expires within a day"; return 1; }
+  if [[ -s "${CRT}" ]] && (( $(not_after "${crt}") <= $(not_after "${CRT}") )); then
+    log "certificate is not newer than the one being served"
+    return 1
+  fi
+}
+
+# Poll until KrakenKey settles. Exits the run (0) on timeout so the next
+# run picks the same certificate up rather than issuing another.
+wait_issued() {
+  local id=$1 status i
+  for (( i = 0; i < 80; i++ )); do
+    status=$(kk cert show "${id}" | json_field status)
+    case "${status}" in
+      issued) return 0 ;;
+      failed|revoked) log "certificate ${id} is ${status}"; return 1 ;;
+    esac
+    sleep 15
+  done
+  log "certificate ${id} still ${status} after 20 min; trying again next run"
+  exit 0
+}
+
+download() {
+  kk cert download "$1" --format fullchain --out /out/fullchain.pem >/dev/null
+}
+
+install_pair() {
+  local crt=$1 key=$2
+  [[ -s "${CRT}" ]] && cp -p "${CRT}" "${CRT}.prev"
+  [[ -s "${KEY}" && "${key}" != "${KEY}" ]] && cp -p "${KEY}" "${KEY}.prev"
+  chmod 0600 "${key}"
+  chmod 0644 "${crt}"
+  [[ "${key}" != "${KEY}" ]] && mv "${key}" "${KEY}"
+  mv "${crt}" "${CRT}"
+  log "installed cert expiring $(openssl x509 -noout -enddate -in "${CRT}" | cut -d= -f2)"
+
+  # Plain reload is a no-op when the Caddyfile hasn't changed, so it would
+  # keep serving the old cert. --force re-reads the files without a restart.
+  if docker ps --format '{{.Names}}' | grep -qx caddy; then
+    if docker exec caddy caddy reload --force \
+        --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null; then
+      log "caddy reloaded"
+    else
+      log "WARNING: caddy reload failed; restarting the container"
+      docker restart caddy >/dev/null
+    fi
+  fi
+}
+
+# --- Issue -------------------------------------------------------------------
+# Also the path after a rebuild: the key is gone, so a new one means a new cert.
+# The id and key are saved as .new before waiting, so a run that dies after
+# submitting resumes that certificate instead of issuing another.
+if [[ ! -s "${KEY}" || ! -s "${CRT}" || ! -s "${ID_FILE}" ]]; then
+  if [[ -s "${KEY}.new" && -s "${ID_FILE}.new" ]]; then
+    id=$(<"${ID_FILE}.new")
+    log "resuming certificate ${id}"
+  else
+    log "no certificate on disk; issuing ${NAME} ${SANS[*]}"
+    san_args=()
+    for s in "${SANS[@]}"; do san_args+=(--san "${s}"); done
+    kk cert issue --domain "${NAME}" "${san_args[@]}" \
+      --key-type ecdsa-p256 \
+      --key-out /out/key.pem --csr-out /out/csr.pem > "${WORK}/issue.json"
+    id=$(json_field id < "${WORK}/issue.json")
+    [[ -n "${id}" ]] || die "issue returned no certificate id"
+    install -m 0600 "${WORK}/key.pem" "${KEY}.new"
+    echo "${id}" > "${ID_FILE}.new"
+  fi
+
+  if ! wait_issued "${id}"; then
+    rm -f "${KEY}.new" "${ID_FILE}.new"
+    die "issuance failed; the next run starts over"
+  fi
+  download "${id}"
+  cp -p "${KEY}.new" "${WORK}/key.pem"
+  check "${WORK}/fullchain.pem" "${WORK}/key.pem" || die "issued certificate failed checks"
+  install_pair "${WORK}/fullchain.pem" "${WORK}/key.pem"
+  mv "${ID_FILE}.new" "${ID_FILE}"
+  rm -f "${KEY}.new"
+  exit 0
+fi
+
+# --- Renew -------------------------------------------------------------------
+if ! is_due "${CRT}"; then
+  log "not due; served cert expires $(openssl x509 -noout -enddate -in "${CRT}" | cut -d= -f2)"
+  exit 0
+fi
+
+id=$(<"${ID_FILE}")
+kk cert show "${id}" > "${WORK}/show.json"
+status=$(json_field status < "${WORK}/show.json")
+expires=$(json_field expiresAt < "${WORK}/show.json")
+
+case "${status}" in
+  pending|issuing|renewing)
+    log "certificate ${id} is ${status}; trying again next run"
+    exit 0
+    ;;
+esac
+
+if [[ "${status}" == issued && -n "${expires}" ]] \
+    && (( $(date -d "${expires}" +%s) > $(not_after "${CRT}") + 86400 )); then
+  log "KrakenKey already holds a newer cert for ${id}; downloading it"
+else
+  log "renewing certificate ${id}"
+  kk cert renew "${id}" >/dev/null
+  wait_issued "${id}" || die "renewal failed; still serving the old cert"
+fi
+
+download "${id}"
+# renew reuses the CSR, so the live key still applies.
+check "${WORK}/fullchain.pem" "${KEY}" || die "renewed certificate failed checks; still serving the old one"
+install_pair "${WORK}/fullchain.pem" "${KEY}"
