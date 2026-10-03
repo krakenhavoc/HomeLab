@@ -1,0 +1,13 @@
+[Unit]
+Description=Check the gateway's KrakenKey certificate daily
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/docs/gateway.md
+
+[Timer]
+# Most runs just read the cert's dates. A third of the lifetime is the
+# renewal window, so a missed day or two doesn't matter.
+OnCalendar=daily
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

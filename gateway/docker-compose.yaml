@@ -38,6 +38,10 @@ services:
       # careless `down -v` can leave the gateway with nothing valid to serve.
       - caddy_data:/data
       - caddy_config:/config
+      # KrakenKey cert and key, written by krakenkey-renew on the host.
+      # A directory for the same inode reason as above: renewals replace
+      # the files with mv.
+      - /etc/gateway/certs:/certs:ro
     networks:
       - gateway
     security_opt:
