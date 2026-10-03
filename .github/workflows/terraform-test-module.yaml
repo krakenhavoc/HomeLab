@@ -4,14 +4,14 @@ on:
   workflow_call:
     inputs:
       module_path:
-        description: 'Path to the Terraform module to test'
+        description: "Path to the Terraform module to test"
         required: true
         type: string
       terraform_version:
-        description: 'Terraform version to use'
+        description: "Terraform version to use"
         required: false
         type: string
-        default: '1.14.3'
+        default: "1.14.3"
 
 jobs:
   test:

@@ -15,7 +15,7 @@ This directory contains two generations of the Proxmox cloud-init VM module.
 
 ```hcl
 module "example" {
-  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.2.0"
+  source = "git::https://github.com/krakenhavoc/HomeLab.git//terraform/modules/compute/pm-cloudinit-vm?ref=v0.3.0"
 
   vm_name                        = "example"
   vm_node_name                   = "pve"
@@ -55,7 +55,7 @@ Static cloud-init networking is consumed at first boot. Changing these inputs on
 
 ### Lifecycle warning
 
-The module cannot let a caller inject a Terraform `lifecycle` block. A long-lived guest that must ignore `initialization` changes may need a raw resource instead, with the duplicated attributes and the reason documented. This pattern is used selectively in the lab deployment; it should not become the default.
+The module cannot let a caller inject a Terraform `lifecycle` block. A long-lived guest that must ignore `initialization` changes may need a raw resource instead, with the duplicated attributes and the reason documented. `cmd-and-ctrl`, `lastdash`, and `gh-runner` use this pattern; it should not become the default.
 
 ### Test the module
 
@@ -74,7 +74,7 @@ The test suite uses a mocked provider and covers defaults, VLAN behavior, BIOS a
 
 ## Releasing changes
 
-Deployments reference modules by Git tag, so release in two stages:
+Deployments reference modules by Git tag, so release in this order:
 
 1. Merge and test the backwards-compatible module change.
 2. Tag the commit.

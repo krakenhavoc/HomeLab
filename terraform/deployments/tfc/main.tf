@@ -16,6 +16,7 @@ locals {
     frontends      = ["prd"]
     lastdash       = ["prd"]
     "cmd-and-ctrl" = ["dev", "prd"]
+    wkjp           = ["prd"]
   }
 
   platform = {
