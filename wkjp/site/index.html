@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WaniKani Listening Practice</title>
+<style>
+  :root{
+    --bg:#12141a; --card:#1c1f28; --card2:#242836; --line:#323848;
+    --text:#e8eaf0; --muted:#9aa1b5; --pink:#ff4b91; --purple:#a06bff;
+    --green:#2fbf71; --red:#ef476f; --amber:#ffb703;
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:20px 16px 60px;}
+  header{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  header h1{font-size:1.15rem; font-weight:700;}
+  header h1 .accent{color:var(--pink);}
+  #dataChip{font-size:.78rem; color:var(--muted); background:var(--card); border:1px solid var(--line); padding:4px 10px; border-radius:99px;}
+  #vvQuickSpeaker{width:auto; max-width:190px; font-size:.78rem; padding:4px 8px; border-radius:99px; background:var(--card); color:var(--text); border:1px solid var(--line);}
+  nav{display:flex; gap:6px; margin-bottom:16px;}
+  nav button{
+    flex:1; background:var(--card); color:var(--muted); border:1px solid var(--line);
+    padding:9px 0; border-radius:10px; cursor:pointer; font-size:.9rem; font-weight:600;
+  }
+  nav button.active{background:var(--card2); color:var(--text); border-color:var(--purple);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
+  .card h2{font-size:1rem; margin-bottom:10px;}
+  .card p{font-size:.9rem; color:var(--muted);}
+  .hidden{display:none !important;}
+  label{font-size:.82rem; color:var(--muted); display:block; margin:12px 0 4px;}
+  input[type=text], input[type=password], select, textarea{
+    width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+    border-radius:10px; padding:10px 12px; font-size:.95rem; font-family:inherit;
+  }
+  textarea{resize:vertical; font-size:1.05rem; line-height:1.7;}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--purple); outline-offset:-1px;}
+  .btn{
+    display:inline-block; background:var(--card2); color:var(--text); border:1px solid var(--line);
+    padding:10px 18px; border-radius:10px; cursor:pointer; font-size:.92rem; font-weight:600;
+  }
+  .btn:hover{border-color:var(--purple);}
+  .btn.primary{background:var(--pink); border-color:var(--pink); color:#fff;}
+  .btn.primary:hover{filter:brightness(1.1);}
+  .btn.small{padding:6px 12px; font-size:.8rem;}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .seg{display:flex; gap:6px; flex-wrap:wrap;}
+  .seg button{
+    background:var(--bg); border:1px solid var(--line); color:var(--muted);
+    padding:8px 14px; border-radius:99px; cursor:pointer; font-size:.85rem; font-weight:600;
+  }
+  .seg button.on{background:var(--purple); border-color:var(--purple); color:#fff;}
+  .note{font-size:.78rem; color:var(--muted); margin-top:8px;}
+  .warn{background:#3a2b14; border:1px solid #6b4e1d; color:#ffd166; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-bottom:12px;}
+  .err{background:#3a1420; border:1px solid #6b1d33; color:#ff8fa8; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-top:10px;}
+  details{margin-top:12px; font-size:.85rem; color:var(--muted);}
+  details summary{cursor:pointer; color:var(--text);}
+  details li{margin:6px 0 6px 18px;}
+  progress{width:100%; height:8px; margin-top:10px;}
+
+  /* quiz */
+  #quizTop{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:.85rem; color:var(--muted);}
+  #quizBar{height:6px; background:var(--bg); border-radius:99px; overflow:hidden; margin-bottom:18px;}
+  #quizBarFill{height:100%; width:0%; background:linear-gradient(90deg,var(--purple),var(--pink)); transition:width .25s;}
+  .playRow{display:flex; gap:10px; justify-content:center; align-items:center; margin:10px 0 20px;}
+  #btnPlay{
+    width:84px; height:84px; border-radius:50%; border:none; cursor:pointer;
+    background:radial-gradient(circle at 35% 30%, var(--pink), #c2255f);
+    color:#fff; font-size:2rem; box-shadow:0 6px 24px rgba(255,75,145,.35);
+  }
+  #btnPlay:active{transform:scale(.96);}
+  #btnSlow{width:52px; height:52px; border-radius:50%; font-size:1.1rem;}
+  .qhint{text-align:center; font-size:.82rem; color:var(--muted); margin-bottom:16px;}
+  .options{display:grid; grid-template-columns:1fr; gap:8px;}
+  .options button{
+    text-align:left; background:var(--card2); border:1px solid var(--line); color:var(--text);
+    padding:12px 14px; border-radius:10px; cursor:pointer; font-size:.95rem;
+  }
+  .options button:hover{border-color:var(--purple);}
+  .options button.picked{outline:2px solid var(--purple);}
+  .options button.correct{background:#173626; border-color:var(--green);}
+  .options button.wrong{background:#3a1420; border-color:var(--red);}
+  .options button .idx{color:var(--muted); font-size:.78rem; margin-right:8px;}
+  #dictWrap input{font-size:1.2rem; text-align:center;}
+  #kanaPreview{text-align:center; min-height:1.6em; font-size:1.1rem; color:var(--purple); margin-top:6px;}
+  .reveal-jp{font-size:1.7rem; text-align:center; margin:6px 0; font-weight:600;}
+  .reveal-kana{font-size:1rem; text-align:center; color:var(--purple);}
+  .reveal-en{font-size:.95rem; text-align:center; color:var(--muted); margin-top:6px;}
+  .reveal-extra{font-size:.8rem; text-align:center; color:var(--muted); margin-top:10px;}
+  #feedback{text-align:center; font-size:1rem; font-weight:700; margin:14px 0 4px; min-height:1.5em;}
+  #feedback.good{color:var(--green);} #feedback.bad{color:var(--red);}
+  #answerDetail{text-align:center;}
+  .actionRow{display:flex; gap:8px; justify-content:center; margin-top:16px;}
+  .kbd{font-size:.72rem; color:var(--muted); text-align:center; margin-top:18px;}
+  .kbd b{background:var(--card2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-weight:600;}
+
+  /* results / stats */
+  .bigScore{font-size:2.4rem; font-weight:800; text-align:center; margin:6px 0;}
+  .missList{margin-top:12px;}
+  .missItem{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:.9rem;}
+  .missItem:last-child{border-bottom:none;}
+  .missItem .jp{font-size:1.05rem; min-width:90px;}
+  .missItem .mean{color:var(--muted); flex:1;}
+  .statGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
+  .statBox{background:var(--card2); border-radius:10px; padding:12px; text-align:center;}
+  .statBox .v{font-size:1.4rem; font-weight:800;}
+  .statBox .l{font-size:.72rem; color:var(--muted);}
+  @media (max-width:480px){ .statGrid{grid-template-columns:repeat(3,1fr);} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎧 WaniKani <span class="accent">Listening Practice</span></h1>
+    <span style="display:flex; gap:8px; align-items:center;">
+      <select id="vvQuickSpeaker" class="hidden" title="VOICEVOX voice"></select>
+      <span id="dataChip">no data yet</span>
+    </span>
+  </header>
+
+  <div id="voiceWarn" class="warn hidden"></div>
+
+  <nav>
+    <button id="tabPractice" class="active">Practice</button>
+    <button id="tabSpeak">Speak</button>
+    <button id="tabStats">Stats</button>
+    <button id="tabSettings">Settings</button>
+  </nav>
+
+  <!-- ============ PRACTICE VIEW ============ -->
+  <main id="viewPractice">
+
+    <!-- setup -->
+    <section id="setupCard" class="card">
+      <h2>Connect your WaniKani account</h2>
+      <p>Paste a <b>read-only API token</b> and I'll pull the vocabulary you've actually learned. The token and data stay in your browser only.</p>
+      <label for="tokenInput">API token</label>
+      <input type="password" id="tokenInput" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off">
+      <div class="row" style="margin-top:12px;">
+        <button class="btn primary" id="btnLoad">Load my vocab</button>
+        <span id="loadStatus" class="note"></span>
+      </div>
+      <progress id="loadBar" class="hidden" max="100" value="0"></progress>
+      <div id="loadErr" class="err hidden"></div>
+      <details>
+        <summary>Where do I get a token?</summary>
+        <li>Log in at wanikani.com</li>
+        <li>Click your avatar → <b>API Tokens</b> (or Settings → API Tokens)</li>
+        <li>Use the default read-only token, or generate one (no write permissions needed)</li>
+        <li>Copy it and paste it above</li>
+      </details>
+    </section>
+
+    <!-- session config -->
+    <section id="configCard" class="card hidden">
+      <h2>New session</h2>
+      <label>What to practice</label>
+      <div class="seg" id="segContent">
+        <button data-v="mixed" class="on">Mix</button>
+        <button data-v="words">Words</button>
+        <button data-v="sentences">Sentences</button>
+      </div>
+      <label>Exercise style</label>
+      <div class="seg" id="segMode">
+        <button data-v="mixed" class="on">Mix</button>
+        <button data-v="mc">Multiple choice</button>
+        <button data-v="dict">Dictation</button>
+        <button data-v="reveal">Listen &amp; reveal</button>
+      </div>
+      <label>Questions</label>
+      <div class="seg" id="segLen">
+        <button data-v="10" class="on">10</button>
+        <button data-v="20">20</button>
+        <button data-v="40">40</button>
+      </div>
+      <div class="row" style="margin-top:16px; justify-content:space-between;">
+        <label style="margin:0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="chkWeak"> focus on my weak items
+        </label>
+        <button class="btn primary" id="btnStart">Start ▸</button>
+      </div>
+      <p class="note" id="poolNote"></p>
+    </section>
+
+    <!-- quiz -->
+    <section id="quizCard" class="card hidden">
+      <div id="quizTop"><span id="quizProgress"></span><span id="quizScore"></span></div>
+      <div id="quizBar"><div id="quizBarFill"></div></div>
+      <div class="playRow">
+        <button class="btn" id="btnSlow" title="play slowly">🐢</button>
+        <button id="btnPlay" title="replay">🔊</button>
+        <button class="btn" id="btnStop" style="width:52px;height:52px;border-radius:50%;" title="stop">■</button>
+      </div>
+      <div class="qhint" id="qHint"></div>
+      <div id="answerArea"></div>
+      <div id="feedback"></div>
+      <div id="answerDetail"></div>
+      <div class="actionRow" id="actionRow"></div>
+      <div class="kbd"><b>space</b> replay · <b>s</b> slow · <b>1–4</b> pick · <b>enter</b> submit / next · <b>esc</b>/<b>x</b> I don't know</div>
+    </section>
+
+    <!-- results -->
+    <section id="resultCard" class="card hidden">
+      <h2>Session complete</h2>
+      <div class="bigScore" id="finalScore"></div>
+      <p id="finalNote" style="text-align:center;"></p>
+      <div class="missList" id="missList"></div>
+      <div class="actionRow">
+        <button class="btn" id="btnAgain">Same settings ↻</button>
+        <button class="btn primary" id="btnNew">New session</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ SPEAK VIEW ============ -->
+  <main id="viewSpeak" class="hidden">
+    <section class="card">
+      <h2>Speak anything</h2>
+      <p>Paste Japanese, or type romaji — it converts to kana automatically. Long text plays sentence by sentence through whichever audio engine is active in Settings.</p>
+      <textarea id="speakInput" rows="4" placeholder="konnichiwa  /  今日はいい天気ですね。"></textarea>
+      <div id="speakPreview" class="note" style="min-height:1.2em;"></div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn primary" id="btnSpeakPlay">▶ Play</button>
+        <button class="btn" id="btnSpeakSlow">🐢 Slow</button>
+        <button class="btn" id="btnSpeakStop">■ Stop</button>
+        <span class="note" style="margin:0;">ctrl+enter plays</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ STATS VIEW ============ -->
+  <main id="viewStats" class="hidden">
+    <section class="card">
+      <h2>All-time stats</h2>
+      <div class="statGrid">
+        <div class="statBox"><div class="v" id="stAnswered">0</div><div class="l">answered</div></div>
+        <div class="statBox"><div class="v" id="stAccuracy">–</div><div class="l">accuracy</div></div>
+        <div class="statBox"><div class="v" id="stSessions">0</div><div class="l">sessions</div></div>
+      </div>
+      <h2>Weakest items</h2>
+      <p class="note">Lowest accuracy first (min. 2 attempts). Check "focus on my weak items" to drill these.</p>
+      <div class="missList" id="weakList"></div>
+      <div class="actionRow" style="justify-content:flex-start;">
+        <button class="btn small" id="btnResetStats">Reset stats</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ SETTINGS VIEW ============ -->
+  <main id="viewSettings" class="hidden">
+    <section class="card">
+      <h2>Audio</h2>
+      <label>Audio engine</label>
+      <div class="seg" id="segEngine">
+        <button data-v="webspeech" class="on">Browser voice</button>
+        <button data-v="voicevox">VOICEVOX</button>
+      </div>
+      <div id="vvBlock" class="hidden">
+        <label for="vvUrl">VOICEVOX engine URL</label>
+        <input type="text" id="vvUrl" placeholder="https://wkjp.labxp.io/vv">
+        <div class="row" style="margin-top:10px;">
+          <button class="btn small" id="btnVvConnect">Connect</button>
+          <span class="note" id="vvStatus" style="margin-top:0;"></span>
+        </div>
+        <label for="vvSpeaker">Speaker</label>
+        <select id="vvSpeaker"></select>
+        <label style="margin-top:12px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="chkVvRandom"> 🎲 random voice on each playback
+        </label>
+        <details>
+          <summary>VOICEVOX setup</summary>
+          <li>Install VOICEVOX from <b>voicevox.hiroshiba.jp</b> and start it — its engine listens on <b>localhost:50021</b>.</li>
+          <li>Serve this page from localhost so the engine accepts requests: run <b>python3 -m http.server 8000</b> in the folder with this file, then open <b>http://localhost:8000/wanikani_listening_practice.html</b>.</li>
+          <li>If Connect fails from a file:// page, open the engine's settings at <b>127.0.0.1:50021/setting</b> and set CORS Policy Mode to <b>all</b> (or launch the engine with <b>--cors_policy_mode all</b>).</li>
+          <li>Click <b>Connect</b>, pick a speaker, then <b>Test voice</b>.</li>
+        </details>
+      </div>
+      <div id="webBlock">
+        <label for="voiceSelect">Japanese voice</label>
+        <select id="voiceSelect"></select>
+      </div>
+      <label for="rateRange">Speed <span id="rateVal"></span></label>
+      <input type="range" id="rateRange" min="0.5" max="1.3" step="0.05" style="width:100%;">
+      <div class="row" style="margin-top:10px;">
+        <button class="btn small" id="btnTestVoice">Test voice 🔊</button>
+      </div>
+      <p class="note">Voice quality depends on your browser/OS. Microsoft Edge has excellent natural Japanese voices; Chrome's "Google 日本語" is good too. On macOS you can add voices in System Settings → Accessibility → Spoken Content.</p>
+    </section>
+    <section class="card">
+      <h2>Vocabulary</h2>
+      <label for="srsSelect">Include items at</label>
+      <select id="srsSelect">
+        <option value="started">Everything I've learned (Apprentice and up)</option>
+        <option value="guru">Guru and above only</option>
+      </select>
+      <div class="row" style="margin-top:14px;">
+        <button class="btn small" id="btnRefresh">↻ Refresh from WaniKani</button>
+        <button class="btn small" id="btnForget">Remove token &amp; data</button>
+      </div>
+      <p class="note" id="dataNote"></p>
+    </section>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ================= SENTENCE CORPUS ================= */
+/* Each: j = Japanese (spoken by TTS), k = kana reading, e = English,
+   t = WaniKani vocab items used (dictionary form), l = approx difficulty level.
+   A sentence unlocks when every tagged item is in your learned set.
+   Number/time/counter words are assumed known and untagged. */
+const CORPUS=[
+{j:"山の上に人がいます。",k:"やまのうえにひとがいます。",e:"There is a person on top of the mountain.",t:["山","上","人"],l:1},
+{j:"川の水はきれいです。",k:"かわのみずはきれいです。",e:"The river water is clean.",t:["川","水"],l:1},
+{j:"大きい犬がいます。",k:"おおきいいぬがいます。",e:"There is a big dog.",t:["大きい","犬"],l:2},
+{j:"すみません、入り口はどこですか。",k:"すみません、いりぐちはどこですか。",e:"Excuse me, where is the entrance?",t:["入り口"],l:1},
+{j:"女の人が立っています。",k:"おんなのひとがたっています。",e:"A woman is standing.",t:["女","人","立つ"],l:3},
+{j:"天気がいいですね。",k:"てんきがいいですね。",e:"The weather is nice, isn't it?",t:["天気"],l:2},
+{j:"目が大きいですね。",k:"めがおおきいですね。",e:"Your eyes are big!",t:["目","大きい"],l:2},
+{j:"手を上げてください。",k:"てをあげてください。",e:"Please raise your hand.",t:["手","上げる"],l:3},
+{j:"十円玉がありますか。",k:"じゅうえんだまがありますか。",e:"Do you have a ten-yen coin?",t:["円","玉"],l:2},
+{j:"中に入ってください。",k:"なかにはいってください。",e:"Please come inside.",t:["中","入る"],l:2},
+{j:"外は雨です。",k:"そとはあめです。",e:"It's raining outside.",t:["外","雨"],l:6},
+{j:"力がありますね。",k:"ちからがありますね。",e:"You're strong!",t:["力"],l:1},
+{j:"ここから出てください。",k:"ここからでてください。",e:"Please exit through here.",t:["出る"],l:2},
+{j:"お金を出してください。",k:"おかねをだしてください。",e:"Please take out your money.",t:["お金","出す"],l:3},
+{j:"出口はあそこです。",k:"でぐちはあそこです。",e:"The exit is over there.",t:["出口"],l:3},
+{j:"右を見てください。",k:"みぎをみてください。",e:"Please look to the right.",t:["右","見る"],l:3},
+{j:"左に山があります。",k:"ひだりにやまがあります。",e:"There's a mountain on the left.",t:["左","山"],l:3},
+{j:"もう十時です。",k:"もうじゅうじです。",e:"It's already ten o'clock.",t:[],l:1},
+{j:"人が少ないですね。",k:"ひとがすくないですね。",e:"There aren't many people, are there?",t:["人","少ない"],l:4},
+{j:"何人来ますか。",k:"なんにんきますか。",e:"How many people are coming?",t:["何人","来る"],l:4},
+{j:"二人で行きましょう。",k:"ふたりでいきましょう。",e:"Let's go, just the two of us.",t:["二人","行く"],l:4},
+{j:"足が早いですね。",k:"あしがはやいですね。",e:"You're a fast runner!",t:["足","早い"],l:4},
+{j:"毎朝六時に起きます。",k:"まいあさろくじにおきます。",e:"I wake up at six every morning.",t:["毎朝","起きる"],l:8},
+{j:"毎日、学校に行きます。",k:"まいにち、がっこうにいきます。",e:"I go to school every day.",t:["毎日","学校","行く"],l:4},
+{j:"朝ご飯を食べましたか。",k:"あさごはんをたべましたか。",e:"Did you eat breakfast?",t:["朝ご飯","食べる"],l:7},
+{j:"水をたくさん飲みます。",k:"みずをたくさんのみます。",e:"I drink a lot of water.",t:["水","飲む"],l:8},
+{j:"夜、本を読みます。",k:"よる、ほんをよみます。",e:"I read books at night.",t:["夜","本","読む"],l:9},
+{j:"木の下で休みました。",k:"きのしたでやすみました。",e:"I rested under a tree.",t:["木","下","休む"],l:2},
+{j:"学校まで走りました。",k:"がっこうまではしりました。",e:"I ran all the way to school.",t:["学校","走る"],l:4},
+{j:"今日は仕事を休みます。",k:"きょうはしごとをやすみます。",e:"I'm taking today off work.",t:["今日","仕事","休む"],l:6},
+{j:"早く休んでください。",k:"はやくやすんでください。",e:"Please get some rest soon.",t:["早い","休む"],l:4},
+{j:"ご飯を作りますよ。",k:"ごはんをつくりますよ。",e:"I'll make dinner!",t:["ご飯","作る"],l:7},
+{j:"ごみを出しましたか。",k:"ごみをだしましたか。",e:"Did you take out the trash?",t:["出す"],l:3},
+{j:"今日は早く起きて、外を走りました。",k:"きょうははやくおきて、そとをはしりました。",e:"Today I got up early and ran outside.",t:["今日","早い","起きる","外","走る"],l:8},
+{j:"友達と会います。",k:"ともだちとあいます。",e:"I'm meeting a friend.",t:["友達","会う"],l:5},
+{j:"先生と話しました。",k:"せんせいとはなしました。",e:"I talked with my teacher.",t:["先生","話す"],l:8},
+{j:"あの人は元気ですね。",k:"あのひとはげんきですね。",e:"That person sure is energetic.",t:["人","元気"],l:2},
+{j:"家族は四人です。",k:"かぞくはよにんです。",e:"There are four people in my family.",t:["家族"],l:5},
+{j:"一人で住んでいます。",k:"ひとりですんでいます。",e:"I live alone.",t:["一人","住む"],l:9},
+{j:"こどもが外で走っています。",k:"こどもがそとではしっています。",e:"The kids are running around outside.",t:["外","走る"],l:4},
+{j:"友達と会って、たくさん話しました。",k:"ともだちとあって、たくさんはなしました。",e:"I met up with a friend and we talked a lot.",t:["友達","会う","話す"],l:8},
+{j:"みんなで話しましょう。",k:"みんなではなしましょう。",e:"Let's all talk it over together.",t:["話す"],l:8},
+{j:"名前を書いてください。",k:"なまえをかいてください。",e:"Please write your name.",t:["名前","書く"],l:9},
+{j:"この字は正しいですか。",k:"このじはただしいですか。",e:"Is this character correct?",t:["字","正しい"],l:4},
+{j:"先生の話を聞きます。",k:"せんせいのはなしをききます。",e:"I listen to the teacher's talk.",t:["先生","話","聞く"],l:9},
+{j:"学生が多いですね。",k:"がくせいがおおいですね。",e:"There are a lot of students, aren't there?",t:["学生","多い"],l:4},
+{j:"日本語を勉強しています。",k:"にほんごをべんきょうしています。",e:"I'm studying Japanese.",t:["日本語","勉強"],l:10},
+{j:"日本語が少し分かります。",k:"にほんごがすこしわかります。",e:"I understand a little Japanese.",t:["日本語","少し","分かる"],l:5},
+{j:"もういちど言ってください。",k:"もういちどいってください。",e:"Please say that one more time.",t:["言う"],l:4},
+{j:"何と言いましたか。",k:"なんといいましたか。",e:"What did you say?",t:["言う"],l:4},
+{j:"ゆっくり話してください。",k:"ゆっくりはなしてください。",e:"Please speak slowly.",t:["話す"],l:8},
+{j:"毎日三十分、日本語を勉強します。",k:"まいにちさんじゅっぷん、にほんごをべんきょうします。",e:"I study Japanese thirty minutes every day.",t:["毎日","日本語","勉強"],l:10},
+{j:"本を読むのが好きです。",k:"ほんをよむのがすきです。",e:"I like reading books.",t:["本","読む","好き"],l:9},
+{j:"これを買います。",k:"これをかいます。",e:"I'll take this one.",t:["買う"],l:9},
+{j:"その本は高いですよ。",k:"そのほんはたかいですよ。",e:"That book is expensive, you know.",t:["本","高い"],l:5},
+{j:"車を売りました。",k:"くるまをうりました。",e:"I sold my car.",t:["車","売る"],l:9},
+{j:"お金がありません。",k:"おかねがありません。",e:"I don't have any money.",t:["お金"],l:5},
+{j:"新しい車がほしいです。",k:"あたらしいくるまがほしいです。",e:"I want a new car.",t:["新しい","車"],l:9},
+{j:"古い家を買いました。",k:"ふるいいえをかいました。",e:"I bought an old house.",t:["古い","家","買う"],l:9},
+{j:"千円ありますか。",k:"せんえんありますか。",e:"Do you have a thousand yen?",t:["円"],l:2},
+{j:"もっと大きいのがいいです。",k:"もっとおおきいのがいいです。",e:"I'd like a bigger one.",t:["大きい"],l:1},
+{j:"これを使ってもいいですか。",k:"これをつかってもいいですか。",e:"May I use this?",t:["使う"],l:8},
+{j:"手で持ってください。",k:"てでもってください。",e:"Please hold it with your hands.",t:["手","持つ"],l:9},
+{j:"家の中にいますよ。",k:"いえのなかにいますよ。",e:"I'm inside the house.",t:["家","中"],l:5},
+{j:"前を見てください。",k:"まえをみてください。",e:"Please look in front of you.",t:["前","見る"],l:6},
+{j:"学校の前で待っています。",k:"がっこうのまえでまっています。",e:"I'm waiting in front of the school.",t:["学校","前","待つ"],l:8},
+{j:"一時間待ちました。",k:"いちじかんまちました。",e:"I waited for an hour.",t:["時間","待つ"],l:8},
+{j:"先週、友達に会いました。",k:"せんしゅう、ともだちにあいました。",e:"I met a friend last week.",t:["先週","友達","会う"],l:5},
+{j:"来年、日本に行きます。",k:"らいねん、にほんにいきます。",e:"I'm going to Japan next year.",t:["来年","日本","行く"],l:5},
+{j:"去年は雨が多かったです。",k:"きょねんはあめがおおかったです。",e:"It rained a lot last year.",t:["去年","雨","多い"],l:6},
+{j:"今週は時間がありません。",k:"こんしゅうはじかんがありません。",e:"I don't have time this week.",t:["今週","時間"],l:5},
+{j:"何時に会いましょうか。",k:"なんじにあいましょうか。",e:"What time should we meet?",t:["何時","会う"],l:5},
+{j:"今、何時ですか。",k:"いま、なんじですか。",e:"What time is it now?",t:["今","何時"],l:3},
+{j:"九時から仕事です。",k:"くじからしごとです。",e:"Work starts at nine.",t:["仕事"],l:6},
+{j:"小さい町に住んでいます。",k:"ちいさいまちにすんでいます。",e:"I live in a small town.",t:["小さい","町","住む"],l:9},
+{j:"この町は古いです。",k:"このまちはふるいです。",e:"This town is old.",t:["町","古い"],l:8},
+{j:"空が青いですね。",k:"そらがあおいですね。",e:"The sky is so blue.",t:["空","青い"],l:6},
+{j:"月がきれいですね。",k:"つきがきれいですね。",e:"The moon is beautiful tonight.",t:["月"],l:2},
+{j:"白い花がきれいです。",k:"しろいはながきれいです。",e:"The white flowers are pretty.",t:["白い","花"],l:5},
+{j:"山に行きたいです。",k:"やまにいきたいです。",e:"I want to go to the mountains.",t:["山","行く"],l:4},
+{j:"山の上から川が見えました。",k:"やまのうえからかわがみえました。",e:"I could see the river from the mountaintop.",t:["山","上","川","見える"],l:6},
+{j:"天気がよくないから、家にいます。",k:"てんきがよくないから、いえにいます。",e:"The weather's bad, so I'm staying home.",t:["天気","家"],l:5},
+{j:"お名前は何ですか。",k:"おなまえはなんですか。",e:"What's your name?",t:["名前","何"],l:4},
+{j:"日本人ですか。",k:"にほんじんですか。",e:"Are you Japanese?",t:["日本人"],l:3},
+{j:"本当ですか。",k:"ほんとうですか。",e:"Really?",t:["本当"],l:5},
+{j:"そう思います。",k:"そうおもいます。",e:"I think so.",t:["思う"],l:7},
+{j:"何も知りませんでした。",k:"なにもしりませんでした。",e:"I didn't know anything about it.",t:["何","知る"],l:7},
+{j:"それはいい考えですね。",k:"それはいいかんがえですね。",e:"That's a good idea!",t:["考える"],l:8},
+{j:"ちょっと待ってください。",k:"ちょっとまってください。",e:"Please wait a moment.",t:["待つ"],l:8},
+{j:"何を食べたいですか。",k:"なにをたべたいですか。",e:"What do you want to eat?",t:["何","食べる"],l:6},
+{j:"何か飲みますか。",k:"なにかのみますか。",e:"Would you like something to drink?",t:["何","飲む"],l:8},
+{j:"犬と走りました。",k:"いぬとはしりました。",e:"I went running with my dog.",t:["犬","走る"],l:4},
+{j:"バスで学校に来ました。",k:"ばすでがっこうにきました。",e:"I came to school by bus.",t:["学校","来る"],l:4},
+{j:"新しい先生は少し早く話します。",k:"あたらしいせんせいはすこしはやくはなします。",e:"The new teacher talks a bit fast.",t:["新しい","先生","少し","早い","話す"],l:9},
+{j:"今日は何日ですか。",k:"きょうはなんにちですか。",e:"What's today's date?",t:["今日"],l:3}
+];
+/* __CORPUS_END__ */
+
+/* ================= PURE UTILS ================= */
+const ROMAJI_MAP={
+kya:"きゃ",kyu:"きゅ",kyo:"きょ",sha:"しゃ",shu:"しゅ",sho:"しょ",sya:"しゃ",syu:"しゅ",syo:"しょ",
+cha:"ちゃ",chu:"ちゅ",cho:"ちょ",tya:"ちゃ",tyu:"ちゅ",tyo:"ちょ",nya:"にゃ",nyu:"にゅ",nyo:"にょ",
+hya:"ひゃ",hyu:"ひゅ",hyo:"ひょ",mya:"みゃ",myu:"みゅ",myo:"みょ",rya:"りゃ",ryu:"りゅ",ryo:"りょ",
+gya:"ぎゃ",gyu:"ぎゅ",gyo:"ぎょ",ja:"じゃ",ju:"じゅ",jo:"じょ",jya:"じゃ",jyu:"じゅ",jyo:"じょ",
+zya:"じゃ",zyu:"じゅ",zyo:"じょ",bya:"びゃ",byu:"びゅ",byo:"びょ",pya:"ぴゃ",pyu:"ぴゅ",pyo:"ぴょ",
+dya:"ぢゃ",dyu:"ぢゅ",dyo:"ぢょ",fa:"ふぁ",fi:"ふぃ",fe:"ふぇ",fo:"ふぉ",
+shi:"し",chi:"ち",tsu:"つ",xtsu:"っ",ltsu:"っ",xtu:"っ",ltu:"っ",
+xya:"ゃ",lya:"ゃ",xyu:"ゅ",lyu:"ゅ",xyo:"ょ",lyo:"ょ",
+xa:"ぁ",la:"ぁ",xi:"ぃ",li:"ぃ",xu:"ぅ",lu:"ぅ",xe:"ぇ",le:"ぇ",xo:"ぉ",lo:"ぉ",
+ka:"か",ki:"き",ku:"く",ke:"け",ko:"こ",sa:"さ",si:"し",su:"す",se:"せ",so:"そ",
+ta:"た",ti:"ち",tu:"つ",te:"て",to:"と",na:"な",ni:"に",nu:"ぬ",ne:"ね",no:"の",
+ha:"は",hi:"ひ",hu:"ふ",fu:"ふ",he:"へ",ho:"ほ",ma:"ま",mi:"み",mu:"む",me:"め",mo:"も",
+ya:"や",yu:"ゆ",yo:"よ",ra:"ら",ri:"り",ru:"る",re:"れ",ro:"ろ",wa:"わ",wo:"を",
+ga:"が",gi:"ぎ",gu:"ぐ",ge:"げ",go:"ご",za:"ざ",zi:"じ",zu:"ず",ze:"ぜ",zo:"ぞ",ji:"じ",
+da:"だ",di:"ぢ",du:"づ",de:"で",dO:"ど",bo:"ぼ",ba:"ば",bi:"び",bu:"ぶ",be:"べ",
+pa:"ぱ",pi:"ぴ",pu:"ぷ",pe:"ぺ",po:"ぽ",vu:"ゔ",
+a:"あ",i:"い",u:"う",e:"え",o:"お"
+};
+ROMAJI_MAP["do"]="ど"; delete ROMAJI_MAP.dO;
+const ROMAJI_KEYS=Object.keys(ROMAJI_MAP).sort((a,b)=>b.length-a.length);
+const VOWELS="aiueo";
+function romajiToHiragana(input){
+  let s=input.toLowerCase(), out="", i=0;
+  while(i<s.length){
+    const c=s[i];
+    if(c==="-"){out+="ー"; i++; continue;}
+    if(c==="n"){
+      const nx=s[i+1];
+      if(nx==="'"){out+="ん"; i+=2; continue;}
+      if(nx==="n"){
+        const nx2=s[i+2];
+        /* IME-style: "konnichiwa"→こんにちは-pattern (second n starts a syllable),
+           but trailing/pre-consonant "nn" collapses to a single ん */
+        if(nx2!==undefined && (VOWELS.includes(nx2)||nx2==="y")){ out+="ん"; i+=1; continue; }
+        out+="ん"; i+=2; continue;
+      }
+      if(nx===undefined || (!VOWELS.includes(nx) && nx!=="y")){out+="ん"; i++; continue;}
+    }
+    // sokuon: doubled consonant (not n, not vowel)
+    if(/[bcdfghjklmpqrstvwxyz]/.test(c) && s[i+1]===c && c!=="n"){out+="っ"; i++; continue;}
+    let matched=false;
+    for(const k of ROMAJI_KEYS){
+      if(s.startsWith(k,i)){out+=ROMAJI_MAP[k]; i+=k.length; matched=true; break;}
+    }
+    if(!matched){out+=c; i++;}
+  }
+  return out;
+}
+function kataToHira(s){
+  return s.replace(/[ァ-ヶ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0x60));
+}
+function normalizeReading(s){
+  let t=(s||"").trim();
+  if(/[a-zA-Z]/.test(t)) t=romajiToHiragana(t);
+  t=kataToHira(t);
+  return t.replace(/[\s。、．，・「」!?！？'ー]*$/g,"").replace(/[\s．，・「」]/g,"");
+}
+function shuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+/* weighted sample without replacement (Efraimidis–Spirakis) */
+function weightedSample(items,n,weightFn){
+  return items
+    .map(it=>({it,key:Math.pow(Math.random(),1/Math.max(0.0001,weightFn(it)))}))
+    .sort((a,b)=>b.key-a.key)
+    .slice(0,n).map(x=>x.it);
+}
+function tagVariants(t){
+  const v=[t,t+"する"];
+  if(t.endsWith("する")) v.push(t.slice(0,-2));
+  return v;
+}
+/* a tag counts as known if learned, or if it isn't a WaniKani item at all
+   (then it's grammar/common vocab we assume the learner knows) */
+function makeKnownChecker(learnedSet,universeSet){
+  return tag=>{
+    const vs=tagVariants(tag);
+    if(vs.some(v=>learnedSet.has(v))) return true;
+    return !vs.some(v=>universeSet.has(v));
+  };
+}
+function availableSentences(corpus,learnedSet,universeSet){
+  const known=makeKnownChecker(learnedSet,universeSet);
+  return corpus.filter(s=>s.t.every(known));
+}
+/* lint helper (used by tests): every kanji in a sentence must appear in its tags
+   or be a number/counter kanji we assume known */
+const KANJI_ALLOW="一二三四五六七八九十百千万何時分日人円";
+function lintCorpus(corpus){
+  const bad=[];
+  corpus.forEach((s,idx)=>{
+    const tagKanji=new Set((s.t.join("")+KANJI_ALLOW).split(""));
+    const kanji=s.j.match(/[一-鿿]/g)||[];
+    const missing=kanji.filter(ch=>!tagKanji.has(ch));
+    if(missing.length) bad.push({idx,j:s.j,missing});
+    if(!s.k||!s.e||!Array.isArray(s.t)||typeof s.l!=="number") bad.push({idx,j:s.j,missing:["FIELDS"]});
+    if(/[一-鿿ァ-ヶa-zA-Z]/.test(s.k)) bad.push({idx,j:s.j,missing:["KANA_LINE:"+s.k]});
+  });
+  return bad;
+}
+/* __PURE_END__ */
+
+/* ================= APP ================= */
+(function(){
+const $=id=>document.getElementById(id);
+
+/* ---------- storage ---------- */
+function store(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){} }
+function load(key,fallback){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
+function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
+
+let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
+  engine:"webspeech",vvUrl:"http://localhost:50021",vvSpeaker:null,vvRandom:false},load("wkl_settings",{}));
+let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
+let DATA=load("wkl_data",null);
+let TOKEN=load("wkl_token",null);
+CORPUS.forEach((s,i)=>s.id=i);
+const saveS=()=>store("wkl_settings",S);
+const saveStats=()=>store("wkl_stats",STATS);
+
+/* ---------- TTS ---------- */
+let VOICES=[],voice=null,speakTimer=null,queueToken=0;
+function pickVoice(){
+  voice=VOICES.find(v=>v.name===S.voiceName)||VOICES.find(v=>/google|nanami|keita|kyoko|o-?ren|ichiro|haruka|ayumi|sayaka/i.test(v.name))||VOICES[0]||null;
+}
+function refreshVoices(){
+  if(!("speechSynthesis" in window)) return;
+  VOICES=speechSynthesis.getVoices().filter(v=>(v.lang||"").toLowerCase().replace("_","-").startsWith("ja"));
+  const sel=$("voiceSelect");
+  sel.innerHTML="";
+  VOICES.forEach(v=>{
+    const o=document.createElement("option");
+    o.value=v.name; o.textContent=v.name+(v.localService?"":" (online)");
+    sel.appendChild(o);
+  });
+  pickVoice();
+  if(voice) sel.value=voice.name;
+  const warn=$("voiceWarn");
+  const needWeb=S.engine!=="voicevox";
+  if(needWeb&&!("speechSynthesis" in window)){
+    warn.textContent="⚠️ This browser has no speech synthesis. Try Chrome/Edge, or switch to the VOICEVOX engine in Settings.";
+    warn.classList.remove("hidden");
+  }else if(needWeb&&VOICES.length===0){
+    warn.innerHTML="⚠️ No Japanese browser voice found. On Linux, install <b>speech-dispatcher</b> + <b>espeak-ng</b> and restart the browser — or switch to the <b>VOICEVOX</b> engine in Settings for much better audio.";
+    warn.classList.remove("hidden");
+  }else{
+    warn.classList.add("hidden");
+  }
+}
+function stopAudio(){
+  vvSeq++; queueToken++;
+  if(vvAudio){ try{vvAudio.pause();}catch(e){} vvAudio=null; }
+  clearTimeout(speakTimer);
+  if("speechSynthesis" in window) speechSynthesis.cancel();
+}
+function webSpeak(text,slow){
+  if(!("speechSynthesis" in window)) return;
+  speakTimer=setTimeout(()=>{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang="ja-JP";
+    if(voice) u.voice=voice;
+    u.rate=(S.rate||1)*(slow?0.6:1);
+    speechSynthesis.speak(u);
+  },80);
+}
+function speak(text,slow){
+  if(!text) return;
+  stopAudio();
+  if(S.engine==="voicevox") vvSpeak(text,slow);
+  else webSpeak(text,slow);
+}
+
+/* ---------- VOICEVOX backend ---------- */
+const vvCache=new Map();          // "speaker|rate|text" -> object URL
+let vvAudio=null,vvConnected=false,vvSeq=0,VV_SPEAKERS=[];
+function pickVvSpeaker(){
+  if(S.vvRandom&&VV_SPEAKERS.length) return VV_SPEAKERS[Math.floor(Math.random()*VV_SPEAKERS.length)].id;
+  return S.vvSpeaker==null?3:S.vvSpeaker;
+}
+// Same-origin proxy when served; the local engine when opened as a file.
+const VV_DEFAULT=location.protocol==="file:"?"http://localhost:50021":location.origin+"/vv";
+const vvBase=()=>((S.vvUrl||VV_DEFAULT).trim()||VV_DEFAULT).replace(/\/+$/,"");
+async function vvFetchAudio(text,slow,spk){
+  if(spk==null) spk=pickVvSpeaker();
+  const rate=(S.rate||1)*(slow?0.6:1);
+  const key=spk+"|"+rate.toFixed(2)+"|"+text;
+  if(vvCache.has(key)) return vvCache.get(key);
+  const q=await fetch(vvBase()+"/audio_query?speaker="+spk+"&text="+encodeURIComponent(text),{method:"POST"});
+  if(!q.ok) throw new Error("VOICEVOX audio_query failed ("+q.status+")");
+  const query=await q.json();
+  query.speedScale=rate;
+  const s=await fetch(vvBase()+"/synthesis?speaker="+spk,
+    {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
+  if(!s.ok) throw new Error("VOICEVOX synthesis failed ("+s.status+")");
+  const url=URL.createObjectURL(await s.blob());
+  if(vvCache.size>150){ const first=vvCache.keys().next().value; try{URL.revokeObjectURL(vvCache.get(first));}catch(e){} vvCache.delete(first); }
+  vvCache.set(key,url);
+  return url;
+}
+async function vvSpeak(text,slow){
+  const my=vvSeq;
+  const spk=pickVvSpeaker();
+  try{
+    const url=await vvFetchAudio(text,slow,spk);
+    if(my!==vvSeq) return;            // superseded by a newer play/stop
+    vvAudio=new Audio(url);
+    const p=vvAudio.play();
+    if(p&&p.catch) p.catch(()=>{});
+  }catch(e){ vvError(e); }
+}
+function vvError(e){
+  vvConnected=false;
+  const st=$("vvStatus");
+  if(st) st.textContent="⚠ "+((e&&e.message)||"VOICEVOX unreachable");
+  const hint=$("qHint");
+  if(hint&&!$("quizCard").classList.contains("hidden"))
+    hint.textContent="⚠ VOICEVOX not reachable — check Settings → Audio (is the engine running?)";
+}
+async function vvConnect(){
+  const st=$("vvStatus");
+  st.textContent="connecting…";
+  vvConnected=false;
+  try{
+    const r=await fetch(vvBase()+"/speakers");
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const spk=await r.json();
+    VV_SPEAKERS=[];
+    let firstNormal=null;
+    spk.forEach(sp=>(sp.styles||[]).forEach(styl=>{
+      VV_SPEAKERS.push({id:styl.id,label:sp.name+"（"+styl.name+"）"});
+      if(firstNormal===null&&styl.name==="ノーマル") firstNormal=styl.id;
+    }));
+    if(S.vvSpeaker==null||!VV_SPEAKERS.some(s=>s.id===S.vvSpeaker)){
+      S.vvSpeaker=firstNormal!=null?firstNormal:(VV_SPEAKERS[0]?VV_SPEAKERS[0].id:null);
+      saveS();
+    }
+    populateSpeakerSelects();
+    vvConnected=true;
+    st.textContent="✓ connected · "+VV_SPEAKERS.length+" voices";
+    refreshVoices();
+  }catch(e){
+    st.textContent="⚠ can't reach the engine — is VOICEVOX running? (see setup below)";
+    syncQuickSpeaker();
+  }
+}
+function populateSpeakerSelects(){
+  const sel=$("vvSpeaker"), quick=$("vvQuickSpeaker");
+  sel.innerHTML=""; quick.innerHTML="";
+  const ro=document.createElement("option");
+  ro.value="random"; ro.textContent="🎲 Random voice";
+  quick.appendChild(ro);
+  VV_SPEAKERS.forEach(s=>{
+    const o=document.createElement("option");
+    o.value=s.id; o.textContent=s.label;
+    sel.appendChild(o);
+    quick.appendChild(o.cloneNode(true));
+  });
+  if(S.vvSpeaker!=null&&VV_SPEAKERS.some(s=>s.id===S.vvSpeaker)) sel.value=S.vvSpeaker;
+  syncQuickSpeaker();
+}
+function syncQuickSpeaker(){
+  const quick=$("vvQuickSpeaker");
+  quick.classList.toggle("hidden",S.engine!=="voicevox"||VV_SPEAKERS.length===0);
+  if(VV_SPEAKERS.length) quick.value=S.vvRandom?"random":String(S.vvSpeaker);
+  const chk=$("chkVvRandom");
+  if(chk) chk.checked=!!S.vvRandom;
+}
+function syncEngineUI(){
+  $("vvBlock").classList.toggle("hidden",S.engine!=="voicevox");
+  $("webBlock").classList.toggle("hidden",S.engine==="voicevox");
+  syncQuickSpeaker();
+}
+
+/* ---------- free-input playback (Speak tab) ---------- */
+function speakableText(t){
+  const s=(t||"").trim();
+  if(!s) return "";
+  if(/[぀-ヿ一-鿿]/.test(s)) return s;   // already Japanese
+  if(/[a-zA-Z]/.test(s)) return romajiToHiragana(s);      // romaji → kana
+  return s;
+}
+function chunkText(t){
+  const out=[]; let cur="";
+  for(const ch of t){
+    cur+=ch;
+    if("。！？!?\n".includes(ch)){ const c=cur.trim(); if(c) out.push(c); cur=""; }
+  }
+  const tail=cur.trim();
+  if(tail) out.push(tail);
+  return out;
+}
+function speakText(text,slow){
+  const t=speakableText(text);
+  if(!t) return;
+  stopAudio();
+  const my=++queueToken;
+  const spk=S.engine==="voicevox"?pickVvSpeaker():null;   // one voice per play, even in random mode
+  playChunks(chunkText(t),0,my,slow,spk);
+}
+function playChunks(chunks,i,my,slow,spk){
+  if(my!==queueToken||i>=chunks.length) return;
+  if(S.engine==="voicevox"){
+    vvFetchAudio(chunks[i],slow,spk).then(url=>{
+      if(my!==queueToken) return;
+      vvAudio=new Audio(url);
+      vvAudio.onended=()=>playChunks(chunks,i+1,my,slow,spk);
+      const p=vvAudio.play();
+      if(p&&p.catch) p.catch(()=>{});
+    }).catch(e=>vvError(e));
+  }else{
+    if(!("speechSynthesis" in window)) return;
+    speakTimer=setTimeout(()=>{
+      if(my!==queueToken) return;
+      const u=new SpeechSynthesisUtterance(chunks[i]);
+      u.lang="ja-JP";
+      if(voice) u.voice=voice;
+      u.rate=(S.rate||1)*(slow?0.6:1);
+      u.onend=()=>playChunks(chunks,i+1,my,slow);
+      speechSynthesis.speak(u);
+    },i===0?80:0);
+  }
+}
+if("speechSynthesis" in window){
+  speechSynthesis.onvoiceschanged=refreshVoices;
+}
+
+/* ---------- WaniKani API ---------- */
+async function wkFetch(url){
+  const r=await fetch(url,{headers:{Authorization:"Bearer "+TOKEN,"Wanikani-Revision":"20170710"}});
+  if(r.status===401) throw new Error("WaniKani rejected the token (401). Double-check it.");
+  if(r.status===429) throw new Error("Rate limited by WaniKani — wait a minute and try again.");
+  if(!r.ok) throw new Error("WaniKani API error "+r.status);
+  return r.json();
+}
+async function wkFetchAll(url,onPage){
+  let out=[];
+  while(url){
+    const j=await wkFetch(url);
+    out=out.concat(j.data);
+    if(onPage) onPage(out.length,j.total_count);
+    url=j.pages?j.pages.next_url:null;
+  }
+  return out;
+}
+async function loadWK(){
+  const status=$("loadStatus"),bar=$("loadBar");
+  bar.classList.remove("hidden"); bar.value=0;
+  status.textContent="checking token…";
+  const user=await wkFetch("https://api.wanikani.com/v2/user");
+  const level=user.data.level;
+  const granted=(user.data.subscription&&user.data.subscription.max_level_granted)||60;
+  const maxLev=Math.min(60,granted,level+5);
+  const levels=Array.from({length:maxLev},(_,i)=>i+1).join(",");
+  status.textContent="loading vocabulary…";
+  const subsRaw=await wkFetchAll(
+    "https://api.wanikani.com/v2/subjects?types=vocabulary,kana_vocabulary&levels="+levels,
+    (n,total)=>{ status.textContent=`loading vocabulary… ${n}/${total}`; bar.value=Math.round(50*n/Math.max(1,total)); });
+  status.textContent="loading your progress…";
+  const asgRaw=await wkFetchAll(
+    "https://api.wanikani.com/v2/assignments?subject_types=vocabulary,kana_vocabulary&started=true",
+    (n,total)=>{ status.textContent=`loading your progress… ${n}/${total}`; bar.value=50+Math.round(50*n/Math.max(1,total)); });
+  const subjects=subsRaw.filter(s=>!s.data.hidden_at).map(s=>{
+    const rd=(s.data.readings||[]).filter(r=>r.accepted_answer);
+    const pm=(s.data.meanings.find(m=>m.primary)||s.data.meanings[0]||{}).meaning||"?";
+    return {id:s.id,o:s.object,c:s.data.characters,l:s.data.level,
+      r:rd.map(r=>r.reading),
+      pr:(rd.find(r=>r.primary)||rd[0]||{}).reading||null,
+      m:s.data.meanings.filter(m=>m.accepted_answer).map(m=>m.meaning),
+      pm};
+  });
+  const assignments=asgRaw.map(a=>({sid:a.data.subject_id,st:a.data.srs_stage}));
+  DATA={ts:Date.now(),user:{level,name:user.data.username},subjects,assignments};
+  store("wkl_data",DATA); store("wkl_token",TOKEN);
+  bar.classList.add("hidden"); status.textContent="";
+}
+
+/* ---------- pools ---------- */
+function getPools(){
+  if(!DATA) return {words:[],sentences:[]};
+  const ids=new Set(DATA.assignments.filter(a=>S.srs==="guru"?a.st>=5:true).map(a=>a.sid));
+  const words=DATA.subjects.filter(s=>ids.has(s.id)&&s.c);
+  const learned=new Set(words.map(w=>w.c));
+  const universe=new Set(DATA.subjects.map(s=>s.c));
+  const sentences=availableSentences(CORPUS,learned,universe);
+  return {words,sentences};
+}
+function updateChips(){
+  const chip=$("dataChip"),note=$("poolNote"),dn=$("dataNote");
+  if(!DATA){ chip.textContent="no data yet"; return; }
+  const {words,sentences}=getPools();
+  chip.textContent=`Lv ${DATA.user.level} · ${words.length} words · ${sentences.length}/${CORPUS.length} sentences`;
+  note.textContent=`Pool: ${words.length} learned words, ${sentences.length} of ${CORPUS.length} sentences unlocked. Sentences unlock as you learn the vocab in them.`;
+  dn.textContent=`Signed in as ${DATA.user.name} · data refreshed ${new Date(DATA.ts).toLocaleString()}`;
+}
+
+/* ---------- stats ---------- */
+const keyOf=q=>q.kind==="word"?"w:"+q.item.id:"s:"+q.item.id;
+function record(q,ok){
+  STATS.answered++; if(ok)STATS.correct++;
+  const k=keyOf(q);
+  const it=STATS.items[k]||(STATS.items[k]={s:0,c:0});
+  it.s++; if(ok)it.c++;
+  saveStats();
+}
+
+/* ---------- audio for a question ---------- */
+function audioOf(q){
+  if(q.kind==="word") return q.item.o==="kana_vocabulary"?q.item.c:(q.item.pr||q.item.r[0]||q.item.c);
+  return q.item.j;
+}
+
+/* ---------- session ---------- */
+let SESSION=null;
+function buildSession(){
+  const {words,sentences}=getPools();
+  let cands=[];
+  if(S.content!=="sentences") cands.push(...words.map(w=>({kind:"word",item:w})));
+  if(S.content!=="words") cands.push(...sentences.map(s=>({kind:"sent",item:s})));
+  if(cands.length===0) return null;
+  const wfn=c=>{
+    if(!S.weak) return 1;
+    const st=STATS.items[keyOf(c)];
+    if(!st||st.s<1) return 1;
+    return 1+4*(1-st.c/st.s);
+  };
+  const picked=weightedSample(cands,Math.min(S.len,cands.length),wfn);
+  const modes=S.mode==="mixed"?["mc","dict","reveal"]:[S.mode];
+  const queue=shuffle(picked).map(c=>{
+    let m=modes[Math.floor(Math.random()*modes.length)];
+    if(c.kind==="sent"&&m==="dict") m=Math.random()<0.5?"mc":"reveal";
+    return Object.assign({},c,{mode:m});
+  });
+  return {queue,i:0,correct:0,missed:[],phase:"question"};
+}
+
+/* ---------- rendering ---------- */
+function show(cardId){
+  ["setupCard","configCard","quizCard","resultCard"].forEach(id=>$(id).classList.toggle("hidden",id!==cardId));
+}
+function esc(s){ return String(s).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
+
+function renderQuestion(){
+  const q=SESSION.queue[SESSION.i];
+  SESSION.phase="question";
+  $("quizProgress").textContent=`Question ${SESSION.i+1} / ${SESSION.queue.length}`;
+  $("quizScore").textContent=`✓ ${SESSION.correct}`;
+  $("quizBarFill").style.width=(100*SESSION.i/SESSION.queue.length)+"%";
+  $("feedback").textContent=""; $("feedback").className="";
+  $("answerDetail").innerHTML="";
+  $("actionRow").innerHTML="";
+  const area=$("answerArea");
+  area.innerHTML="";
+  const hint=$("qHint");
+  if(q.mode==="mc"){
+    hint.textContent=q.kind==="word"?"Listen — what does it mean?":"Listen — what does the sentence mean?";
+    const opts=buildOptions(q);
+    q._opts=opts;
+    const div=document.createElement("div");
+    div.className="options";
+    opts.forEach((o,i)=>{
+      const b=document.createElement("button");
+      b.innerHTML=`<span class="idx">${i+1}</span>${esc(o.text)}`;
+      b.onclick=()=>answerMC(i);
+      div.appendChild(b);
+    });
+    area.appendChild(div);
+    const gu=document.createElement("div");
+    gu.className="actionRow";
+    gu.innerHTML=`<button class="btn small" id="btnMcGiveUp">I don't know (esc)</button>`;
+    area.appendChild(gu);
+    $("btnMcGiveUp").onclick=giveUp;
+  }else if(q.mode==="dict"){
+    hint.textContent="Listen — type what you heard (romaji or kana)";
+    area.innerHTML=`<div id="dictWrap">
+      <input type="text" id="dictInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type here…">
+      <div id="kanaPreview"></div>
+      <div class="actionRow"><button class="btn primary" id="btnDictGo">Check</button>
+      <button class="btn" id="btnDictGiveUp">I don't know (esc)</button></div></div>`;
+    const inp=$("dictInput");
+    inp.addEventListener("input",()=>{ $("kanaPreview").textContent=normalizeReading(inp.value); });
+    $("btnDictGo").onclick=answerDict;
+    $("btnDictGiveUp").onclick=giveUp;
+    setTimeout(()=>inp.focus(),100);
+  }else{ // reveal
+    hint.textContent="Listen — then reveal and grade yourself";
+    const row=document.createElement("div");
+    row.className="actionRow";
+    row.innerHTML=`<button class="btn primary" id="btnReveal">Show answer</button>`;
+    area.appendChild(row);
+    $("btnReveal").onclick=doReveal;
+  }
+  speak(audioOf(q));
+}
+
+function buildOptions(q){
+  if(q.kind==="word"){
+    const {words}=getPools();
+    const w=q.item;
+    const wReadings=new Set((w.r.length?w.r:[w.c]).map(kataToHira));
+    const seen=new Set([w.pm.toLowerCase()]);
+    const cands=shuffle(words.filter(x=>x.id!==w.id)).filter(x=>{
+      if(seen.has(x.pm.toLowerCase())) return false;
+      const xr=(x.r.length?x.r:[x.c]).map(kataToHira);
+      if(xr.some(r=>wReadings.has(r))) return false;
+      seen.add(x.pm.toLowerCase());
+      return true;
+    }).slice(0,3);
+    return shuffle([{text:w.pm,ok:true},...cands.map(c=>({text:c.pm,ok:false}))]);
+  }else{
+    const {sentences}=getPools();
+    const s=q.item;
+    const cands=shuffle(sentences.filter(x=>x.id!==s.id&&x.e!==s.e)).slice(0,3);
+    return shuffle([{text:s.e,ok:true},...cands.map(c=>({text:c.e,ok:false}))]);
+  }
+}
+
+function detailHTML(q){
+  if(q.kind==="word"){
+    const w=q.item;
+    const rd=w.o==="kana_vocabulary"?"":`<div class="reveal-kana">${esc((w.r.length?w.r:[w.c]).join("、"))}</div>`;
+    return `<div class="reveal-jp">${esc(w.c)}</div>${rd}<div class="reveal-en">${esc(w.m.join(", "))}</div><div class="reveal-extra">WaniKani level ${w.l}</div>`;
+  }
+  const s=q.item;
+  return `<div class="reveal-jp" style="font-size:1.25rem;">${esc(s.j)}</div><div class="reveal-kana">${esc(s.k)}</div><div class="reveal-en">${esc(s.e)}</div>`+
+    (s.t.length?`<div class="reveal-extra">uses: ${esc(s.t.join(" · "))}</div>`:"");
+}
+
+function finishAnswer(q,ok){
+  SESSION.phase="feedback";
+  record(q,ok);
+  if(ok){ SESSION.correct++; }
+  else{ SESSION.missed.push(q); }
+  $("quizScore").textContent=`✓ ${SESSION.correct}`;
+  const fb=$("feedback");
+  fb.textContent=ok?"Correct!":"Not quite…";
+  fb.className=ok?"good":"bad";
+  $("answerDetail").innerHTML=detailHTML(q);
+  const row=$("actionRow");
+  row.innerHTML=`<button class="btn primary" id="btnNext">${SESSION.i+1<SESSION.queue.length?"Next ▸":"Finish ▸"}</button>`;
+  $("btnNext").onclick=nextQuestion;
+}
+
+function answerMC(i){
+  if(SESSION.phase!=="question") return;
+  const q=SESSION.queue[SESSION.i];
+  const ok=q._opts[i].ok;
+  const btns=$("answerArea").querySelectorAll(".options button");
+  btns.forEach((b,bi)=>{
+    b.disabled=true;
+    if(q._opts[bi].ok) b.classList.add("correct");
+    else if(bi===i) b.classList.add("wrong");
+  });
+  finishAnswer(q,ok);
+}
+
+function answerDict(){
+  if(SESSION.phase!=="question") return;
+  const q=SESSION.queue[SESSION.i];
+  const w=q.item;
+  const guess=normalizeReading($("dictInput").value);
+  if(!guess) return;
+  const answers=(w.r.length?w.r:[]).concat([w.c]).map(x=>normalizeReading(x));
+  const ok=answers.includes(guess);
+  $("dictInput").disabled=true; $("btnDictGo").disabled=true;
+  const g=$("btnDictGiveUp"); if(g) g.disabled=true;
+  finishAnswer(q,ok);
+}
+
+function giveUp(){
+  if(!SESSION||SESSION.phase!=="question") return;
+  const q=SESSION.queue[SESSION.i];
+  if(q.mode==="mc"){
+    const btns=$("answerArea").querySelectorAll(".options button");
+    btns.forEach((b,bi)=>{ b.disabled=true; if(q._opts[bi].ok) b.classList.add("correct"); });
+    const gu=$("btnMcGiveUp"); if(gu) gu.disabled=true;
+  }else if(q.mode==="dict"){
+    const inp=$("dictInput"); if(inp) inp.disabled=true;
+    const go=$("btnDictGo"); if(go) go.disabled=true;
+    const gu=$("btnDictGiveUp"); if(gu) gu.disabled=true;
+  }else{
+    return; // reveal mode has its own self-grading
+  }
+  finishAnswer(q,false);
+}
+
+function doReveal(){
+  if(SESSION.phase!=="question") return;
+  SESSION.phase="grading";
+  const q=SESSION.queue[SESSION.i];
+  $("answerArea").innerHTML="";
+  $("answerDetail").innerHTML=detailHTML(q);
+  const row=$("actionRow");
+  row.innerHTML=`<button class="btn" id="btnGot" style="border-color:var(--green);color:var(--green);">✓ I got it (1)</button>
+    <button class="btn" id="btnMissed" style="border-color:var(--red);color:var(--red);">✗ Missed it (2)</button>`;
+  $("btnGot").onclick=()=>finishAnswer(q,true);
+  $("btnMissed").onclick=()=>finishAnswer(q,false);
+}
+
+function nextQuestion(){
+  if(SESSION.i+1<SESSION.queue.length){ SESSION.i++; renderQuestion(); }
+  else endSession();
+}
+
+function endSession(){
+  STATS.sessions++; saveStats();
+  stopAudio();
+  const n=SESSION.queue.length;
+  const pct=Math.round(100*SESSION.correct/n);
+  $("finalScore").textContent=`${SESSION.correct}/${n} · ${pct}%`;
+  $("finalNote").textContent=pct===100?"Perfect! 完璧です！":pct>=80?"Nice work! よくできました。":"Keep at it — the missed items are below.";
+  const ml=$("missList");
+  ml.innerHTML=SESSION.missed.length?"<h2>Missed</h2>":"";
+  SESSION.missed.forEach(q=>{
+    const d=document.createElement("div");
+    d.className="missItem";
+    const jp=q.kind==="word"?q.item.c:q.item.j;
+    const mean=q.kind==="word"?q.item.pm:q.item.e;
+    d.innerHTML=`<span class="jp">${esc(jp)}</span><span class="mean">${esc(mean)}</span>`;
+    const b=document.createElement("button");
+    b.className="btn small"; b.textContent="🔊";
+    b.onclick=()=>speak(audioOf(q));
+    d.appendChild(b);
+    ml.appendChild(d);
+  });
+  show("resultCard");
+}
+
+/* ---------- stats view ---------- */
+function renderStats(){
+  $("stAnswered").textContent=STATS.answered;
+  $("stAccuracy").textContent=STATS.answered?Math.round(100*STATS.correct/STATS.answered)+"%":"–";
+  $("stSessions").textContent=STATS.sessions;
+  const wl=$("weakList"); wl.innerHTML="";
+  const rows=Object.entries(STATS.items)
+    .map(([k,v])=>({k,acc:v.c/v.s,s:v.s}))
+    .filter(r=>r.s>=2)
+    .sort((a,b)=>a.acc-b.acc).slice(0,15);
+  if(!rows.length){ wl.innerHTML='<p class="note">Nothing yet — do a few sessions first.</p>'; return; }
+  rows.forEach(r=>{
+    let jp="?",mean="",audio="";
+    if(r.k.startsWith("w:")){
+      const w=(DATA?DATA.subjects:[]).find(s=>s.id===+r.k.slice(2));
+      if(!w) return;
+      jp=w.c; mean=w.pm; audio=w.o==="kana_vocabulary"?w.c:(w.pr||w.c);
+    }else{
+      const s=CORPUS[+r.k.slice(2)];
+      if(!s) return;
+      jp=s.j; mean=s.e; audio=s.j;
+    }
+    const d=document.createElement("div");
+    d.className="missItem";
+    d.innerHTML=`<span class="jp">${esc(jp)}</span><span class="mean">${esc(mean)} · ${Math.round(r.acc*100)}% of ${r.s}</span>`;
+    const b=document.createElement("button");
+    b.className="btn small"; b.textContent="🔊"; b.onclick=()=>speak(audio);
+    d.appendChild(b);
+    wl.appendChild(d);
+  });
+}
+
+/* ---------- tabs & wiring ---------- */
+const views={tabPractice:"viewPractice",tabSpeak:"viewSpeak",tabStats:"viewStats",tabSettings:"viewSettings"};
+Object.keys(views).forEach(t=>{
+  $(t).onclick=()=>{
+    Object.entries(views).forEach(([tab,view])=>{
+      $(tab).classList.toggle("active",tab===t);
+      $(view).classList.toggle("hidden",tab!==t);
+    });
+    if(t==="tabStats") renderStats();
+  };
+});
+function bindSeg(id,key,cb){
+  const seg=$(id);
+  seg.querySelectorAll("button").forEach(b=>{
+    if(b.dataset.v===String(S[key])) { seg.querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); }
+    b.onclick=()=>{
+      seg.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      S[key]=id==="segLen"?+b.dataset.v:b.dataset.v;
+      saveS();
+      if(cb) cb();
+    };
+  });
+}
+bindSeg("segContent","content"); bindSeg("segMode","mode"); bindSeg("segLen","len");
+bindSeg("segEngine","engine",()=>{
+  syncEngineUI(); refreshVoices();
+  if(S.engine==="voicevox"&&!vvConnected) vvConnect();
+});
+$("chkWeak").checked=S.weak;
+$("chkWeak").onchange=e=>{S.weak=e.target.checked; saveS();};
+
+$("btnLoad").onclick=async()=>{
+  const t=$("tokenInput").value.trim();
+  const err=$("loadErr");
+  err.classList.add("hidden");
+  if(!t){ err.textContent="Paste a token first."; err.classList.remove("hidden"); return; }
+  TOKEN=t;
+  $("btnLoad").disabled=true;
+  try{
+    await loadWK();
+    updateChips();
+    show("configCard");
+  }catch(e){
+    err.textContent=e.message||"Something went wrong.";
+    err.classList.remove("hidden");
+    $("loadBar").classList.add("hidden");
+  }
+  $("btnLoad").disabled=false;
+};
+
+$("btnStart").onclick=()=>{
+  SESSION=buildSession();
+  if(!SESSION){ alert("No items available with the current filters — try 'Everything I've learned' in Settings, or a different content type."); return; }
+  show("quizCard");
+  renderQuestion();
+};
+$("btnPlay").onclick=()=>{ if(SESSION) speak(audioOf(SESSION.queue[SESSION.i])); };
+$("btnSlow").onclick=()=>{ if(SESSION) speak(audioOf(SESSION.queue[SESSION.i]),true); };
+$("btnStop").onclick=stopAudio;
+$("btnAgain").onclick=()=>{ SESSION=buildSession(); if(SESSION){ show("quizCard"); renderQuestion(); } };
+$("btnNew").onclick=()=>{ updateChips(); show("configCard"); };
+$("btnResetStats").onclick=()=>{
+  if(confirm("Reset all listening stats?")){ STATS={answered:0,correct:0,sessions:0,items:{}}; saveStats(); renderStats(); }
+};
+
+/* settings */
+$("voiceSelect").onchange=e=>{ S.voiceName=e.target.value; saveS(); pickVoice(); };
+const rr=$("rateRange");
+rr.value=S.rate;
+$("rateVal").textContent="×"+(+S.rate).toFixed(2);
+rr.oninput=e=>{ S.rate=+e.target.value; $("rateVal").textContent="×"+S.rate.toFixed(2); saveS(); };
+$("btnTestVoice").onclick=()=>speak("こんにちは。日本語の練習をしましょう。");
+$("vvUrl").value=S.vvUrl||VV_DEFAULT;
+$("vvUrl").onchange=e=>{ S.vvUrl=e.target.value.trim()||VV_DEFAULT; saveS(); vvConnected=false; };
+$("btnVvConnect").onclick=vvConnect;
+$("vvSpeaker").onchange=e=>{ S.vvSpeaker=+e.target.value; saveS(); syncQuickSpeaker(); };
+$("chkVvRandom").onchange=e=>{ S.vvRandom=e.target.checked; saveS(); syncQuickSpeaker(); };
+$("vvQuickSpeaker").onchange=e=>{
+  if(e.target.value==="random"){ S.vvRandom=true; }
+  else{
+    S.vvRandom=false;
+    S.vvSpeaker=+e.target.value;
+    const sel=$("vvSpeaker");
+    if(sel&&VV_SPEAKERS.some(s=>String(s.id)===e.target.value)) sel.value=e.target.value;
+  }
+  saveS(); syncQuickSpeaker();
+};
+$("srsSelect").value=S.srs;
+$("srsSelect").onchange=e=>{ S.srs=e.target.value; saveS(); updateChips(); };
+$("btnRefresh").onclick=async()=>{
+  if(!TOKEN){ alert("No token saved — add one on the Practice tab."); return; }
+  $("btnRefresh").disabled=true;
+  const old=$("btnRefresh").textContent;
+  $("btnRefresh").textContent="refreshing…";
+  try{
+    show("setupCard");
+    document.getElementById("tabPractice").click();
+    await loadWK();
+    updateChips();
+    show("configCard");
+  }catch(e){ alert(e.message); if(DATA) show("configCard"); }
+  $("btnRefresh").disabled=false;
+  $("btnRefresh").textContent=old;
+};
+$("btnForget").onclick=()=>{
+  if(confirm("Remove your token and downloaded WaniKani data from this browser?")){
+    drop("wkl_token"); drop("wkl_data"); TOKEN=null; DATA=null;
+    updateChips(); $("dataChip").textContent="no data yet";
+    document.getElementById("tabPractice").click();
+    show("setupCard");
+  }
+};
+
+/* keyboard */
+document.addEventListener("keydown",e=>{
+  const tag=e.target&&e.target.tagName;
+  const inInput=tag==="INPUT"||tag==="SELECT"||tag==="TEXTAREA";
+  const quizActive=SESSION&&!$("viewPractice").classList.contains("hidden")&&!$("quizCard").classList.contains("hidden");
+  if(quizActive&&e.key==="Escape"){
+    e.preventDefault();
+    if(SESSION.phase==="question"){
+      const q=SESSION.queue[SESSION.i];
+      if(q.mode!=="reveal") giveUp();
+    }else if(SESSION.phase==="grading"){
+      const b=$("btnMissed"); if(b) b.click();
+    }
+    return;
+  }
+  if(inInput&&e.key==="Enter"&&e.target.id==="dictInput"){
+    e.preventDefault();
+    if(SESSION&&SESSION.phase==="feedback") nextQuestion(); else answerDict();
+    return;
+  }
+  if(inInput&&e.target.id!=="dictInput") return;
+  if(!quizActive) return;
+  if(e.key===" "&&!inInput){ e.preventDefault(); speak(audioOf(SESSION.queue[SESSION.i])); return; }
+  if((e.key==="s"||e.key==="S")&&!inInput){ speak(audioOf(SESSION.queue[SESSION.i]),true); return; }
+  if((e.key==="x"||e.key==="X")&&!inInput&&SESSION.phase==="question"){
+    const q=SESSION.queue[SESSION.i];
+    if(q.mode!=="reveal"){ giveUp(); return; }
+  }
+  if(SESSION.phase==="feedback"&&e.key==="Enter"){ e.preventDefault(); nextQuestion(); return; }
+  if(SESSION.phase==="question"&&!inInput){
+    const q=SESSION.queue[SESSION.i];
+    if(q.mode==="mc"&&/^[1-4]$/.test(e.key)){ const i=+e.key-1; if(q._opts&&i<q._opts.length) answerMC(i); }
+    if(q.mode==="reveal"&&(e.key==="Enter"||e.key==="r"||e.key==="R")){ e.preventDefault(); doReveal(); }
+  }else if(SESSION.phase==="grading"){
+    if(e.key==="1"){ $("btnGot")&&$("btnGot").click(); }
+    if(e.key==="2"){ $("btnMissed")&&$("btnMissed").click(); }
+  }
+});
+
+/* speak tab */
+$("btnSpeakPlay").onclick=()=>speakText($("speakInput").value,false);
+$("btnSpeakSlow").onclick=()=>speakText($("speakInput").value,true);
+$("btnSpeakStop").onclick=stopAudio;
+$("speakInput").addEventListener("input",()=>{
+  const raw=$("speakInput").value;
+  const conv=speakableText(raw);
+  $("speakPreview").textContent=(conv&&conv!==raw.trim())?"→ "+conv:"";
+});
+$("speakInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); speakText($("speakInput").value,false); }
+});
+
+/* ---------- init ---------- */
+refreshVoices();
+setTimeout(refreshVoices,400);
+syncEngineUI();
+if(S.engine==="voicevox") vvConnect();
+updateChips();
+if(DATA){ show("configCard"); } else { show("setupCard"); }
+})();
+</script>
+</body>
+</html>

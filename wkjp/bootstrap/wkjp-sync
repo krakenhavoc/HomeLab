@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# Reconcile the wkjp stack with wkjp/ in the HomeLab repository and pull
+# fresh images. Same shape as lastdash-sync; see gateway/bootstrap/gateway-sync
+# for the reasoning behind fetch/reset, the self-update and the live copy.
+#
+# Run by wkjp-sync.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+REPO_DIR=/opt/wkjp/repo
+LIVE_DIR=/opt/wkjp/live
+SRC_DIR="${REPO_DIR}/wkjp"
+
+log() { echo "[wkjp-sync] $*"; }
+
+git -C "${REPO_DIR}" fetch --quiet --depth 1 origin main
+git -C "${REPO_DIR}" reset --quiet --hard FETCH_HEAD
+
+if [[ ! -d "${SRC_DIR}" ]]; then
+  log "ERROR: ${SRC_DIR} missing from the checkout; refusing to sync"
+  exit 1
+fi
+
+# --- Self-update (takes effect next run) -------------------------------------
+if ! cmp -s "${SRC_DIR}/bootstrap/wkjp-sync" /usr/local/bin/wkjp-sync; then
+  install -m 0755 "${SRC_DIR}/bootstrap/wkjp-sync" /usr/local/bin/.wkjp-sync.new
+  mv /usr/local/bin/.wkjp-sync.new /usr/local/bin/wkjp-sync
+  log "wkjp-sync updated; the next run will use it"
+fi
+
+units_changed=0
+for f in wkjp-sync.service wkjp-sync.timer; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
+    install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
+    units_changed=1
+    log "${f} updated"
+  fi
+done
+if [[ "${units_changed}" -eq 1 ]]; then
+  systemctl daemon-reload
+fi
+
+# --- Validate, then publish --------------------------------------------------
+if ! docker compose -f "${SRC_DIR}/docker-compose.yaml" config --quiet; then
+  log "ERROR: incoming docker-compose.yaml is invalid; keeping the current stack"
+  exit 1
+fi
+
+mkdir -p "${LIVE_DIR}"
+changed=$(rsync -a --delete --itemize-changes \
+  --exclude 'bootstrap/' \
+  --exclude 'README.md' \
+  "${SRC_DIR}/" "${LIVE_DIR}/")
+
+cd "${LIVE_DIR}"
+docker compose pull --quiet
+docker compose up -d --remove-orphans
+
+# The conf dir is mounted, but nginx only reads it on start or reload.
+if grep -q ' nginx/' <<<"${changed}"; then
+  if docker compose exec -T app nginx -t; then
+    docker compose exec -T app nginx -s reload
+    log "nginx reloaded"
+  else
+    log "ERROR: nginx config invalid; still serving the old one"
+  fi
+fi
+
+docker image prune -f --filter "until=168h" >/dev/null
+
+log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD)"

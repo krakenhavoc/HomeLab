@@ -277,3 +277,11 @@ lastdash.labxp.io {
 		reverse_proxy 192.168.201.19:3000
 	}
 }
+
+# WaniKani listening practice (wkjp VM, same VLAN). nginx there serves the
+# app and proxies /vv/ to VOICEVOX. Upstream is the static lease for MAC
+# BC:24:11:00:02:60; change both together. LAN only.
+wkjp.labxp.io {
+	import tls_cloudflare
+	reverse_proxy 192.168.201.20:80
+}

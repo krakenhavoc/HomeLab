@@ -51,6 +51,7 @@ The Proxmox host provides compute and storage. Terraform describes each workload
 | `cmd-and-ctrl` | Development and production game servers, ingress, and off-node backup buckets | Plan on PR, apply after merge |
 | `frontends` | The internal Caddy/Homepage gateway and private frontends | Plan on PR, apply after merge |
 | `lastdash` | A stateful application host with repository-driven runtime configuration | Plan on PR, apply after merge |
+| `wkjp` | A stateless app host (static app plus VOICEVOX) with repository-driven runtime configuration | Plan on PR, apply after merge |
 | `plex` | Development and production Plex hosts backed by NFS storage | Plan on PR, apply after merge |
 | `nfs` | Development and production NFS containers | Plan on PR, apply after merge |
 | `shared` | Ubuntu container templates, VirtIO drivers, and installation media | Plan on PR, apply after merge |
@@ -68,6 +69,7 @@ The repository also retains earlier Kubernetes bootstrap scripts and space for f
 ├── diagrams/                Diagram conventions and architecture views
 ├── gateway/                 Internal proxy and portal configuration
 ├── lastdash/                LastDash runtime configuration
+├── wkjp/                    WaniKani listening practice runtime configuration
 ├── docker/get-win-url/      Small containerized Windows media helper
 ├── docs/                    Architecture, operations, security, and recovery
 ├── scripts/                 Bootstrap and maintenance utilities

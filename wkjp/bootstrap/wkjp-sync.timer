@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll the HomeLab repo and image registries for wkjp updates
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/wkjp/README.md
+
+[Timer]
+# Every 5 minutes; each run also pulls the images.
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

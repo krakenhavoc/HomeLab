@@ -1,0 +1,48 @@
+#cloud-config
+# First-boot bootstrap for the wkjp host. See wkjp/README.md.
+# Installs Docker, clones the repo and hands over to wkjp-sync.
+preserve_hostname: false
+hostname: ${hostname}
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+  - git
+  - rsync
+
+users:
+  # docker group is added in runcmd once it exists.
+  - name: ${admin_username}
+    gecos: "wkjp Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+  - systemctl enable --now docker
+  - usermod -aG docker ${admin_username}
+
+  - mkdir -p /opt/wkjp
+  - git clone --depth 1 --branch main https://github.com/krakenhavoc/HomeLab.git /opt/wkjp/repo
+  - install -m 0755 /opt/wkjp/repo/wkjp/bootstrap/wkjp-sync /usr/local/bin/wkjp-sync
+  - install -m 0644 /opt/wkjp/repo/wkjp/bootstrap/wkjp-sync.service /etc/systemd/system/wkjp-sync.service
+  - install -m 0644 /opt/wkjp/repo/wkjp/bootstrap/wkjp-sync.timer /etc/systemd/system/wkjp-sync.timer
+  - systemctl daemon-reload
+  - systemctl enable --now wkjp-sync.timer
+  - systemctl start wkjp-sync.service
+
+final_message: |
+  ${hostname} is up (address from the firewall's static DHCP lease).
+  App: https://wkjp.labxp.io (via the gateway on pfe)

@@ -15,7 +15,8 @@ terraform/
 │   ├── nfs/           NFS LXC containers
 │   ├── plex/          Plex development and production VMs
 │   ├── shared/        Templates, drivers, and installation media
-│   └── tfc/           HCP Terraform projects and workspaces
+│   ├── tfc/           HCP Terraform projects and workspaces
+│   └── wkjp/          Stateless WaniKani listening practice host
 ├── modules/
 │   ├── compute/       Reusable Proxmox VM modules
 │   └── network/       Reserved for future network modules
@@ -35,6 +36,7 @@ terraform/
 | `plex` | `plex-dev`, `plex-prd` | Ubuntu VMs and Plex Compose configuration |
 | `shared` | `shared` | Ubuntu LXC template, VirtIO ISO, optional Windows ISO |
 | `tfc` | `tfc` | HCP Terraform projects, workspaces, tags, and settings |
+| `wkjp` | `wkjp-prd` | Stateless application VM and first-boot bootstrap |
 
 The shared deployment provides artifacts that other deployments expect, but the stacks do not share a Terraform state file.
 
