@@ -1,0 +1,22 @@
+# WaniKani listening practice on the wkjp VM. Reconciled by wkjp-sync from
+# this directory. The gateway (pfe, same VLAN) proxies wkjp.labxp.io to :80.
+# VOICEVOX is only reachable through nginx's /vv/ allowlist.
+name: wkjp
+
+services:
+  app:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # Directories, not files: rsync replaces files, and a file bind mount
+      # would keep the old copy.
+      - ./site:/usr/share/nginx/html:ro
+      - ./nginx:/etc/nginx/conf.d:ro
+    depends_on:
+      - voicevox
+
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-latest
+    restart: unless-stopped

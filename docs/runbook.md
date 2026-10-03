@@ -34,6 +34,7 @@ pre-commit run --all-files
 | Cmd and Ctrl | `terraform/deployments/cmd-and-ctrl` | `env/{dev,prd}/terraform.tfvars` | `cmd-and-ctrl-{dev,prd}` |
 | Frontends | `terraform/deployments/frontends` | `env/prd/terraform.tfvars` | `frontends-prd` |
 | LastDash | `terraform/deployments/lastdash` | `env/prd/terraform.tfvars` | `lastdash-prd` |
+| wkjp | `terraform/deployments/wkjp` | `env/prd/terraform.tfvars` | `wkjp-prd` |
 | Plex | `terraform/deployments/plex` | `env/{dev,prd}/terraform.tfvars` | `plex-{dev,prd}` |
 | NFS | `terraform/deployments/nfs` | `env/{dev,prd}/terraform.tfvars` | `nfs-{dev,prd}` |
 | Shared artifacts | `terraform/deployments/shared` | `env/shared/terraform.tfvars` | `shared` |

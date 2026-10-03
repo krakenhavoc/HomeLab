@@ -207,6 +207,13 @@
         description: Unified inbox — Slack, Teams, GitHub and more
         icon: mdi-inbox-multiple-outline
 
+    - WaniKani Listening:
+        href: https://wkjp.labxp.io
+        # Through nginx to VOICEVOX, so the dot covers both.
+        siteMonitor: https://wkjp.labxp.io/vv/version
+        description: Japanese listening practice — WaniKani vocab, VOICEVOX speech
+        icon: mdi-ideogram-cjk-variant
+
 - Games:
     - cmd_and_ctrl:
         href: https://cmd.labxp.io

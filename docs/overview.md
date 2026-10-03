@@ -36,6 +36,7 @@ The current deployment boundaries are:
 - `cmd-and-ctrl`: development and production application hosts, ingress, and backup buckets
 - `frontends`: internal gateway and private frontend services
 - `lastdash`: stateful application host
+- `wkjp`: stateless application host
 - `plex`: media-server VMs
 - `nfs`: storage-serving LXC containers
 - `shared`: images and templates consumed by other stacks
