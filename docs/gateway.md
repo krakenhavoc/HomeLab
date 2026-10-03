@@ -51,6 +51,7 @@ Internal DNS resolves approved service names to the gateway. Caddy terminates TL
 | Reach | Trusted networks and VPN only | The gateway creates no new public ingress path. |
 | Portal | Homepage | Service cards and layout remain reviewable as YAML. |
 | Proxy | Caddy with the Cloudflare DNS module | Certificates use DNS-01 without inbound validation traffic. |
+| Certificates | KrakenKey apex + wildcard (migrating) | No DNS credential on the gateway; one renewal for every name. |
 | Placement | Existing private frontend host | No extra VM is required, but the portal and frontend share a failure domain. |
 | Naming | Explicit host records | A broad wildcard cannot accidentally shadow unrelated public or management names. |
 | Delivery | Pull and validate | The host does not need an inbound CI or SSH path. |
@@ -76,7 +77,15 @@ This split also protects the certificate store. Rebuilding the VM for routine co
 
 Caddy obtains per-service certificates with the DNS-01 challenge. The challenge proves control through the DNS provider API, so no inbound internet connection to the gateway is required.
 
-Per-service certificates are preferred to one broad wildcard. A compromised gateway then exposes only the names it serves instead of a key capable of impersonating every host in the zone.
+### Moving to a KrakenKey certificate
+
+The gateway is moving from Caddy's per-service certificates to one KrakenKey certificate for the apex and a wildcard. KrakenKey answers the DNS-01 challenge in its own zone through a delegated `_acme-challenge` CNAME, so the gateway stops holding a DNS API token and makes no DNS queries for issuance. That also removes the workaround Caddy needs because outbound DNS is blocked.
+
+The wildcard is a deliberate trade. A stolen wildcard key can impersonate any name in the zone, but so can the DNS token the gateway holds today, since it can obtain a certificate for any name. One certificate also means one renewal, and new service names stop appearing in Certificate Transparency logs.
+
+`krakenkey-renew` runs daily from a systemd timer that `gateway-sync` installs. It issues the certificate on the host, so the private key never leaves it. It renews with a third of the lifetime left, checks the result against the key and names before swapping it in, and force-reloads Caddy. A failure leaves the served files untouched.
+
+Rollout is staged: first the cert files and timer, then one site on the new certificate, then the rest, and finally removing the DNS token.
 
 Internal DNS should use explicit records on every resolver clients may query. Avoid a zone-wide wildcard or suffix override: it can capture public applications and infrastructure control-plane names that must continue resolving elsewhere.
 
@@ -166,6 +175,8 @@ The portal and proxy are not the source of truth for the services behind them. I
 ### Credential rotation
 
 The gateway's cloud-init snippet is frozen: `frontends` ignores changes to its content, so editing the snippet never replaces the host. A rotated token therefore never reaches the gateway through Terraform. Update `/etc/gateway/caddy.env` on the host, then recreate the containers that read it (`docker compose up -d`).
+
+The KrakenKey API key in `/etc/gateway/krakenkey.env` (`KK_API_KEY=`, mode 0600) is not in cloud-init at all and must be restored by hand after a rebuild. The key is account-wide, so give the gateway its own key and revoke it in KrakenKey if the host is compromised. A rebuild also loses the certificate's private key; the next timer run issues a new certificate.
 
 A rebuild renders the snippet as it was last applied, not from the current secret store, so it can bring back a revoked token. Before a planned rebuild, remove the freeze in the same change so the snippet is re-rendered with current values, then put the freeze back.
 

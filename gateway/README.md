@@ -12,7 +12,7 @@ The architecture and security decisions are documented in [Gateway and internal 
 | `caddy/Caddyfile` | Internal names, TLS policy, and upstream routes |
 | `homepage/` | Portal layout, services, bookmarks, and widgets |
 | `assets/` | Static portal assets |
-| `bootstrap/` | Host-side sync service and timer |
+| `bootstrap/` | Host-side sync and KrakenKey renewal services and timers |
 | `redlib.env` | Non-secret Redlib settings |
 
 ## How changes reach the host
@@ -71,6 +71,10 @@ Inspect the host sync service and its recent logs. A rejected Caddyfile should b
 ### The portal reports host validation errors
 
 Confirm Homepage's allowed-host configuration matches the browser-facing name. Do not weaken the setting to a wildcard.
+
+### The KrakenKey certificate is not renewing
+
+Check `systemctl status krakenkey-renew` and its journal. Each run says whether the certificate was not due, renewed, or rejected and why. The certificate, key, and id live in `/etc/gateway/certs`; the previous certificate is kept as `.prev`. Run `systemctl start krakenkey-renew` to retry immediately.
 
 ### A certificate is not issued
 

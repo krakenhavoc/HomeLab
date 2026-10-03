@@ -55,8 +55,16 @@ if ! cmp -s "${SRC_DIR}/bootstrap/gateway-sync" /usr/local/bin/gateway-sync; the
   log "gateway-sync updated; the next run will use it"
 fi
 
+# krakenkey-renew rides along so it needs no rebuild either. Same mv trick.
+if ! cmp -s "${SRC_DIR}/bootstrap/krakenkey-renew" /usr/local/bin/krakenkey-renew; then
+  install -m 0755 "${SRC_DIR}/bootstrap/krakenkey-renew" /usr/local/bin/.krakenkey-renew.new
+  mv /usr/local/bin/.krakenkey-renew.new /usr/local/bin/krakenkey-renew
+  log "krakenkey-renew updated"
+fi
+
 units_changed=0
-for f in gateway-sync.service gateway-sync.timer; do
+for f in gateway-sync.service gateway-sync.timer \
+    krakenkey-renew.service krakenkey-renew.timer; do
   if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
     install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
     units_changed=1
@@ -65,6 +73,14 @@ for f in gateway-sync.service gateway-sync.timer; do
 done
 if [[ "${units_changed}" -eq 1 ]]; then
   systemctl daemon-reload
+fi
+
+# First install: kick off issuance now instead of waiting for tomorrow.
+# --no-block so a 20 minute issuance doesn't hold up the sync.
+if ! systemctl is-enabled --quiet krakenkey-renew.timer; then
+  systemctl enable --now krakenkey-renew.timer
+  systemctl start --no-block krakenkey-renew.service
+  log "krakenkey-renew enabled"
 fi
 
 # --- Validate BEFORE anything becomes live -----------------------------------
