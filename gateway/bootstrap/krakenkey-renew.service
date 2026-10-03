@@ -1,0 +1,14 @@
+[Unit]
+Description=Issue or renew the gateway's KrakenKey certificate
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/docs/gateway.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# KK_API_KEY. Placed by hand, not by cloud-init; see docs/gateway.md.
+EnvironmentFile=/etc/gateway/krakenkey.env
+ExecStart=/usr/local/bin/krakenkey-renew
+# issuance polls for up to 20 min
+TimeoutStartSec=30min
