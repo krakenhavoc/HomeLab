@@ -115,7 +115,18 @@
   @media (max-width:480px){ .statGrid{grid-template-columns:repeat(3,1fr);} }
 
   /* talk */
-  #talkLog{display:flex; flex-direction:column; gap:10px; max-height:55vh; overflow-y:auto; margin-bottom:12px;}
+  #talkCard{display:flex; flex-direction:column; margin-bottom:0; min-height:360px;}
+  .talkHead{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .talkHead h2{margin:0; flex:1;}
+  .talkHead label{margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;}
+  #talkLog{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px 4px 12px 0;}
+  #talkLog:empty::before{
+    content:"Chat in Japanese with a local model. It sticks to words you've learned and corrects your mistakes. Type Japanese, romaji or English, or use the mic.";
+    margin:auto; max-width:420px; text-align:center; color:var(--muted); font-size:.9rem;}
+  .composer{display:flex; gap:8px; align-items:flex-end; border-top:1px solid var(--line); padding-top:12px;}
+  .composer textarea{flex:1; resize:none; min-height:44px; max-height:140px; overflow-y:auto; line-height:1.5;}
+  .composer .btn{height:44px;}
+  #talkCard .err{margin:0 0 10px;}
   .msg{max-width:85%; padding:10px 12px; border-radius:12px; font-size:1rem; line-height:1.6;}
   .msg.me{align-self:flex-end; background:var(--card2); border:1px solid var(--line);}
   .msg.ai{align-self:flex-start; background:#22203a; border:1px solid #3b3366;}
@@ -250,21 +261,19 @@
 
   <!-- ============ TALK VIEW ============ -->
   <main id="viewTalk" class="hidden">
-    <section class="card">
-      <h2>Talk</h2>
-      <p>Chat in Japanese with a local model. It sticks to words you've learned and corrects your mistakes. Write Japanese, romaji or English.</p>
-      <div id="talkLog" style="margin-top:12px;"></div>
-      <textarea id="talkInput" rows="2" placeholder="こんにちは！"></textarea>
-      <div class="row" style="margin-top:10px;">
-        <button class="btn primary" id="btnTalkSend">Send</button>
-        <button class="btn hidden" id="btnTalkMic" title="record Japanese; click again to stop">🎤</button>
-        <button class="btn" id="btnTalkNew">New chat</button>
-        <label style="margin:0 0 0 auto; display:flex; align-items:center; gap:6px; cursor:pointer;">
-          <input type="checkbox" id="chkTalkSpeak"> read replies aloud
-        </label>
+    <section class="card" id="talkCard">
+      <div class="talkHead">
+        <h2>Talk</h2>
+        <label><input type="checkbox" id="chkTalkSpeak"> read aloud</label>
+        <button class="btn small" id="btnTalkNew">New chat</button>
       </div>
+      <div id="talkLog"></div>
       <div id="talkErr" class="err hidden"></div>
-      <p class="note">enter sends · shift+enter new line</p>
+      <div class="composer">
+        <textarea id="talkInput" rows="1" placeholder="こんにちは！" title="enter sends · shift+enter new line"></textarea>
+        <button class="btn hidden" id="btnTalkMic" title="record Japanese; click again to stop">🎤</button>
+        <button class="btn primary" id="btnTalkSend">Send</button>
+      </div>
     </section>
   </main>
 
@@ -641,7 +650,33 @@ function speak(text,slow){
 
 /* ---------- VOICEVOX backend ---------- */
 const vvCache=new Map();          // "speaker|rate|text" -> object URL
+const vvInflight=new Map();       // same key -> pending fetch, so prefetch and play share it
 let vvAudio=null,vvConnected=false,vvSeq=0,VV_SPEAKERS=[];
+// One element for all playback. Once it has played inside a click it may play
+// later without one, which is what lets Talk replies autoplay.
+const vvPlayer=new Audio();
+let audioUnlocked=false;
+function silentWav(){
+  const b=new DataView(new ArrayBuffer(44+200));
+  const w=(o,s)=>[...s].forEach((c,i)=>b.setUint8(o+i,c.charCodeAt(0)));
+  w(0,"RIFF"); b.setUint32(4,236,true); w(8,"WAVEfmt "); b.setUint32(16,16,true);
+  b.setUint16(20,1,true); b.setUint16(22,1,true); b.setUint32(24,8000,true); b.setUint32(28,16000,true);
+  b.setUint16(32,2,true); b.setUint16(34,16,true); w(36,"data"); b.setUint32(40,200,true);
+  return URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
+}
+function unlockAudio(){
+  if(audioUnlocked) return;
+  vvPlayer.src=silentWav();
+  const p=vvPlayer.play();
+  if(p&&p.then) p.then(()=>{audioUnlocked=true;}).catch(()=>{});
+}
+function vvPlay(url,onended){
+  vvPlayer.onended=onended||null;
+  vvPlayer.src=url;
+  vvAudio=vvPlayer;
+  const p=vvPlayer.play();
+  if(p&&p.catch) p.catch(()=>{});
+}
 function pickVvSpeaker(){
   if(S.vvRandom&&VV_SPEAKERS.length) return VV_SPEAKERS[Math.floor(Math.random()*VV_SPEAKERS.length)].id;
   return S.vvSpeaker==null?3:S.vvSpeaker;
@@ -654,6 +689,12 @@ async function vvFetchAudio(text,slow,spk){
   const rate=(S.rate||1)*(slow?0.6:1);
   const key=spk+"|"+rate.toFixed(2)+"|"+text;
   if(vvCache.has(key)) return vvCache.get(key);
+  if(vvInflight.has(key)) return vvInflight.get(key);
+  const p=vvSynth(text,spk,rate,key);
+  vvInflight.set(key,p);
+  try{ return await p; } finally{ vvInflight.delete(key); }
+}
+async function vvSynth(text,spk,rate,key){
   const q=await fetch(vvBase()+"/audio_query?speaker="+spk+"&text="+encodeURIComponent(text),{method:"POST"});
   if(!q.ok) throw new Error("VOICEVOX audio_query failed ("+q.status+")");
   const query=await q.json();
@@ -672,9 +713,7 @@ async function vvSpeak(text,slow){
   try{
     const url=await vvFetchAudio(text,slow,spk);
     if(my!==vvSeq) return;            // superseded by a newer play/stop
-    vvAudio=new Audio(url);
-    const p=vvAudio.play();
-    if(p&&p.catch) p.catch(()=>{});
+    vvPlay(url);
   }catch(e){ vvError(e); }
 }
 function vvError(e){
@@ -758,23 +797,29 @@ function chunkText(t){
   if(tail) out.push(tail);
   return out;
 }
-function speakText(text,slow){
+// spk pins the voice, e.g. so playback matches what Talk prefetched
+function speakText(text,slow,spk){
   const t=speakableText(text);
   if(!t) return;
   stopAudio();
   const my=++queueToken;
-  const spk=S.engine==="voicevox"?pickVvSpeaker():null;   // one voice per play, even in random mode
+  if(S.engine!=="voicevox") spk=null;
+  else if(spk==null) spk=pickVvSpeaker();   // one voice per play, even in random mode
   playChunks(chunkText(t),0,my,slow,spk);
+}
+// warm the VOICEVOX cache for text before anyone presses play
+async function prefetchSpeech(text,spk){
+  const t=speakableText(text);
+  if(!t||S.engine!=="voicevox") return;
+  for(const slow of [false,true])
+    for(const c of chunkText(t)){ try{ await vvFetchAudio(c,slow,spk); }catch(e){ return; } }
 }
 function playChunks(chunks,i,my,slow,spk){
   if(my!==queueToken||i>=chunks.length) return;
   if(S.engine==="voicevox"){
     vvFetchAudio(chunks[i],slow,spk).then(url=>{
       if(my!==queueToken) return;
-      vvAudio=new Audio(url);
-      vvAudio.onended=()=>playChunks(chunks,i+1,my,slow,spk);
-      const p=vvAudio.play();
-      if(p&&p.catch) p.catch(()=>{});
+      vvPlay(url,()=>playChunks(chunks,i+1,my,slow,spk));
     }).catch(e=>vvError(e));
   }else{
     if(!("speechSynthesis" in window)) return;
@@ -1172,27 +1217,43 @@ async function llmChat(messages,schema,temp){
   if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"Ollama error "+r.status);
   return JSON.parse((await r.json()).message.content);
 }
+const talkScroll=()=>{ const l=$("talkLog"); l.scrollTop=l.scrollHeight; };
 function talkAdd(cls,html){
   const d=document.createElement("div");
   d.className=cls; d.innerHTML=html;
   $("talkLog").appendChild(d);
-  $("talkLog").scrollTop=$("talkLog").scrollHeight;
+  talkScroll();
   return d;
 }
 function talkReply(r){
+  // the model sometimes appends the translation to the reply itself
+  r.reply=r.reply.replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
+  const spk=S.engine==="voicevox"?pickVvSpeaker():null;
   const d=talkAdd("msg ai",`<div>${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
     <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button></div>`);
-  d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false);
-  d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true);
-  d.querySelector("[data-a=en]").onclick=()=>d.querySelector(".en").classList.toggle("hidden");
-  if(S.talkSpeak) speakText(r.reply,false);
+  d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false,spk);
+  d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true,spk);
+  d.querySelector("[data-a=en]").onclick=()=>{ d.querySelector(".en").classList.toggle("hidden"); talkScroll(); };
+  if(S.talkSpeak) speakText(r.reply,false,spk);
+  prefetchSpeech(r.reply,spk);
+}
+function talkFit(){
+  const c=$("talkCard");
+  if($("viewTalk").classList.contains("hidden")) return;
+  c.style.height=Math.max(360,window.innerHeight-c.getBoundingClientRect().top-16)+"px";
+}
+function talkGrow(){
+  const b=$("talkInput");
+  b.style.height="auto";
+  b.style.height=Math.min(b.scrollHeight,140)+"px";
 }
 async function talkSend(){
   const box=$("talkInput"),text=box.value.trim(),err=$("talkErr");
   if(!text||talkBusy) return;
+  unlockAudio();
   err.classList.add("hidden");
   talkBusy=true; $("btnTalkSend").disabled=true;
-  box.value="";
+  box.value=""; talkGrow();
   const me=talkAdd("msg me",esc(text));
   TALK.push({role:"user",content:text});
   const wait=talkAdd("msg ai","…");
@@ -1204,6 +1265,7 @@ async function talkSend(){
     d.className="fix";
     d.innerHTML=`${ja?"✏️":"🇯🇵"} ${esc(c.correction)}${c.note?`<div class="why">${esc(c.note)}</div>`:""}`;
     me.after(d);
+    talkScroll();
   }).catch(()=>{});
   try{
     const out=await llmChat([{role:"system",content:talkSystem()}].concat(TALK.slice(-20)),REPLY_SCHEMA,0.7);
@@ -1213,7 +1275,7 @@ async function talkSend(){
   }catch(e){
     wait.remove();
     TALK.pop();
-    box.value=text;
+    box.value=text; talkGrow();
     err.textContent="⚠ "+(e.message||"no reply")+" — check Settings → Conversation partner.";
     err.classList.remove("hidden");
   }
@@ -1245,6 +1307,7 @@ let micRec=null,micStop=null;
 function talkErr(msg){ $("talkErr").textContent="⚠ "+msg; $("talkErr").classList.remove("hidden"); }
 async function talkMic(){
   const btn=$("btnTalkMic");
+  unlockAudio();
   if(micRec){ micRec.stop(); return; }
   let stream;
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:true}); }
@@ -1265,7 +1328,7 @@ async function talkMic(){
       const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
       if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"speech-to-text error "+r.status);
       const text=((await r.json()).text||"").trim();
-      if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; box.focus(); }
+      if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; talkGrow(); box.focus(); }
     }catch(e){ talkErr(e.message||"speech-to-text failed"); }
     btn.textContent="🎤"; btn.disabled=false;
   };
@@ -1283,7 +1346,7 @@ Object.keys(views).forEach(t=>{
       $(view).classList.toggle("hidden",tab!==t);
     });
     if(t==="tabStats") renderStats();
-    if(t==="tabTalk"&&!$("llmStatus").textContent) llmConnect();
+    if(t==="tabTalk"){ talkFit(); talkScroll(); if(!$("llmStatus").textContent) llmConnect(); }
   };
 });
 function bindSeg(id,key,cb){
@@ -1447,6 +1510,8 @@ $("talkInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); talkSend(); }
 });
 $("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
+$("talkInput").addEventListener("input",talkGrow);
+window.addEventListener("resize",()=>{ talkFit(); talkScroll(); });
 $("chkTalkSpeak").checked=S.talkSpeak;
 $("chkTalkSpeak").onchange=e=>{ S.talkSpeak=e.target.checked; saveS(); };
 if(canRecord){ $("btnTalkMic").classList.remove("hidden"); $("btnTalkMic").onclick=talkMic; }
