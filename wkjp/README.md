@@ -21,6 +21,9 @@ is reachable only through the private gateway.
   browser to WaniKani.
 - VOICEVOX is not published. nginx proxies an allowlist of endpoints under
   `/vv/` and drops the `Origin` header, which the engine would otherwise 403.
+- `/vv/` goes to VOICEVOX on KBU (192.168.1.201:50021, Quadlet `voicevox`)
+  first: ~0.4 s per sentence there vs ~10 s on this VM, which is too slow for
+  Talk's read-aloud. The local engine is the backup when KBU is unreachable.
 - The Talk tab chats through `/llm/`, which nginx proxies to Ollama on
   base-station (192.168.1.18:11434, `~/llm/local-compose.yaml` there). Only
   `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
