@@ -26,7 +26,8 @@ is reachable only through the private gateway.
   `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
   error and the rest of the app is unaffected.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
-  to speaches (Whisper large-v3-turbo, CPU) on base-station port 8001.
+  to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
+  192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.

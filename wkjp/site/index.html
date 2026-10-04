@@ -1236,9 +1236,10 @@ async function llmConnect(){
     st.textContent="⚠ can't reach Ollama — is base-station on?";
   }
 }
-// Mic records locally and transcribes with Whisper on base-station (/stt/).
-const STT_BASE=location.protocol==="file:"?"http://localhost:8001":location.origin+"/stt";
-const STT_MODEL="deepdml/faster-whisper-large-v3-turbo-ct2";
+// Mic records locally and transcribes with Whisper on KBU's GPU (/stt/).
+const STT_BASE=location.protocol==="file:"?"http://localhost:8080":location.origin+"/stt";
+// whisper.cpp drops Japanese punctuation unless the prompt has some
+const STT_PROMPT="こんにちは。今日はいい天気ですね。";
 const canRecord=!!(navigator.mediaDevices&&window.MediaRecorder);
 let micRec=null,micStop=null;
 function talkErr(msg){ $("talkErr").textContent="⚠ "+msg; $("talkErr").classList.remove("hidden"); }
@@ -1259,7 +1260,7 @@ async function talkMic(){
     try{
       const fd=new FormData();
       fd.append("file",new Blob(chunks,{type:chunks[0]?chunks[0].type:"audio/webm"}),"talk.webm");
-      fd.append("model",STT_MODEL);
+      fd.append("prompt",STT_PROMPT);
       fd.append("language","ja");
       const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
       if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"speech-to-text error "+r.status);
