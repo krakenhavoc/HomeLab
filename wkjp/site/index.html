@@ -136,6 +136,12 @@
   .fix{align-self:flex-end; max-width:85%; background:#3a2b14; border:1px solid #6b4e1d; color:#ffd166; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
   #talkInput{font-size:1rem;}
+  .msg .w{border-radius:3px; cursor:help;}
+  .msg .w:hover,.msg .w.on{background:#3b3366;}
+  .msg .w.new{border-bottom:1px dotted var(--purple);}
+  #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
+    border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
+  #glossTip .r{color:var(--muted); font-size:.78rem;}
 </style>
 </head>
 <body>
@@ -268,6 +274,7 @@
         <button class="btn small" id="btnTalkNew">New chat</button>
       </div>
       <div id="talkLog"></div>
+      <div id="glossTip" class="hidden"></div>
       <div id="talkErr" class="err hidden"></div>
       <div class="composer">
         <textarea id="talkInput" rows="1" placeholder="こんにちは！" title="enter sends · shift+enter new line"></textarea>
@@ -1179,6 +1186,15 @@ const REPLY_SCHEMA={type:"object",required:["reply","english"],properties:{reply
 // errors first so the model looks before it corrects
 const CHECK_SCHEMA={type:"object",required:["errors","correction","note"],
   properties:{errors:{type:"array",items:str},correction:str,note:str}};
+const GLOSS_SCHEMA={type:"object",required:["words"],properties:{words:{type:"array",
+  items:{type:"object",required:["ja","reading","en"],properties:{ja:str,reading:str,en:str}}}}};
+const GLOSS_SYSTEM=[
+  "List the words of the Japanese text, in order, for a learner's hover dictionary.",
+  "ja: the word exactly as written. Keep a verb or adjective together with its endings (しました, 楽しかった, 行きたい). Particles are their own items. Skip punctuation.",
+  "reading: hiragana, only if the word has kanji; otherwise empty.",
+  'en: a few English words for its meaning here. Conjugated: add the dictionary form, e.g. "went (行く)". Particles: their role, e.g. "topic".'
+].join("\n");
+const hasKanji=t=>/[一-鿿々]/.test(t);
 const isJa=t=>/[぀-ヿ一-鿿]/.test(t);
 const wkLevel=()=>DATA?DATA.user.level:1;
 let TALK=[],talkBusy=false;
@@ -1229,13 +1245,60 @@ function talkReply(r){
   // the model sometimes appends the translation to the reply itself
   r.reply=r.reply.replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
   const spk=S.engine==="voicevox"?pickVvSpeaker():null;
-  const d=talkAdd("msg ai",`<div>${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
+  const d=talkAdd("msg ai",`<div class="ja">${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
     <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button></div>`);
   d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false,spk);
   d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true,spk);
   d.querySelector("[data-a=en]").onclick=()=>{ d.querySelector(".en").classList.toggle("hidden"); talkScroll(); };
   if(S.talkSpeak) speakText(r.reply,false,spk);
   prefetchSpeech(r.reply,spk);
+  llmChat([{role:"system",content:GLOSS_SYSTEM},{role:"user",content:r.reply}],GLOSS_SCHEMA,0)
+    .then(g=>glossWrap(d.querySelector(".ja"),r.reply,g.words)).catch(()=>{});
+}
+// Wrap each glossed word in a span. The model's split doesn't always match
+// the text exactly, so anything it can't place stays plain.
+function glossWrap(el,text,words){
+  const known=new Set(getPools().words.map(w=>w.c));
+  const frag=document.createDocumentFragment();
+  let pos=0;
+  for(const w of words){
+    const ja=(w.ja||"").trim();
+    if(!ja) continue;
+    const i=text.indexOf(ja,pos);
+    if(i<0||i-pos>3) continue;
+    if(i>pos) frag.append(text.slice(pos,i));
+    // conjugated words carry their dictionary form: "went (行く)"
+    const base=((w.en||"").match(/[(（]([぀-ヿ一-鿿々]+)[)）]/)||[])[1];
+    const k=known.has(ja)||known.has(base);
+    const sp=document.createElement("span");
+    sp.className="w"+(hasKanji(ja)&&!k?" new":"");
+    sp.textContent=ja;
+    sp.dataset.r=hasKanji(ja)?(w.reading||"").replace(/\s+/g,""):"";
+    sp.dataset.e=w.en||"";
+    sp.dataset.k=k?"1":"";
+    frag.append(sp);
+    pos=i+ja.length;
+  }
+  frag.append(text.slice(pos));
+  el.replaceChildren(frag);
+}
+let glossOn=null;
+function glossShow(sp){
+  const tip=$("glossTip");
+  if(glossOn) glossOn.classList.remove("on");
+  glossOn=sp; sp.classList.add("on");
+  tip.innerHTML=`${sp.dataset.r?`<div class="r">${esc(sp.dataset.r)}</div>`:""}<div>${esc(sp.dataset.e||"—")}</div>`
+    +(sp.dataset.k?`<div class="r">✓ learned</div>`:"");
+  tip.classList.remove("hidden");
+  const b=sp.getBoundingClientRect(),t=tip.getBoundingClientRect();
+  let top=b.top-t.height-6;
+  if(top<4) top=b.bottom+6;
+  tip.style.top=top+"px";
+  tip.style.left=Math.max(4,Math.min(b.left+b.width/2-t.width/2,innerWidth-t.width-4))+"px";
+}
+function glossHide(){
+  if(glossOn) glossOn.classList.remove("on");
+  glossOn=null; $("glossTip").classList.add("hidden");
 }
 function talkFit(){
   const c=$("talkCard");
@@ -1511,6 +1574,19 @@ $("talkInput").addEventListener("keydown",e=>{
 });
 $("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
 $("talkInput").addEventListener("input",talkGrow);
+// hover with a mouse, tap on touch
+$("talkLog").addEventListener("pointerover",e=>{
+  const sp=e.target.closest(".w");
+  if(sp&&e.pointerType==="mouse") glossShow(sp);
+});
+$("talkLog").addEventListener("pointerout",e=>{
+  if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
+});
+document.addEventListener("click",e=>{
+  const sp=e.target.closest("#talkLog .w");
+  if(sp) glossShow(sp); else glossHide();
+});
+$("talkLog").addEventListener("scroll",glossHide);
 window.addEventListener("resize",()=>{ talkFit(); talkScroll(); });
 $("chkTalkSpeak").checked=S.talkSpeak;
 $("chkTalkSpeak").onchange=e=>{ S.talkSpeak=e.target.checked; saveS(); };
