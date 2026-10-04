@@ -28,6 +28,9 @@ is reachable only through the private gateway.
   base-station (192.168.1.18:11434, `~/llm/local-compose.yaml` there). Only
   `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
   error and the rest of the app is unaffected.
+- Each Talk reply gets a follow-up `/api/chat` call that splits it into words
+  with reading and meaning, for the hover/tap glosses. Kanji words not in the
+  learned set get a dotted underline.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
   to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
   192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).
