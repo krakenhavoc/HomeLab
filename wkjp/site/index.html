@@ -1204,7 +1204,7 @@ function talkSystem(){
   return [
     `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
     "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
-    "Prefer the learner's known words below. Write any kanji word they don't know in hiragana. Keep grammar simple. Plain text only, no markdown.",
+    "Prefer the learner's known words below. Write any kanji word they don't know in hiragana. Keep grammar simple. Plain text only, no markdown, no readings in parentheses.",
     "If the learner writes English or romaji, just carry on the conversation in Japanese.",
     "english: an English translation of your reply.",
     words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words."
@@ -1229,8 +1229,8 @@ function checkSystem(ja){
 async function llmChat(messages,schema,temp){
   const r=await fetch(llmBase()+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({model:S.llmModel,stream:false,think:false,format:schema,
-      options:{temperature:temp,num_ctx:8192},messages})});
-  if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"Ollama error "+r.status);
+      options:{temperature:temp},messages})});
+  if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach Ollama on base-station (${r.status})`:"Ollama error "+r.status);
   return JSON.parse((await r.json()).message.content);
 }
 const talkScroll=()=>{ const l=$("talkLog"); l.scrollTop=l.scrollHeight; };
@@ -1389,7 +1389,7 @@ async function talkMic(){
       fd.append("prompt",STT_PROMPT);
       fd.append("language","ja");
       const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
-      if(!r.ok) throw new Error(r.status===502||r.status===504?"base-station is offline":"speech-to-text error "+r.status);
+      if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
       const text=((await r.json()).text||"").trim();
       if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; talkGrow(); box.focus(); }
     }catch(e){ talkErr(e.message||"speech-to-text failed"); }
