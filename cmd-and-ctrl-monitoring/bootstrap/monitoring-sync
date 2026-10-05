@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+#
+# Reconcile the cmd_and_ctrl monitoring stack with cmd-and-ctrl-monitoring/
+# in the HomeLab repository. Modelled on gateway/bootstrap/gateway-sync: read
+# that for the reasoning behind fetch/reset, the self-update and copying out
+# of the checkout.
+#
+# The VM ignores cloud-init changes (its data disk holds a year of metrics),
+# so this is how the stack changes: compose file, image pins, Prometheus,
+# Alertmanager, Loki, Caddy, blackbox, Alloy and Grafana provisioning, plus
+# this script, cmdctrl-config-sync and their units. The alert rules and
+# dashboards are not here; cmdctrl-config-sync fetches them from the
+# cmd_and_ctrl repo.
+#
+# Every incoming config is checked with the image that will run it before
+# anything becomes live. A failed check leaves the running stack alone.
+#
+# Run by monitoring-sync.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+REPO_DIR=/opt/monitoring/repo
+LIVE_DIR=/opt/monitoring/live
+SRC_DIR="${REPO_DIR}/cmd-and-ctrl-monitoring"
+ETC_DIR=/etc/monitoring
+DATA_DIR=/var/lib/monitoring
+
+log() { echo "[monitoring-sync] $*"; }
+
+git -C "${REPO_DIR}" fetch --quiet --depth 1 origin main
+git -C "${REPO_DIR}" reset --quiet --hard FETCH_HEAD
+
+if [[ ! -d "${SRC_DIR}" ]]; then
+  log "ERROR: ${SRC_DIR} missing from the checkout; refusing to sync"
+  exit 1
+fi
+for f in grafana.env caddy.env host.env discord_webhook_url; do
+  if [[ ! -f "${ETC_DIR}/${f}" ]]; then
+    log "ERROR: ${ETC_DIR}/${f} missing (written by cloud-init); refusing to start"
+    exit 1
+  fi
+done
+if ! mountpoint -q "${DATA_DIR}"; then
+  log "ERROR: ${DATA_DIR} is not mounted; refusing to write the stores to the OS disk"
+  exit 1
+fi
+
+# --- Self-update (takes effect next run; see gateway-sync) -------------------
+for s in monitoring-sync cmdctrl-config-sync; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${s}" "/usr/local/bin/${s}"; then
+    install -m 0755 "${SRC_DIR}/bootstrap/${s}" "/usr/local/bin/.${s}.new"
+    mv "/usr/local/bin/.${s}.new" "/usr/local/bin/${s}"
+    log "${s} updated"
+  fi
+done
+
+units_changed=0
+for f in monitoring-sync.service monitoring-sync.timer \
+  cmdctrl-config-sync.service cmdctrl-config-sync.timer; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
+    install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
+    units_changed=1
+    log "${f} updated"
+  fi
+done
+if [[ "${units_changed}" -eq 1 ]]; then
+  systemctl daemon-reload
+fi
+if ! systemctl is-enabled --quiet cmdctrl-config-sync.timer; then
+  systemctl enable --now cmdctrl-config-sync.timer
+  log "cmdctrl-config-sync.timer enabled"
+fi
+
+# --- Data directories, owned by the user each image runs as ------------------
+install -d -m 0755 -o 65534 -g 65534 "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager"
+install -d -m 0755 -o 10001 -g 10001 "${DATA_DIR}/loki"
+install -d -m 0755 -o 472 -g 0 "${DATA_DIR}/grafana"
+install -d -m 0755 -o 0 -g 0 "${DATA_DIR}/alloy" "${DATA_DIR}/textfile" \
+  "${DATA_DIR}/cmdctrl-config"
+
+# --- Validate, then publish --------------------------------------------------
+compose_src=(docker compose -f "${SRC_DIR}/docker-compose.yaml")
+
+if ! "${compose_src[@]}" config --quiet; then
+  log "ERROR: incoming docker-compose.yaml is invalid; keeping the current stack"
+  exit 1
+fi
+
+# Pull only what is missing. Every image is pinned by digest, so a present
+# image is the right one, and Docker Hub's anonymous pull limit is shared by
+# the whole house.
+mapfile -t images < <("${compose_src[@]}" config --images)
+for img in "${images[@]}"; do
+  if ! docker image inspect "${img}" > /dev/null 2>&1; then
+    log "pulling ${img}"
+    timeout 600 docker pull --quiet "${img}" > /dev/null
+  fi
+done
+
+image_of() {
+  "${compose_src[@]}" config --format json | jq -r --arg s "$1" '.services[$s].image'
+}
+
+check() {
+  local what=$1 out
+  shift
+  if ! out=$("$@" 2>&1); then
+    log "ERROR: incoming ${what} config is invalid; keeping the current stack"
+    printf '%s\n' "${out}"
+    exit 1
+  fi
+}
+
+check prometheus docker run --rm --network none --entrypoint promtool \
+  -v "${SRC_DIR}/prometheus:/etc/prometheus/conf:ro" "$(image_of prometheus)" \
+  check config /etc/prometheus/conf/prometheus.yml
+check alertmanager docker run --rm --network none --entrypoint amtool \
+  -v "${SRC_DIR}/alertmanager:/etc/alertmanager/conf:ro" "$(image_of alertmanager)" \
+  check-config /etc/alertmanager/conf/alertmanager.yml
+check loki docker run --rm --network none \
+  -v "${SRC_DIR}/loki:/etc/loki/conf:ro" "$(image_of loki)" \
+  -config.file=/etc/loki/conf/loki.yaml -verify-config
+check blackbox docker run --rm --network none \
+  -v "${SRC_DIR}/blackbox:/etc/blackbox:ro" "$(image_of blackbox)" \
+  --config.file=/etc/blackbox/blackbox.yml --config.check
+# A throwaway hash that no credential uses, not the real ones: `docker run
+# --env-file` would keep caddy.env's single quotes, which only compose strips.
+# shellcheck disable=SC2016 # a literal bcrypt hash; nothing to expand
+dummy_hash='$2a$14$VeC5A/VbJd/xhdyfdPpZheA/FacuhkLPorKl7CS4WfYSKXfjuxJ8m'
+check caddy docker run --rm --network none \
+  -e "PUSH_HASH_PROD=${dummy_hash}" -e "PUSH_HASH_DEV=${dummy_hash}" \
+  -v "${SRC_DIR}/caddy:/etc/caddy:ro" "$(image_of caddy)" \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+check alloy docker run --rm --network none \
+  -v "${SRC_DIR}/alloy:/etc/alloy:ro" "$(image_of alloy)" \
+  fmt /etc/alloy/config.alloy
+
+# Hash each service's config directory before and after the copy, to know
+# which running services to reload.
+services=(prometheus alertmanager loki blackbox caddy alloy grafana)
+dir_hash() {
+  if [[ -d "$1" ]]; then
+    (cd "$1" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum)
+  fi
+}
+first_run=0
+[[ -f "${LIVE_DIR}/docker-compose.yaml" ]] || first_run=1
+declare -A before
+for s in "${services[@]}"; do
+  before[$s]=$(dir_hash "${LIVE_DIR}/${s}")
+done
+
+mkdir -p "${LIVE_DIR}"
+rsync -a --delete \
+  --exclude 'bootstrap/' \
+  --exclude 'README.md' \
+  "${SRC_DIR}/" "${LIVE_DIR}/"
+
+cd "${LIVE_DIR}"
+# --remove-orphans so a service deleted from the compose file actually stops.
+docker compose up -d --remove-orphans
+
+# --- Apply config changes ----------------------------------------------------
+# The config directories are bind mounts, so `up -d` does not see an edit in
+# them (see the long note in gateway-sync). Reload what can reload, restart
+# the rest.
+if [[ "${first_run}" -eq 0 ]]; then
+  for s in "${services[@]}"; do
+    [[ "${before[$s]}" == "$(dir_hash "${LIVE_DIR}/${s}")" ]] && continue
+    case "${s}" in
+      prometheus)
+        if docker exec prometheus wget -q -O /dev/null --post-data= \
+          http://127.0.0.1:9090/-/reload; then
+          log "prometheus reloaded"
+        else
+          log "WARNING: prometheus reload failed; restarting it"
+          docker compose restart prometheus
+        fi
+        ;;
+      alertmanager | blackbox)
+        docker kill --signal HUP "${s}" > /dev/null
+        log "${s} reloaded"
+        ;;
+      *)
+        docker compose restart "${s}"
+        log "${s} restarted"
+        ;;
+    esac
+  done
+fi
+
+# Images replaced by a pin bump are no longer used by any container.
+docker image prune -af --filter "until=168h" > /dev/null
+
+log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD)"
