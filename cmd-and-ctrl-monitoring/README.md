@@ -19,7 +19,7 @@ All services run as one Compose project, `monitoring`, in `/opt/monitoring/live`
 | Prometheus | Metrics: remote-write receiver, 1 year or 60 GB, 30 s scrapes, alert rules from cmd_and_ctrl | Compose network only |
 | Alertmanager | Discord notifications, grouped by `alertname` and `env`, repeated every 4 h, resolutions sent | Compose network only |
 | Loki | Logs, 30 days, retention enforced by the compactor | Compose network only |
-| Grafana | Dashboards. Anonymous access is off. | `:3000`, LAN only |
+| Grafana | Dashboards. Anonymous access is off. | https://grafana.labxp.io through the gateway, or `:3000` directly; LAN only |
 | blackbox_exporter | Probes `https://cmd.labxp.io/healthz` (`env="prod"`) and `https://cmd-dev.labxp.io/healthz` (`env="dev"`) as job `blackbox` | Compose network only |
 | Caddy | The two push endpoints, with basic auth | `:9091` and `:3101`, LAN only |
 | Alloy | This VM's host metrics and the config-sync textfile, sent as `job="node"`, `env="monitoring"` | Compose network only |
@@ -59,8 +59,11 @@ The order matters, and each step is a merge of a reviewed plan:
    - `CMDCTRL_MONITORING_HEARTBEAT_TOKEN`: a fine-grained personal access token, created as described under [Heartbeat](#heartbeat).
 4. On the router, allow the flows the host firewall expects:
    - the cmd_and_ctrl VMs to this VM on TCP 9091 and 3101;
-   - the Grafana viewers to TCP 3000;
+   - the lab gateway (pfe, 192.168.201.14) to TCP 3000, for https://grafana.labxp.io;
+   - any direct Grafana viewers to TCP 3000;
    - this VM out to HTTPS: GitHub, Docker Hub, and the two `/healthz` URLs.
+
+   Add the Pi-hole A record `grafana.labxp.io` -> `192.168.201.14` on both resolvers (192.168.10.11 and .12). The gateway's site and portal card ship separately in `gateway/`.
 5. Read the plan: one snippet file and one VM to add, nothing else. Then merge.
 6. In cmd_and_ctrl, set `CMDCTRL_MONITORING_URL` to `http://<address>` and the two push passwords. Its CD then starts Alloy on the app hosts.
 
@@ -68,7 +71,13 @@ First boot formats and mounts the data disk, installs Docker, loads the firewall
 
 ## Reaching Grafana
 
-Open `http://<address>:3000` from the LAN or the VPN and sign in as `admin`. The address is the `grafana_url` output of the deployment.
+Open **https://grafana.labxp.io** from the LAN or the VPN and sign in as `admin`. It is also on the portal.
+- **How it gets there:** the lab gateway (pfe, `gateway/caddy/Caddyfile`) terminates TLS and proxies to this VM on `:3000`.
+- **Grafana's `root_url`** is set to that name, so links it generates (alerts, shares, Discord messages) point at the gateway.
+- **Name resolution:** the name needs a Pi-hole A record on both resolvers.
+- **Network:** the router must allow pfe to reach this VM on TCP 3000. pfe is also in `lan_cidrs`.
+
+Direct `http://192.168.200.11:3000` (the `grafana_url` output) keeps working from `lan_cidrs` and is the recovery path when the gateway is down. Login and editing work there too, because Grafana's origin check compares against the request's own host, not `root_url`. Only absolute links point at the gateway name.
 
 The `cmd_and_ctrl` folder is provisioned and read-only. To change a dashboard:
 1. Save a copy into `Scratch` and edit it there.

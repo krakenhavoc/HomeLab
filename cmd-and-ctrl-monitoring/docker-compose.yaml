@@ -82,6 +82,21 @@ services:
     env_file: /etc/monitoring/grafana.env
     environment:
       GF_SERVER_HTTP_PORT: "3000"
+      # Reached at https://grafana.labxp.io through the lab gateway (pfe,
+      # gateway/caddy/Caddyfile). Grafana builds absolute links from root_url:
+      # alert and share links, and the links in Discord notifications.
+      # Verified with this image behind a TLS-terminating Caddy that passes
+      # Host through:
+      #   - login and a CSRF-checked POST work through the proxy;
+      #   - a foreign Origin is refused;
+      #   - Grafana Live's websocket upgrades.
+      # The origin check compares Origin with the request's Host, not with
+      # root_url, and redirects stay relative to the request. So direct
+      # http://192.168.200.11:3000 from lan_cidrs still logs in and works,
+      # as recovery access when the gateway is down; only absolute links
+      # will name the gateway. cookie_secure stays off for that reason.
+      GF_SERVER_ROOT_URL: "https://grafana.labxp.io/"
+      GF_SERVER_DOMAIN: "grafana.labxp.io"
       GF_SECURITY_ADMIN_USER: admin
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_USERS_ALLOW_SIGN_UP: "false"

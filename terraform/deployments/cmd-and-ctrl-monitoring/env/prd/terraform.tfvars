@@ -25,11 +25,15 @@ monitoring = {
   dns_servers  = ["192.168.10.11", "192.168.10.12"]
   dns_domain   = "lan.labxp.io"
 
-  # Admitted on 3000 (Grafana), 9091 and 3101 (push). 192.168.200.0/24 is
-  # VLAN 200, where the cmd_and_ctrl VMs push from; 192.168.1.0/24 is the
-  # owner's wired LAN, where Grafana is viewed from. Adjust as needed (a VPN
-  # range, say). The host firewall only reads this at first boot; afterwards,
-  # edit /etc/nftables.conf on the VM. 192.168.201.14/32 is the lab gateway
-  # (pfe), which proxies https://grafana.labxp.io to Grafana on 3000.
-  lan_cidrs = ["192.168.200.0/24", "192.168.1.0/24", "192.168.201.14/32"]
+  # Admitted on 3000 (Grafana), 9091 and 3101 (push). The host firewall only
+  # reads this at first boot; afterwards, edit /etc/nftables.conf on the VM.
+  # Adjust as needed (a VPN range, say).
+  lan_cidrs = [
+    # VLAN 200, where the cmd_and_ctrl VMs push from.
+    "192.168.200.0/24",
+    # The owner's wired LAN: direct Grafana access, for recovery.
+    "192.168.1.0/24",
+    # The lab gateway (pfe), which proxies https://grafana.labxp.io to :3000.
+    "192.168.201.14/32",
+  ]
 }
