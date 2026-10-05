@@ -34,6 +34,7 @@ The current deployment boundaries are:
 
 - `lab`: experimental and application-specific VMs
 - `cmd-and-ctrl`: development and production application hosts, ingress, and backup buckets
+- `cmd-and-ctrl-monitoring`: the LAN-only monitoring host for `cmd_and_ctrl`
 - `frontends`: internal gateway and private frontend services
 - `lastdash`: stateful application host
 - `wkjp`: stateless application host
@@ -110,7 +111,7 @@ Pull requests create the review surface. Merges create the deployment event. The
 | Internal gateway | Active configuration | Caddy and Homepage configuration is synchronized from `gateway/` |
 | Kubernetes bootstrap scripts | Reference | Retained under `scripts/`; not part of a current Terraform deployment |
 | Ansible | Planned | Directory exists, but no playbooks or roles are active |
-| Monitoring automation | Planned | Operational checks are not yet codified here |
+| Monitoring automation | Partial | `cmd_and_ctrl` has a monitoring VM ([`cmd-and-ctrl-monitoring/`](../cmd-and-ctrl-monitoring/README.md)); lab-wide checks are not yet codified |
 | Backup automation | Planned | Recovery expectations are documented; scripts are not implemented |
 
 ## Failure domains

@@ -39,6 +39,7 @@ Until measurements and restore exercises provide better numbers, use service tie
 | Critical control plane | Proxmox access, network services, CI runner access | Restore enough control to operate the lab first |
 | Stateful production | `cmd_and_ctrl`, LastDash, media metadata, shared storage | Restore from the latest verified off-node copy |
 | Rebuildable service | Frontend hosts, runner workers, disposable lab VMs | Recreate from Terraform and cloud-init |
+| Rebuildable, history lost | The `cmd_and_ctrl` monitoring VM (metrics and logs are not backed up by design) | Recreate from Terraform; dashboards and rules return from Git |
 | Archival or replaceable | Installation media, downloaded templates | Download or regenerate from the upstream source |
 
 Record measured restore time and the oldest acceptable data point during each recovery exercise. Those measurements should become explicit objectives later.
