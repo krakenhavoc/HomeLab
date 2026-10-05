@@ -1,0 +1,34 @@
+# Grafana datasources (cmd_and_ctrl ADR 0123 §9).
+#
+# The UIDs are a contract: the dashboards in krakenhavoc/cmd_and_ctrl
+# deploy/monitoring/dashboards/ reference "prometheus" and "loki" by UID.
+# Renaming either breaks every panel.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # The scrape and remote-write interval, so $__rate_interval is sane.
+      timeInterval: 30s
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+
+  - name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://alertmanager:9093
+    editable: false
+    jsonData:
+      implementation: prometheus

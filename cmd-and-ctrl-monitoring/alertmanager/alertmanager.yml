@@ -1,0 +1,22 @@
+# Alertmanager on the cmd_and_ctrl monitoring VM (cmd_and_ctrl ADR 0123 §7).
+#
+# One Discord webhook for both environments; grouping by env puts the env in
+# every message title ("[FIRING:1] SiteDown (prod)").
+#
+# The webhook URL is a secret. It is never in this repository: cloud-init
+# writes it to /etc/monitoring/discord_webhook_url on the host (0400, owned
+# by nobody, the user Alertmanager runs as), and compose mounts that file
+# read-only at the path below.
+
+route:
+  receiver: discord
+  group_by: [alertname, env]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url_file: /etc/alertmanager/secrets/discord_webhook_url
+        send_resolved: true

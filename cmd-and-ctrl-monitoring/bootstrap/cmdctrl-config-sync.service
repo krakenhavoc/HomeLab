@@ -1,0 +1,15 @@
+[Unit]
+Description=Load cmd_and_ctrl alert rules and dashboards from its repo
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+RequiresMountsFor=/var/lib/monitoring
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cmdctrl-config-sync
+
+# A failed sync keeps the last good rules and dashboards live; it only stops
+# the success timestamp, which the MonitoringConfigSyncFailing alert reads.
+SuccessExitStatus=0
