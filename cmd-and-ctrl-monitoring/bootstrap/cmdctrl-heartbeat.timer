@@ -1,0 +1,14 @@
+[Unit]
+Description=Every 5 minutes, tell cmd_and_ctrl's cron the monitor is alive
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+
+[Timer]
+# The cron alerts on a heartbeat older than 20 minutes, so a few missed
+# beats in a row are tolerated.
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target

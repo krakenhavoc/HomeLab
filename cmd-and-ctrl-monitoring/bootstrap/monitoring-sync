@@ -8,9 +8,9 @@
 # The VM ignores cloud-init changes (its data disk holds a year of metrics),
 # so this is how the stack changes: compose file, image pins, Prometheus,
 # Alertmanager, Loki, Caddy, blackbox, Alloy and Grafana provisioning, plus
-# this script, cmdctrl-config-sync and their units. The alert rules and
-# dashboards are not here; cmdctrl-config-sync fetches them from the
-# cmd_and_ctrl repo.
+# this script, cmdctrl-config-sync, cmdctrl-heartbeat and their units. The
+# alert rules and dashboards are not here; cmdctrl-config-sync fetches them
+# from the cmd_and_ctrl repo.
 #
 # Every incoming config is checked with the image that will run it before
 # anything becomes live. A failed check leaves the running stack alone.
@@ -46,7 +46,7 @@ if ! mountpoint -q "${DATA_DIR}"; then
 fi
 
 # --- Self-update (takes effect next run; see gateway-sync) -------------------
-for s in monitoring-sync cmdctrl-config-sync; do
+for s in monitoring-sync cmdctrl-config-sync cmdctrl-heartbeat; do
   if ! cmp -s "${SRC_DIR}/bootstrap/${s}" "/usr/local/bin/${s}"; then
     install -m 0755 "${SRC_DIR}/bootstrap/${s}" "/usr/local/bin/.${s}.new"
     mv "/usr/local/bin/.${s}.new" "/usr/local/bin/${s}"
@@ -56,7 +56,8 @@ done
 
 units_changed=0
 for f in monitoring-sync.service monitoring-sync.timer \
-  cmdctrl-config-sync.service cmdctrl-config-sync.timer; do
+  cmdctrl-config-sync.service cmdctrl-config-sync.timer \
+  cmdctrl-heartbeat.service cmdctrl-heartbeat.timer; do
   if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
     install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
     units_changed=1
@@ -66,10 +67,12 @@ done
 if [[ "${units_changed}" -eq 1 ]]; then
   systemctl daemon-reload
 fi
-if ! systemctl is-enabled --quiet cmdctrl-config-sync.timer; then
-  systemctl enable --now cmdctrl-config-sync.timer
-  log "cmdctrl-config-sync.timer enabled"
-fi
+for t in cmdctrl-config-sync.timer cmdctrl-heartbeat.timer; do
+  if ! systemctl is-enabled --quiet "${t}"; then
+    systemctl enable --now "${t}"
+    log "${t} enabled"
+  fi
+done
 
 # --- Data directories, owned by the user each image runs as ------------------
 install -d -m 0755 -o 65534 -g 65534 "${DATA_DIR}/prometheus" "${DATA_DIR}/alertmanager"
