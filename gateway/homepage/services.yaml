@@ -226,3 +226,15 @@
         siteMonitor: https://cmd-dev.labxp.io
         description: Game server — develop preview
         icon: mdi-cards-playing-outline
+
+    - Grafana:
+        href: https://grafana.labxp.io
+        # /api/health, not /. The root is a 302 to /login, and /api/health is
+        # Grafana's unauthenticated liveness route, which also reports whether
+        # its database is reachable.
+        siteMonitor: https://grafana.labxp.io/api/health
+        # No widget yet: the grafana widget needs a service-account token,
+        # which would have to arrive through homepage.env, and cloud-init
+        # writes that file only once. A possible follow-up.
+        description: Monitoring — cmd_and_ctrl dashboards, logs and alerts
+        icon: grafana.png

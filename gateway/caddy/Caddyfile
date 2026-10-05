@@ -297,3 +297,29 @@ wkjp.labxp.io {
 	import tls_krakenkey
 	reverse_proxy 192.168.201.20:80
 }
+
+# --- Monitoring -------------------------------------------------------------
+# Grafana on cmd_and_ctrl's monitoring VM (cmd_and_ctrl ADR 0123; VM in
+# terraform/deployments/cmd-and-ctrl-monitoring, stack in
+# cmd-and-ctrl-monitoring/). Dashboards, logs and alerts for both
+# cmd_and_ctrl environments. VLAN 200, so this needs the router rule
+# pfe -> 192.168.200.11:3000; the VM's own firewall admits pfe.
+#
+# The upstream address is the router's static DHCP lease for the VM's pinned
+# MAC (BC:24:11:9F:CF:67), which its Terraform also sets as the guest's
+# static address; change all three together.
+#
+# Plain reverse_proxy on purpose. Caddy passes the browser's Host through,
+# and Grafana's origin check compares Origin against that Host, so login and
+# saving dashboards work through here with no header rewriting. Grafana's
+# root_url is set to this name on the VM, so the links it builds (alerts,
+# shares) point here. Grafana Live's websocket passes through Caddy
+# transparently. All of that was verified with the VM's pinned Grafana behind
+# a TLS-terminating Caddy before wiring it.
+#
+# LAN/VPN only: this is cmd_and_ctrl's alerting path and holds 30 days of its
+# logs. Do not publish this name.
+grafana.labxp.io {
+	import tls_krakenkey
+	reverse_proxy 192.168.200.11:3000
+}
