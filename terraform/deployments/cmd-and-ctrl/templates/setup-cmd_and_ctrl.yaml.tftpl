@@ -113,6 +113,26 @@ write_files:
       }
 
   # systemd unit — Go server
+  #
+  # StartLimit* bounds the restart loop (cmd_and_ctrl#598 item 2). systemd's
+  # default limit is 5 starts in 10 s, which Restart=on-failure with
+  # RestartSec=5 can never reach, so a server that crashed on every start
+  # restarted ~540k times between 6 August and 8 September 2026 and nothing
+  # noticed. 10 starts in 600 s still lets every deploy, the weekly Scryfall
+  # refresh and a few operator restarts through, but a crash loop reaches
+  # `failed` in about a minute and stays there, which monitoring can alert on
+  # (cmd_and_ctrl ADR 0123, UnitFailed). The bot's unit, which lives in the
+  # cmd_and_ctrl repo, uses 5 in 300 s: the same rate, with less headroom,
+  # since nothing but a crash restarts it.
+  #
+  # Both keys belong in [Unit], not [Service] (systemd.unit(5)). A unit that
+  # hit the limit refuses `systemctl start/restart` until the window passes
+  # or `systemctl reset-failed cmd-and-ctrl` is run.
+  #
+  # A running host never sees an edit here (the VM ignores initialization),
+  # so the hosts built before this line carry the same two keys in a drop-in,
+  # /etc/systemd/system/cmd-and-ctrl.service.d/10-start-limit.conf, written
+  # by hand when this change was applied.
   - path: /etc/systemd/system/cmd-and-ctrl.service
     permissions: "0644"
     content: |
@@ -121,6 +141,8 @@ write_files:
       After=network-online.target var-lib-cmd_and_ctrl.mount
       Wants=network-online.target
       RequiresMountsFor=/var/lib/cmd_and_ctrl
+      StartLimitIntervalSec=600
+      StartLimitBurst=10
 
       [Service]
       Type=simple
@@ -219,7 +241,9 @@ runcmd:
 
   # --- Enable services ---
   # cmd-and-ctrl.service and the scryfall timer will fail until CD pushes the
-  # binary and script. Restart=on-failure handles the retry loop.
+  # binary and script. The server unit gives up after StartLimitBurst tries
+  # and sits in `failed`. CD's `systemctl restart` starts it once the
+  # 600 s window has passed, or at once after `systemctl reset-failed`.
   - systemctl daemon-reload
   - systemctl enable --now caddy
   - systemctl enable cmd-and-ctrl.service
