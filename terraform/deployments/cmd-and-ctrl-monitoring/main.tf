@@ -33,6 +33,7 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
       discord_webhook_url    = var.cmdctrl_monitoring_discord_webhook_url
       push_hash_prod         = var.cmdctrl_monitoring_push_hash_prod
       push_hash_dev          = var.cmdctrl_monitoring_push_hash_dev
+      heartbeat_token        = var.cmdctrl_monitoring_heartbeat_token
     })
     file_name = "setup-${var.monitoring.name_prefix}.yaml"
   }

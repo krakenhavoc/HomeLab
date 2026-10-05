@@ -34,6 +34,7 @@ packages:
   - git
   - rsync
   - jq
+  - curl
   - nftables
 
 users:
@@ -158,6 +159,15 @@ write_files:
     owner: nobody:nogroup
     permissions: "0400"
     content: "${discord_webhook_url}"
+%{ if heartbeat_token != "" ~}
+
+  # The heartbeat's GitHub token (fine-grained, Variables: Read and write on
+  # cmd_and_ctrl only). Read only by cmdctrl-heartbeat, as root.
+  - path: /etc/monitoring/heartbeat_token
+    owner: root:root
+    permissions: "0600"
+    content: "${heartbeat_token}"
+%{ endif ~}
 
 runcmd:
   # --- Data disk: format + mount at /var/lib/monitoring ---
@@ -191,7 +201,8 @@ runcmd:
   - install -m 0644 /opt/monitoring/repo/cmd-and-ctrl-monitoring/bootstrap/monitoring-sync.timer /etc/systemd/system/monitoring-sync.timer
   - systemctl daemon-reload
   - systemctl enable --now monitoring-sync.timer
-  # The first sync installs cmdctrl-config-sync and enables its timer.
+  # The first sync installs cmdctrl-config-sync and cmdctrl-heartbeat and
+  # enables their timers.
   - systemctl start monitoring-sync.service
 
 final_message: |

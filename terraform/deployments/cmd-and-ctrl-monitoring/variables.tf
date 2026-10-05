@@ -113,6 +113,24 @@ variable "cmdctrl_monitoring_discord_webhook_url" {
   }
 }
 
+variable "cmdctrl_monitoring_heartbeat_token" {
+  description = <<-EOT
+    Fine-grained GitHub PAT for the heartbeat (cmd-and-ctrl-monitoring/bootstrap/cmdctrl-heartbeat):
+    resource owner krakenhavoc, repository access krakenhavoc/cmd_and_ctrl only,
+    repository permission "Variables: Read and write", nothing else. Empty
+    writes no token file, and the VM sends no heartbeat. cmd_and_ctrl's cron
+    then reports the heartbeat lost, which is also what an expired token does.
+  EOT
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.cmdctrl_monitoring_heartbeat_token == "" || can(regex("^github_pat_[A-Za-z0-9_]+$", var.cmdctrl_monitoring_heartbeat_token))
+    error_message = "cmdctrl_monitoring_heartbeat_token must be a fine-grained PAT (github_pat_...), or empty for no heartbeat. A classic token would carry far more than Variables access."
+  }
+}
+
 variable "cmdctrl_monitoring_push_hash_prod" {
   description = "bcrypt hash of the prod app host's push password (Caddy basic auth user \"prod\"). Make it with `caddy hash-password`."
   type        = string

@@ -40,6 +40,7 @@ The cmd_and_ctrl repository builds against these. Change them only together with
    - A missing `deploy/monitoring/` counts as a success with nothing to load.
    - The sync writes `cmdctrl_monitoring_sync_last_success_timestamp_seconds`.
 4. **Labels.** App-host series arrive with `env` (`prod`/`dev`) and `host` set by their Alloy. The server's job is `cmdctrl-server` and host metrics are `node`. This VM's own series carry `env="monitoring"`.
+5. **Heartbeat.** Every 5 minutes, while Prometheus and Alertmanager are both ready, this VM writes the current Unix time (decimal seconds) to the repo-level Actions variable `CMDCTRL_MONITORING_HEARTBEAT` on `krakenhavoc/cmd_and_ctrl`. That repo's GitHub cron alerts when the value is more than 20 minutes old.
 
 ## Deploying
 
@@ -50,10 +51,11 @@ The order matters, and each step is a merge of a reviewed plan:
    - `ipv4_address`: a free address outside the VLAN's DHCP pool, in CIDR form.
    - `ipv4_gateway` and `dns_servers`.
    - `lan_cidrs`: the cmd_and_ctrl VLAN, plus the client and VPN ranges Grafana is opened from.
-3. Create four Bitwarden secrets in the prd project and map their ids with `.github/scripts/bws-map.sh` (the command is in `env/prd/secrets.env`):
+3. Create five Bitwarden secrets in the prd project and map their ids with `.github/scripts/bws-map.sh` (the command is in `env/prd/secrets.env`):
    - `CMDCTRL_MONITORING_GRAFANA_ADMIN_PASSWORD`: 16 characters or more, no single quote.
    - `CMDCTRL_MONITORING_DISCORD_WEBHOOK_URL`: the channel's webhook.
    - `CMDCTRL_MONITORING_PUSH_HASH_PROD` and `CMDCTRL_MONITORING_PUSH_HASH_DEV`: generate each from that environment's push password with `docker run --rm caddy:2.11.6-alpine caddy hash-password --plaintext '<password>'`.
+   - `CMDCTRL_MONITORING_HEARTBEAT_TOKEN`: a fine-grained personal access token, created as described under [Heartbeat](#heartbeat).
 4. On the router, allow the flows the host firewall expects:
    - the cmd_and_ctrl VMs to this VM on TCP 9091 and 3101;
    - the Grafana viewers to TCP 3000;
@@ -61,7 +63,7 @@ The order matters, and each step is a merge of a reviewed plan:
 5. Read the plan: one snippet file and one VM to add, nothing else. Then merge.
 6. In cmd_and_ctrl, set `CMDCTRL_MONITORING_URL` to `http://<address>` and the two push passwords. Its CD then starts Alloy on the app hosts.
 
-First boot formats and mounts the data disk, installs Docker, loads the firewall, clones this repository and starts `monitoring-sync`. That pulls the images and starts the stack, then enables `cmdctrl-config-sync`. Check progress on the console with `cloud-init status --long` and `journalctl -u monitoring-sync`.
+First boot formats and mounts the data disk, installs Docker, loads the firewall, clones this repository and starts `monitoring-sync`. That pulls the images and starts the stack, then enables `cmdctrl-config-sync` and `cmdctrl-heartbeat`. Check progress on the console with `cloud-init status --long` and `journalctl -u monitoring-sync`.
 
 ## Reaching Grafana
 
@@ -90,6 +92,27 @@ It goes live within 10 minutes of the change reaching cmd_and_ctrl's `main`.
 
 The VM ignores cloud-init changes, so editing the Terraform template only affects a rebuilt host.
 
+## Heartbeat
+
+Nothing outside the house can reach this VM, so it reports out instead.
+
+`cmdctrl-heartbeat.timer` fires every 5 minutes, with up to 30 s of random delay. Each run:
+1. checks Prometheus and Alertmanager `/-/ready` through `docker exec`, on each container's own loopback (no host ports);
+2. if both are ready, sends `PATCH /repos/krakenhavoc/cmd_and_ctrl/actions/variables/CMDCTRL_MONITORING_HEARTBEAT` with the current epoch seconds, and on a 404 creates the variable with `POST /repos/krakenhavoc/cmd_and_ctrl/actions/variables`;
+3. on success, writes `cmdctrl_monitoring_heartbeat_last_success_timestamp_seconds` to the textfile directory.
+
+cmd_and_ctrl's GitHub cron alerts when the variable is more than 20 minutes old. That covers this VM dying, the stack being unready, and the whole node going down.
+
+**The token** is a fine-grained personal access token. Create it under GitHub → Settings → Developer settings → Fine-grained tokens:
+- **Resource owner:** `krakenhavoc`.
+- **Repository access:** only `krakenhavoc/cmd_and_ctrl`.
+- **Repository permissions:** **Variables: Read and write**, and nothing else (GitHub adds Metadata: Read by itself).
+- **Expiry:** your choice. When the token expires, the heartbeat stops silently and the cron reports "heartbeat lost". That is the intended failure: renew the token and rotate it as below.
+
+cloud-init writes the token to `/etc/monitoring/heartbeat_token` (root, 0600). It never appears on a command line or in a log: curl reads the header from a 0600 file under `/run`, and only HTTP status codes are logged. With no token file, each run logs that and exits without a beat.
+
+Check it with `journalctl -u cmdctrl-heartbeat`, or `gh variable get CMDCTRL_MONITORING_HEARTBEAT --repo krakenhavoc/cmd_and_ctrl`.
+
 ## Rotating a secret
 
 Changing a Bitwarden value does not reach the running VM. Rotate it on the host as well.
@@ -97,6 +120,7 @@ Changing a Bitwarden value does not reach the running VM. Rotate it on the host 
 - **Grafana admin password:** run `docker exec grafana grafana cli admin reset-admin-password '<new>'`, then update `/etc/monitoring/grafana.env` so a rebuilt database gets the same password.
 - **Discord webhook:** edit `/etc/monitoring/discord_webhook_url` (one line, no trailing newline), then run `docker kill --signal HUP alertmanager`.
 - **Push credential:** put the new hash in `/etc/monitoring/caddy.env`, single-quoted, and run `docker compose -f /opt/monitoring/live/docker-compose.yaml up -d caddy`. Then update the matching password in cmd_and_ctrl.
+- **Heartbeat token:** run `sudo install -m 0600 /dev/stdin /etc/monitoring/heartbeat_token`, paste the new token and press Ctrl-D. This keeps it out of shell history, and a trailing newline is fine. Then run `sudo systemctl start cmdctrl-heartbeat` and check its log. Update the Bitwarden secret too, so a rebuild gets the new token.
 
 ## Backups
 
@@ -106,7 +130,7 @@ To rebuild on purpose, first remove `prevent_destroy` from the VM resource.
 
 ## Known gaps
 
-- Nothing watches this VM from outside. If it dies, alerts stop silently; cmd_and_ctrl's GitHub Actions uptime check still watches the sites.
+- The VM is watched from outside only through the heartbeat. When the heartbeat is lost, cmd_and_ctrl's cron can't tell a dead VM from an expired token or a broken GitHub path; the log on this VM can.
 - This VM shares the Proxmox node with what it monitors.
 - Alloy runs in a container, so the `node` network counters are the container's, not the VM's.
 
