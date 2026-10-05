@@ -49,6 +49,11 @@ variable "monitoring" {
     dns_servers = list(string)
     dns_domain  = optional(string, null)
 
+    # Pinned so the router's DHCP reservation for this host survives a
+    # rebuild. The static address above is the same fact on the guest side,
+    # and the two must match.
+    mac_address = string
+
     # Sources the host firewall admits on 3000 (Grafana), 9091 and 3101
     # (push): the app hosts' VLAN and the LAN/VPN ranges Grafana is viewed
     # from. IPv4 CIDRs.
@@ -67,7 +72,7 @@ variable "monitoring" {
       for v in concat([var.monitoring.ipv4_address, var.monitoring.ipv4_gateway], var.monitoring.dns_servers, var.monitoring.lan_cidrs) :
       startswith(v, "192.0.2.")
     ])
-    error_message = "monitoring still holds the 192.0.2.x documentation placeholders. Set ipv4_address (free, outside the VLAN's DHCP pool), ipv4_gateway, dns_servers and lan_cidrs in env/prd/terraform.tfvars."
+    error_message = "monitoring still holds a 192.0.2.x documentation placeholder. Reserve an address for monitoring.mac_address on the router (VLAN 200, outside the DHCP pool) and set it as monitoring.ipv4_address (a.b.c.d/24) in env/prd/terraform.tfvars."
   }
 
   validation {
@@ -78,6 +83,11 @@ variable "monitoring" {
   validation {
     condition     = length(var.monitoring.dns_servers) > 0
     error_message = "monitoring.dns_servers is required with a static address."
+  }
+
+  validation {
+    condition     = can(regex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$", var.monitoring.mac_address))
+    error_message = "monitoring.mac_address must be six colon-separated hex octets, e.g. \"BC:24:11:00:02:50\"; Proxmox rejects any other form at apply time."
   }
 
   validation {

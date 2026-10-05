@@ -47,10 +47,11 @@ The cmd_and_ctrl repository builds against these. Change them only together with
 The order matters, and each step is a merge of a reviewed plan:
 
 1. Merge the `tfc` change that adds the `cmd-and-ctrl-monitoring-prd` workspace (local execution).
-2. In `terraform/deployments/cmd-and-ctrl-monitoring/env/prd/terraform.tfvars`, replace the `192.0.2.x` placeholders with the real values. The plan fails while any placeholder remains.
-   - `ipv4_address`: a free address outside the VLAN's DHCP pool, in CIDR form.
-   - `ipv4_gateway` and `dns_servers`.
-   - `lan_cidrs`: the cmd_and_ctrl VLAN, plus the client and VPN ranges Grafana is opened from.
+2. Set the address in `terraform/deployments/cmd-and-ctrl-monitoring/env/prd/terraform.tfvars`. The gateway, DNS servers, search domain and `lan_cidrs` are already filled in.
+   - The VM's MAC is pinned (`mac_address`). Reserve an address for it on the router, on VLAN 200 and outside the DHCP pool.
+   - Put that address in `ipv4_address` as `a.b.c.d/24`. The plan fails while the `192.0.2.x` placeholder remains.
+   - The static address and the reservation must agree.
+   - Adjust `lan_cidrs` if Grafana is viewed from somewhere else, such as a VPN range.
 3. Create five Bitwarden secrets in the prd project and map their ids with `.github/scripts/bws-map.sh` (the command is in `env/prd/secrets.env`):
    - `CMDCTRL_MONITORING_GRAFANA_ADMIN_PASSWORD`: 16 characters or more, no single quote.
    - `CMDCTRL_MONITORING_DISCORD_WEBHOOK_URL`: the channel's webhook.

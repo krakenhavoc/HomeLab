@@ -13,15 +13,25 @@ monitoring = {
   # Same VLAN as the cmd_and_ctrl VMs, so their pushes stay on-segment.
   vlan_id = 200
 
-  # --- OWNER: replace every 192.0.2.x below before the first plan ---------
-  # RFC 5737 documentation placeholders; variables.tf fails the plan while
-  # any remains. Check the live DHCP scope first (docs/network-setup.md):
-  # the address must be outside the pool and unused.
+  # Pinned (Proxmox OUI); the router's DHCP reservation is keyed on it.
+  mac_address = "BC:24:11:9F:CF:67"
+
+  # --- OWNER: the address is the one value left -------------------------------
+  # Reserve an address for MAC BC:24:11:9F:CF:67 on VLAN 200, outside the
+  # DHCP pool, and put it here as a.b.c.d/24. The 192.0.2.x placeholder is
+  # RFC 5737 documentation space; variables.tf fails the plan until it is
+  # replaced.
   ipv4_address = "192.0.2.20/24"
-  ipv4_gateway = "192.0.2.1"
-  dns_servers  = ["192.0.2.53"]
-  dns_domain   = "labxp.io"
-  # Admitted on 3000 (Grafana), 9091 and 3101 (push): the cmd_and_ctrl VLAN
-  # and wherever Grafana is viewed from (client VLAN, VPN).
-  lan_cidrs = ["192.0.2.0/24"]
+
+  # Read from the live cmd_and_ctrl dev VM on VLAN 200.
+  ipv4_gateway = "192.168.200.1"
+  dns_servers  = ["192.168.10.11", "192.168.10.12"]
+  dns_domain   = "lan.labxp.io"
+
+  # Admitted on 3000 (Grafana), 9091 and 3101 (push). 192.168.200.0/24 is
+  # VLAN 200, where the cmd_and_ctrl VMs push from; 192.168.1.0/24 is the
+  # owner's wired LAN, where Grafana is viewed from. Adjust as needed (a VPN
+  # range, say). The host firewall only reads this at first boot; afterwards,
+  # edit /etc/nftables.conf on the VM.
+  lan_cidrs = ["192.168.200.0/24", "192.168.1.0/24"]
 }

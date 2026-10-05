@@ -114,8 +114,9 @@ resource "proxmox_virtual_environment_vm" "this" {
   }
 
   network_device {
-    bridge  = var.monitoring.network_bridge
-    vlan_id = var.monitoring.vlan_id
+    bridge      = var.monitoring.network_bridge
+    vlan_id     = var.monitoring.vlan_id
+    mac_address = var.monitoring.mac_address
   }
 
   serial_device {}
