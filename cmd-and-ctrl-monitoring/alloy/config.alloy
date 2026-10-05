@@ -1,0 +1,60 @@
+// Grafana Alloy on the cmd_and_ctrl monitoring VM itself (cmd_and_ctrl
+// ADR 0123 §6): this host's metrics, its disk above all, plus the textfile
+// that cmdctrl-config-sync writes
+// (cmdctrl_monitoring_sync_last_success_timestamp_seconds).
+//
+// It pushes straight to Prometheus on the compose network, without Caddy and
+// without credentials. Labels follow the app hosts' convention: job "node",
+// with env and host as external labels.
+//
+// The container sees the host through read-only mounts of /proc, /sys and /.
+// It runs in its own network namespace, so the netdev counters are the
+// container's, not the VM's.
+
+prometheus.exporter.unix "host" {
+	procfs_path = "/host/proc"
+	sysfs_path  = "/host/sys"
+	rootfs_path = "/host/root"
+
+	textfile {
+		directory = "/textfile"
+	}
+
+	filesystem {
+		mount_points_exclude = "^/(dev|proc|run|sys|var/lib/docker/.+)($|/)"
+	}
+}
+
+// The exporter's targets carry job="integrations/unix", which would win over
+// job_name, and an instance named after the container. Set both.
+discovery.relabel "host" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "node"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("MONITORING_HOST")
+	}
+}
+
+prometheus.scrape "node" {
+	targets         = discovery.relabel.host.output
+	job_name        = "node"
+	scrape_interval = "30s"
+	forward_to      = [prometheus.remote_write.local.receiver]
+}
+
+prometheus.remote_write "local" {
+	external_labels = {
+		env  = "monitoring",
+		host = sys.env("MONITORING_HOST"),
+	}
+
+	endpoint {
+		url = "http://prometheus:9090/api/v1/write"
+	}
+}

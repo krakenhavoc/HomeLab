@@ -1,0 +1,213 @@
+#cloud-config
+# First-boot bootstrap for the cmd_and_ctrl monitoring VM (cmd_and_ctrl
+# ADR 0123 §6). See cmd-and-ctrl-monitoring/README.md.
+#
+# Like pfe and lastdash, this file holds no stack config: it mounts the data
+# disk, installs Docker, writes the firewall and the secrets, clones the
+# HomeLab repo and hands over to monitoring-sync. The compose file and every
+# service's config live in cmd-and-ctrl-monitoring/ in the repository, so an
+# image bump or a config change never needs this template.
+#
+# The VM ignores `initialization` changes (a year of metrics lives on its
+# data disk), so an edit here only reaches a rebuilt host. That includes the
+# secrets: rotate them on the host (README).
+#
+# No shell brace-expansion anywhere below: this is a Terraform template, so a
+# dollar-brace sequence is interpolated at plan time. Shell variables are
+# written "$DATA_DEV", without braces.
+preserve_hostname: false
+hostname: ${hostname}
+ssh_pwauth: false
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+  - git
+  - rsync
+  - jq
+  - curl
+  - nftables
+
+users:
+  # sudo only; docker membership is granted in runcmd once the group exists
+  # (see the note in frontends/templates/setup-pfe.yaml.tftpl).
+  - name: ${admin_username}
+    gecos: "cmd_and_ctrl monitoring Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+
+write_files:
+  # Keep this instance on a cold start. Proxmox rebuilds the cloud-init drive
+  # on every VM start, and its NoCloud instance-id is a hash of this file, so
+  # once the snippet has changed (a rotated secret, an edit here) the next
+  # cold start would otherwise run cloud-init again as a new instance: new
+  # SSH host keys and every file below rewritten. That is what happened to
+  # the cmd_and_ctrl VMs on 2026-09-27/28. With this set, cloud-init trusts
+  # its cached instance; a rebuilt VM still runs it in full.
+  - path: /etc/cloud/cloud.cfg.d/99-keep-instance.cfg
+    permissions: "0644"
+    content: |
+      manual_cache_clean: true
+
+  # Bounded container logs on the 20 GB OS disk. Written before Docker is
+  # installed, so the daemon starts with it.
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "3" }
+      }
+
+  # Containers bind-mount the data disk. Without this, a slow or missing disk
+  # would let Docker start them on the mountpoint directory on the OS disk.
+  - path: /etc/systemd/system/docker.service.d/10-monitoring-data.conf
+    permissions: "0644"
+    content: |
+      [Unit]
+      RequiresMountsFor=/var/lib/monitoring
+
+  # Host firewall (ADR 0123 §6): SSH as on the other VMs; Grafana (3000) and
+  # the two push endpoints (9091, 3101) from the LAN only; nothing else in.
+  #
+  # Two things make this differ from a plain input filter:
+  #   - Docker publishes ports by DNAT in prerouting, so traffic to 3000,
+  #     3101 and 9091 is forwarded to a container and never reaches the input
+  #     hook. Those ports are filtered in a prerouting chain at priority -150,
+  #     before Docker's NAT at -100.
+  #   - No `flush ruleset`. Docker keeps its own tables in the same ruleset,
+  #     and flushing them on an nftables restart would cut every container
+  #     off. Only this table is replaced.
+  - path: /etc/nftables.conf
+    permissions: "0644"
+    content: |
+      #!/usr/sbin/nft -f
+      # Written by cloud-init (HomeLab terraform/deployments/cmd-and-ctrl-monitoring).
+
+      table inet monitoring_guard
+      delete table inet monitoring_guard
+
+      table inet monitoring_guard {
+        set lan_v4 {
+          type ipv4_addr
+          flags interval
+          elements = { ${join(", ", lan_cidrs)} }
+        }
+
+        chain prerouting {
+          type filter hook prerouting priority -150; policy accept;
+          iifname "lo" accept
+          iifname "docker0" accept
+          iifname "br-*" accept
+          iifname "veth*" accept
+          tcp dport { 3000, 3101, 9091 } ip saddr @lan_v4 accept
+          tcp dport { 3000, 3101, 9091 } drop
+        }
+
+        chain input {
+          type filter hook input priority filter; policy drop;
+          ct state established,related accept
+          ct state invalid drop
+          iifname "lo" accept
+          meta l4proto { icmp, ipv6-icmp } accept
+          tcp dport 22 accept
+          tcp dport { 3000, 3101, 9091 } ip saddr @lan_v4 accept
+        }
+      }
+
+  # --- Secrets: written once, never in the repository ----------------------
+  # Grafana's admin password. Read by Grafana only when it creates its
+  # database (first start). Single-quoted, so compose takes it literally.
+  - path: /etc/monitoring/grafana.env
+    owner: root:root
+    permissions: "0600"
+    content: |
+      GF_SECURITY_ADMIN_PASSWORD='${grafana_admin_password}'
+
+  # bcrypt hashes of the two push credentials, one per app host. Single
+  # quotes stop compose from expanding the dollar signs.
+  - path: /etc/monitoring/caddy.env
+    owner: root:root
+    permissions: "0600"
+    content: |
+      PUSH_HASH_PROD='${push_hash_prod}'
+      PUSH_HASH_DEV='${push_hash_dev}'
+
+  # Not a secret: this VM's name, for Alloy's host label.
+  - path: /etc/monitoring/host.env
+    owner: root:root
+    permissions: "0644"
+    content: |
+      MONITORING_HOST=${hostname}
+
+  # Alertmanager's Discord webhook, read through webhook_url_file. Owned by
+  # nobody, the user Alertmanager runs as; compose mounts this one file. One
+  # line, no trailing newline (variables.tf checks the URL's characters).
+  - path: /etc/monitoring/discord_webhook_url
+    owner: nobody:nogroup
+    permissions: "0400"
+    content: "${discord_webhook_url}"
+%{ if heartbeat_token != "" ~}
+
+  # The heartbeat's GitHub token (fine-grained, Variables: Read and write on
+  # cmd_and_ctrl only). Read only by cmdctrl-heartbeat, as root.
+  - path: /etc/monitoring/heartbeat_token
+    owner: root:root
+    permissions: "0600"
+    content: "${heartbeat_token}"
+%{ endif ~}
+
+runcmd:
+  # --- Data disk: format + mount at /var/lib/monitoring ---
+  # OS disk is virtio0 (/dev/vda), data disk is virtio1 (/dev/vdb). mkfs only
+  # when blkid finds nothing, so a re-run never formats the stores.
+  - |
+    set -eu
+    DATA_DEV=/dev/vdb
+    if ! blkid "$DATA_DEV" >/dev/null 2>&1; then
+      mkfs.ext4 -L monitoring-data "$DATA_DEV"
+    fi
+    mkdir -p /var/lib/monitoring
+    UUID=$(blkid -s UUID -o value "$DATA_DEV")
+    grep -q "$UUID" /etc/fstab || echo "UUID=$UUID /var/lib/monitoring ext4 defaults,noatime 0 2" >> /etc/fstab
+    mount -a
+    mountpoint -q /var/lib/monitoring
+
+  - systemctl daemon-reload
+  - systemctl enable --now qemu-guest-agent
+  - systemctl enable nftables
+  - systemctl restart nftables
+  - systemctl enable docker
+  - systemctl restart docker
+  - usermod -aG docker ${admin_username}
+
+  # Shallow clone: a config cache, never a working copy.
+  - mkdir -p /opt/monitoring
+  - git clone --depth 1 --branch main https://github.com/krakenhavoc/HomeLab.git /opt/monitoring/repo
+  - install -m 0755 /opt/monitoring/repo/cmd-and-ctrl-monitoring/bootstrap/monitoring-sync /usr/local/bin/monitoring-sync
+  - install -m 0644 /opt/monitoring/repo/cmd-and-ctrl-monitoring/bootstrap/monitoring-sync.service /etc/systemd/system/monitoring-sync.service
+  - install -m 0644 /opt/monitoring/repo/cmd-and-ctrl-monitoring/bootstrap/monitoring-sync.timer /etc/systemd/system/monitoring-sync.timer
+  - systemctl daemon-reload
+  - systemctl enable --now monitoring-sync.timer
+  # The first sync installs cmdctrl-config-sync and cmdctrl-heartbeat and
+  # enables their timers.
+  - systemctl start monitoring-sync.service
+
+final_message: |
+  ${hostname} is up at ${ipv4_address}.
+  Grafana: http://${ipv4_host}:3000 (LAN only, user admin).
+  Push: http://${ipv4_host}:9091/api/v1/write and http://${ipv4_host}:3101/loki/api/v1/push (basic auth prod/dev).
+  The stack is delivered by monitoring-sync from the HomeLab repo; rules and
+  dashboards by cmdctrl-config-sync from krakenhavoc/cmd_and_ctrl main.

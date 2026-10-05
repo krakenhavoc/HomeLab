@@ -132,7 +132,7 @@ If a host may be compromised, isolate it at the network layer, preserve the logs
 ## Known gaps
 
 - Firewall and switch policy are not managed in this repository.
-- Automated monitoring and alerting are not yet implemented here.
+- Automated monitoring and alerting exist only for `cmd_and_ctrl` ([`cmd-and-ctrl-monitoring/`](../cmd-and-ctrl-monitoring/README.md)); the rest of the lab has none.
 - Backup coverage varies by workload and restore testing is still a manual discipline.
 - Configuration convergence after first boot is limited; Ansible is planned but not active.
 

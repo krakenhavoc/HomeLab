@@ -1,0 +1,77 @@
+# Prometheus on the cmd_and_ctrl monitoring VM (cmd_and_ctrl ADR 0123 §6).
+#
+# Most series do not come from the scrapes below. They are pushed: each app
+# host's Alloy remote-writes to /api/v1/write through Caddy (:9091, basic auth
+# per host), with external labels env (prod/dev) and host already set. The
+# server's own metrics arrive as job "cmdctrl-server", host metrics as "node".
+#
+# This file is reconciled from the HomeLab repo by monitoring-sync. The alert
+# rules are not here: they live in krakenhavoc/cmd_and_ctrl deploy/monitoring/
+# and reach /etc/prometheus/cmdctrl/current/rules via cmdctrl-config-sync.
+
+global:
+  # ADR 0123, call 6: 30 s keeps a year of both environments inside the
+  # 60 GB retention.size backstop on the 80 GB data disk.
+  scrape_interval: 30s
+  scrape_timeout: 15s
+  evaluation_interval: 30s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+# A relative symlink swapped atomically by cmdctrl-config-sync. Before the
+# first sync it does not exist, and the glob matches nothing.
+rule_files:
+  - /etc/prometheus/cmdctrl/current/rules/*.yml
+
+scrape_configs:
+  # The uptime probe from inside the house (ADR 0123 §7, SiteDown). It goes
+  # out through Cloudflare, so it tests the tunnel too.
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["https://cmd.labxp.io/healthz"]
+        labels:
+          env: prod
+      - targets: ["https://cmd-dev.labxp.io/healthz"]
+        labels:
+          env: dev
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # The monitor watching itself. env="monitoring" matches what this VM's
+  # Alloy puts on its host metrics.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          env: monitoring
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+        labels:
+          env: monitoring
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+        labels:
+          env: monitoring
+  - job_name: grafana
+    static_configs:
+      - targets: ["grafana:3000"]
+        labels:
+          env: monitoring
+  - job_name: blackbox-exporter
+    static_configs:
+      - targets: ["blackbox:9115"]
+        labels:
+          env: monitoring

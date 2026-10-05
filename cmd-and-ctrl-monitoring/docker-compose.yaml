@@ -1,0 +1,163 @@
+# The cmd_and_ctrl monitoring stack (cmd_and_ctrl ADR 0123 §6), on the VM
+# from terraform/deployments/cmd-and-ctrl-monitoring. Reconciled by
+# monitoring-sync from this directory into /opt/monitoring/live.
+#
+# Every image is pinned by tag AND multi-arch index digest. To upgrade one,
+# change both in the same commit:
+#   docker buildx imagetools inspect <image>:<new tag>   # the "Digest:" line
+#
+# Data lives on the data disk at /var/lib/monitoring (bind mounts, owned by
+# each image's user; monitoring-sync creates them). Secrets live in
+# /etc/monitoring, written once by cloud-init.
+#
+# Published on the host, and admitted by the host firewall from the LAN only:
+#   3000  Grafana
+#   9091  Caddy -> Prometheus remote write (basic auth)
+#   3101  Caddy -> Loki push (basic auth)
+# Prometheus (9090), Loki (3100), Alertmanager (9093), blackbox (9115) and
+# Alloy are reachable only on the compose network.
+name: monitoring
+
+networks:
+  monitoring: {}
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    container_name: prometheus
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/prometheus/conf/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # ADR 0123 decision 7, with the 60 GB backstop from §6.
+      - --storage.tsdb.retention.time=1y
+      - --storage.tsdb.retention.size=60GB
+      # The app hosts' Alloy pushes here, through Caddy.
+      - --web.enable-remote-write-receiver
+      # POST /-/reload, used by the two sync scripts. 9090 is not published,
+      # so only something on the compose network or docker exec can call it.
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus/conf:ro
+      - /var/lib/monitoring/cmdctrl-config:/etc/prometheus/cmdctrl:ro
+      - /var/lib/monitoring/prometheus:/prometheus
+    networks: [monitoring]
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+    container_name: alertmanager
+    restart: unless-stopped
+    user: "65534:65534"
+    command:
+      - --config.file=/etc/alertmanager/conf/alertmanager.yml
+      - --storage.path=/alertmanager
+      # One instance: no gossip cluster.
+      - --cluster.listen-address=
+    volumes:
+      - ./alertmanager:/etc/alertmanager/conf:ro
+      - /etc/monitoring/discord_webhook_url:/etc/alertmanager/secrets/discord_webhook_url:ro
+      - /var/lib/monitoring/alertmanager:/alertmanager
+    networks: [monitoring]
+
+  loki:
+    image: grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
+    container_name: loki
+    restart: unless-stopped
+    user: "10001:10001"
+    command:
+      - -config.file=/etc/loki/conf/loki.yaml
+    volumes:
+      - ./loki:/etc/loki/conf:ro
+      - /var/lib/monitoring/loki:/loki
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    container_name: grafana
+    restart: unless-stopped
+    user: "472:0"
+    # GF_SECURITY_ADMIN_PASSWORD. Grafana reads it only when it creates its
+    # database, on the first start; see the README to rotate it.
+    env_file: /etc/monitoring/grafana.env
+    environment:
+      GF_SERVER_HTTP_PORT: "3000"
+      # Reached at https://grafana.labxp.io through the lab gateway (pfe,
+      # gateway/caddy/Caddyfile). Grafana builds absolute links from root_url:
+      # alert and share links, and the links in Discord notifications.
+      # Verified with this image behind a TLS-terminating Caddy that passes
+      # Host through:
+      #   - login and a CSRF-checked POST work through the proxy;
+      #   - a foreign Origin is refused;
+      #   - Grafana Live's websocket upgrades.
+      # The origin check compares Origin with the request's Host, not with
+      # root_url, and redirects stay relative to the request. So direct
+      # http://192.168.200.11:3000 from lan_cidrs still logs in and works,
+      # as recovery access when the gateway is down; only absolute links
+      # will name the gateway. cookie_secure stays off for that reason.
+      GF_SERVER_ROOT_URL: "https://grafana.labxp.io/"
+      GF_SERVER_DOMAIN: "grafana.labxp.io"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - /var/lib/monitoring/cmdctrl-config:/etc/grafana/cmdctrl:ro
+      - /var/lib/monitoring/grafana:/var/lib/grafana
+    tmpfs:
+      # The Scratch folder's provider path; see providers.yaml.
+      - /etc/grafana/scratch
+    ports:
+      - "3000:3000"
+    networks: [monitoring]
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
+    container_name: blackbox
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    networks: [monitoring]
+
+  caddy:
+    image: caddy:2.11.6-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9
+    container_name: caddy
+    restart: unless-stopped
+    # PUSH_HASH_PROD and PUSH_HASH_DEV, the bcrypt hashes of the two push
+    # credentials.
+    env_file: /etc/monitoring/caddy.env
+    volumes:
+      - ./caddy:/etc/caddy:ro
+    ports:
+      - "9091:9091"
+      - "3101:3101"
+    networks: [monitoring]
+
+  alloy:
+    image: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
+    container_name: alloy
+    restart: unless-stopped
+    # MONITORING_HOST, this VM's name, for the host label.
+    env_file: /etc/monitoring/host.env
+    command:
+      - run
+      # Alloy's UI stays inside the container (ADR 0123 §10).
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - --disable-reporting
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy:/etc/alloy:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro,rslave
+      - /run/udev:/run/udev:ro
+      - /var/lib/monitoring/textfile:/textfile:ro
+      - /var/lib/monitoring/alloy:/var/lib/alloy/data
+    networks: [monitoring]

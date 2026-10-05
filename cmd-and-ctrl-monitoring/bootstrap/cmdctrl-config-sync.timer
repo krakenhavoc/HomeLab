@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll krakenhavoc/cmd_and_ctrl main for monitoring rules and dashboards
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+
+[Timer]
+# cmd_and_ctrl ADR 0123 §6: every 10 minutes. The first run waits for the
+# stack, which monitoring-sync starts at OnBootSec=2min.
+OnBootSec=4min
+OnUnitActiveSec=10min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

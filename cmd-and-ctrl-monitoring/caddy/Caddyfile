@@ -1,0 +1,55 @@
+# Push endpoints for the cmd_and_ctrl app hosts (cmd_and_ctrl ADR 0123 §6).
+#
+# The contract the cmd_and_ctrl repo builds against:
+#   http://<monitoring address>:9091/api/v1/write      -> Prometheus remote write
+#   http://<monitoring address>:3101/loki/api/v1/push  -> Loki push
+# with HTTP basic auth, one user per app host: "prod" and "dev". Nothing else
+# is proxied; every other method or path is a 404 before any credential is
+# checked. Prometheus and Loki are not published on the host.
+#
+# The bcrypt hashes come from /etc/monitoring/caddy.env, which cloud-init
+# writes from sensitive Terraform variables. Generate one with
+#   docker run --rm caddy:<pinned tag> caddy hash-password --plaintext '<password>'
+# The plaintext is the app host's CMDCTRL_MONITORING_PUSH_PASSWORD in the
+# cmd_and_ctrl repo's prod or dev environment.
+#
+# Plain HTTP on the LAN: no TLS, no admin API. The host firewall admits only
+# the LAN on these ports.
+{
+	admin off
+	auto_https off
+}
+
+:9091 {
+	@write {
+		method POST
+		path /api/v1/write
+	}
+	handle @write {
+		basic_auth {
+			prod {$PUSH_HASH_PROD}
+			dev {$PUSH_HASH_DEV}
+		}
+		reverse_proxy prometheus:9090
+	}
+	handle {
+		respond 404
+	}
+}
+
+:3101 {
+	@push {
+		method POST
+		path /loki/api/v1/push
+	}
+	handle @push {
+		basic_auth {
+			prod {$PUSH_HASH_PROD}
+			dev {$PUSH_HASH_DEV}
+		}
+		reverse_proxy loki:3100
+	}
+	handle {
+		respond 404
+	}
+}

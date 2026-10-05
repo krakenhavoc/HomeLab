@@ -1,0 +1,52 @@
+# Loki on the cmd_and_ctrl monitoring VM (cmd_and_ctrl ADR 0123 §5).
+#
+# Single binary, filesystem storage on the data disk (/loki is
+# /var/lib/monitoring/loki). App hosts push through Caddy (:3101, basic auth
+# per host). Labels are env, host, unit and level only; the app's Alloy
+# config owns that rule.
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: warn
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+schema_config:
+  configs:
+    - from: "2026-10-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 30 days (ADR 0123 decision 7), enforced by the compactor below. It is
+  # also the privacy bound for the UUIDs and remote addresses in the lines.
+  retention_period: 720h
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  delete_request_store: filesystem
+
+analytics:
+  reporting_enabled: false
