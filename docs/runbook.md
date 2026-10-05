@@ -32,6 +32,7 @@ pre-commit run --all-files
 | --- | --- | --- | --- |
 | Lab | `terraform/deployments/lab` | `env/lab/terraform.tfvars` | `lab` |
 | Cmd and Ctrl | `terraform/deployments/cmd-and-ctrl` | `env/{dev,prd}/terraform.tfvars` | `cmd-and-ctrl-{dev,prd}` |
+| Cmd and Ctrl monitoring | `terraform/deployments/cmd-and-ctrl-monitoring` | `env/prd/terraform.tfvars` | `cmd-and-ctrl-monitoring-prd` |
 | Frontends | `terraform/deployments/frontends` | `env/prd/terraform.tfvars` | `frontends-prd` |
 | LastDash | `terraform/deployments/lastdash` | `env/prd/terraform.tfvars` | `lastdash-prd` |
 | wkjp | `terraform/deployments/wkjp` | `env/prd/terraform.tfvars` | `wkjp-prd` |
@@ -79,7 +80,7 @@ Do not stop at the summary line. For every changed resource, answer:
 4. Is persistent data on a disk, mount, or external backup that survives the action?
 5. Can the service be verified and rolled back after the apply?
 
-An unexpected replacement of `openclaw-2`, either `cmd_and_ctrl` environment, the gateway, LastDash, or the Plex prd host is a stop condition. These guests contain manual identity or persistent state that deserves an explicit recovery decision before replacement.
+An unexpected replacement of `openclaw-2`, either `cmd_and_ctrl` environment, the `cmd_and_ctrl` monitoring VM, the gateway, LastDash, or the Plex prd host is a stop condition. These guests contain manual identity or persistent state that deserves an explicit recovery decision before replacement.
 
 Useful inspection commands:
 

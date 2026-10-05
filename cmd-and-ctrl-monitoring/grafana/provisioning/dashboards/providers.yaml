@@ -1,0 +1,38 @@
+# Grafana dashboard providers (cmd_and_ctrl ADR 0123 §9).
+#
+# Order matters. At startup Grafana stops walking providers at the first one
+# whose path is missing, and cmd_and_ctrl's path is missing until the first
+# config sync. Scratch goes first so it always exists; cmd_and_ctrl's
+# provider keeps polling and picks its path up when it appears.
+apiVersion: 1
+
+providers:
+  # An empty, editable folder for drafts. Nothing is provisioned into it; the
+  # provider exists so the folder does (/etc/grafana/scratch is an empty
+  # tmpfs). Drafts live only in Grafana's database on this VM, which is not
+  # backed up.
+  - name: scratch
+    folder: Scratch
+    folderUid: scratch
+    type: file
+    disableDeletion: true
+    allowUiUpdates: true
+    updateIntervalSeconds: 300
+    options:
+      path: /etc/grafana/scratch
+
+  # deploy/monitoring/dashboards/*.json from krakenhavoc/cmd_and_ctrl main,
+  # placed by cmdctrl-config-sync behind a relative symlink it swaps
+  # atomically. Grafana resolves the symlink on every walk. Read-only in the
+  # UI: change a dashboard by editing a copy in Scratch, exporting the JSON
+  # and opening a PR in cmd_and_ctrl. A file removed there is removed here.
+  - name: cmd_and_ctrl
+    folder: cmd_and_ctrl
+    folderUid: cmd-and-ctrl
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/cmdctrl/current/dashboards
+      foldersFromFilesStructure: false

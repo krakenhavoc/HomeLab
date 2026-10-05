@@ -1,0 +1,10 @@
+[Unit]
+Description=Send the cmd_and_ctrl monitoring heartbeat to GitHub
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cmdctrl-heartbeat

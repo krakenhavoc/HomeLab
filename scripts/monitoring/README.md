@@ -2,6 +2,8 @@
 
 Monitoring automation is planned but not implemented in this directory.
 
+The one monitoring stack that exists is application-specific: the `cmd_and_ctrl` monitoring VM, defined in `terraform/deployments/cmd-and-ctrl-monitoring` with its runtime configuration in [`cmd-and-ctrl-monitoring/`](../../cmd-and-ctrl-monitoring/README.md). This directory remains the place for lab-wide checks.
+
 The first useful checks should cover the failure modes that are otherwise easy to miss:
 
 - Proxmox host and storage capacity

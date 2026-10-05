@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+#
+# Fetch the alert rules and dashboards from krakenhavoc/cmd_and_ctrl
+# (cmd_and_ctrl ADR 0123 §6) and load them, or keep the last good set.
+#
+# The contract with the cmd_and_ctrl repo:
+#   - source: deploy/monitoring/ on branch main. The repo is public, so no
+#     credential is involved, and only promoted, reviewed changes arrive.
+#   - deploy/monitoring/rules/*.yml are Prometheus rule files. rules/tests/
+#     is for that repo's CI and is ignored here.
+#   - deploy/monitoring/dashboards/*.json are Grafana dashboards, provisioned
+#     read-only into the "cmd_and_ctrl" folder.
+#   - no deploy/monitoring/ on main is a success with nothing to load.
+#
+# Each run:
+#   1. updates a sparse, blob-less shallow clone (only deploy/monitoring/ is
+#      ever checked out, so a large repo costs a few trees per run);
+#   2. stages the files and validates them: `promtool check rules` with the
+#      running Prometheus's own image, and a JSON parse of every dashboard;
+#   3. on success, swaps the relative symlink current -> releases/<hash>
+#      atomically and reloads Prometheus (POST /-/reload). Grafana's file
+#      provider sees the new dashboards within 30 s. A failed reload puts the
+#      old set back;
+#   4. writes cmdctrl_monitoring_sync_last_success_timestamp_seconds (on
+#      success) to the textfile directory Alloy reads, for the
+#      MonitoringConfigSyncFailing alert. On failure the old set stays live
+#      and the timestamp stops moving.
+#
+# Run by cmdctrl-config-sync.timer every 10 minutes. Safe to run by hand.
+
+set -euo pipefail
+
+REPO_URL=https://github.com/krakenhavoc/cmd_and_ctrl.git
+BRANCH=main
+CACHE_DIR=/var/lib/monitoring/cmdctrl-repo
+CONFIG_DIR=/var/lib/monitoring/cmdctrl-config
+RELEASES_DIR="${CONFIG_DIR}/releases"
+TEXTFILE_DIR=/var/lib/monitoring/textfile
+STATE_FILE="${CONFIG_DIR}/.last_success"
+KEEP_PREVIOUS=2
+
+log() { echo "[cmdctrl-config-sync] $*"; }
+
+ok=0
+write_metrics() {
+  local now last tmp
+  now=$(date +%s)
+  if [[ "${ok}" -eq 1 ]]; then
+    echo "${now}" > "${STATE_FILE}.new"
+    mv -f "${STATE_FILE}.new" "${STATE_FILE}"
+  fi
+  last=$(cat "${STATE_FILE}" 2> /dev/null || true)
+  mkdir -p "${TEXTFILE_DIR}"
+  tmp=$(mktemp "${TEXTFILE_DIR}/.cmdctrl_config_sync.XXXXXX")
+  {
+    echo "# HELP cmdctrl_monitoring_sync_last_run_timestamp_seconds Unix time of the last cmd_and_ctrl config sync run."
+    echo "# TYPE cmdctrl_monitoring_sync_last_run_timestamp_seconds gauge"
+    echo "cmdctrl_monitoring_sync_last_run_timestamp_seconds ${now}"
+    echo "# HELP cmdctrl_monitoring_sync_last_run_success 1 if the last cmd_and_ctrl config sync run succeeded, else 0."
+    echo "# TYPE cmdctrl_monitoring_sync_last_run_success gauge"
+    echo "cmdctrl_monitoring_sync_last_run_success ${ok}"
+    if [[ -n "${last}" ]]; then
+      echo "# HELP cmdctrl_monitoring_sync_last_success_timestamp_seconds Unix time of the last successful cmd_and_ctrl config sync."
+      echo "# TYPE cmdctrl_monitoring_sync_last_success_timestamp_seconds gauge"
+      echo "cmdctrl_monitoring_sync_last_success_timestamp_seconds ${last}"
+    fi
+  } > "${tmp}"
+  chmod 0644 "${tmp}"
+  # The textfile collector reads *.prom only, so the temp name is invisible
+  # to it and the rename is atomic.
+  mv -f "${tmp}" "${TEXTFILE_DIR}/cmdctrl_config_sync.prom"
+}
+
+stage=""
+cleanup() {
+  [[ -n "${stage}" && -d "${stage}" ]] && rm -rf "${stage}"
+  write_metrics
+}
+trap cleanup EXIT
+
+reload_prometheus() {
+  docker exec prometheus wget -q -O /dev/null --post-data= \
+    http://127.0.0.1:9090/-/reload
+}
+
+# --- Fetch -------------------------------------------------------------------
+if [[ ! -d "${CACHE_DIR}/.git" ]]; then
+  rm -rf "${CACHE_DIR}"
+  git clone --quiet --depth 1 --filter=blob:none --sparse --branch "${BRANCH}" \
+    "${REPO_URL}" "${CACHE_DIR}"
+  git -C "${CACHE_DIR}" sparse-checkout set deploy/monitoring
+else
+  git -C "${CACHE_DIR}" fetch --quiet --depth 1 --filter=blob:none origin "${BRANCH}"
+  git -C "${CACHE_DIR}" reset --quiet --hard FETCH_HEAD
+fi
+commit=$(git -C "${CACHE_DIR}" rev-parse --short HEAD)
+src="${CACHE_DIR}/deploy/monitoring"
+
+# --- Stage -------------------------------------------------------------------
+mkdir -p "${RELEASES_DIR}"
+stage=$(mktemp -d "${RELEASES_DIR}/.stage.XXXXXX")
+# Prometheus (nobody) and Grafana (472) read through this directory.
+chmod 0755 "${stage}"
+mkdir -m 0755 "${stage}/rules" "${stage}/dashboards"
+
+shopt -s nullglob
+rules=()
+dashboards=()
+if [[ -d "${src}" ]]; then
+  rules=("${src}"/rules/*.yml)
+  dashboards=("${src}"/dashboards/*.json)
+  [[ ${#rules[@]} -gt 0 ]] && install -m 0644 "${rules[@]}" "${stage}/rules/"
+  [[ ${#dashboards[@]} -gt 0 ]] && install -m 0644 "${dashboards[@]}" "${stage}/dashboards/"
+else
+  log "deploy/monitoring/ is not on ${BRANCH} at ${commit}; nothing to load"
+fi
+
+# --- Validate ----------------------------------------------------------------
+if [[ ${#rules[@]} -gt 0 ]]; then
+  # The image the running Prometheus uses, so the check matches the loader.
+  prom_image=$(docker inspect --format '{{.Config.Image}}' prometheus)
+  args=()
+  for f in "${stage}"/rules/*.yml; do
+    args+=("/rules/$(basename "${f}")")
+  done
+  if ! out=$(docker run --rm --network none --entrypoint promtool \
+    -v "${stage}/rules:/rules:ro" "${prom_image}" check rules "${args[@]}" 2>&1); then
+    log "ERROR: promtool check rules failed at ${commit}; keeping the current set"
+    printf '%s\n' "${out}"
+    exit 1
+  fi
+fi
+for f in "${stage}"/dashboards/*.json; do
+  if ! jq empty "${f}" 2> /dev/null; then
+    log "ERROR: $(basename "${f}") is not valid JSON at ${commit}; keeping the current set"
+    exit 1
+  fi
+done
+
+# --- Publish -----------------------------------------------------------------
+# Content-addressed, so an unchanged main is a no-op with no reload.
+id=$(cd "${stage}" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum | cut -c1-16)
+previous=$(readlink "${CONFIG_DIR}/current" 2> /dev/null || true)
+if [[ "${previous}" == "releases/${id}" && -d "${RELEASES_DIR}/${id}" ]]; then
+  ok=1
+  log "unchanged at ${commit} (${#rules[@]} rule files, ${#dashboards[@]} dashboards)"
+  exit 0
+fi
+
+rm -rf "${RELEASES_DIR:?}/${id}"
+mv "${stage}" "${RELEASES_DIR}/${id}"
+stage=""
+ln -sfn "releases/${id}" "${CONFIG_DIR}/current.new"
+mv -Tf "${CONFIG_DIR}/current.new" "${CONFIG_DIR}/current"
+
+if ! reload_prometheus; then
+  # promtool passed, so this is Prometheus refusing the set or being down.
+  # Put the old set back rather than leave a set the loader rejected.
+  log "ERROR: Prometheus reload failed at ${commit}; restoring the previous set"
+  if [[ -n "${previous}" ]]; then
+    ln -sfn "${previous}" "${CONFIG_DIR}/current.new"
+    mv -Tf "${CONFIG_DIR}/current.new" "${CONFIG_DIR}/current"
+    reload_prometheus || true
+  else
+    # No earlier set to go back to. Drop the link and the release, so the
+    # next run tries again instead of finding this set "unchanged".
+    rm -f "${CONFIG_DIR}/current"
+    rm -rf "${RELEASES_DIR:?}/${id}"
+  fi
+  exit 1
+fi
+
+# Keep the live release and the newest few before it.
+mapfile -t old_releases < <(
+  find "${RELEASES_DIR}" -mindepth 1 -maxdepth 1 -type d ! -name '.*' ! -name "${id}" \
+    -printf '%T@ %f\n' | sort -rn | tail -n "+$((KEEP_PREVIOUS + 1))" | cut -d' ' -f2
+)
+for old in "${old_releases[@]}"; do
+  rm -rf "${RELEASES_DIR:?}/${old}"
+done
+
+ok=1
+log "loaded ${commit} as ${id} (${#rules[@]} rule files, ${#dashboards[@]} dashboards)"

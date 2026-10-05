@@ -8,6 +8,7 @@ Terraform is the production control plane for compute in this lab. Each deployme
 terraform/
 ├── deployments/
 │   ├── cmd-and-ctrl/  Application hosts, ingress, and backup buckets
+│   ├── cmd-and-ctrl-monitoring/  LAN-only monitoring host for cmd_and_ctrl
 │   ├── frontends/     Internal gateway and private frontend host
 │   ├── gh-runner/     Self-hosted Actions controller and workers
 │   ├── lab/           Lab and interactive VMs
@@ -28,6 +29,7 @@ terraform/
 | Deployment | Environments / workspaces | Main resources |
 | --- | --- | --- |
 | `cmd-and-ctrl` | `cmd-and-ctrl-dev`, `cmd-and-ctrl-prd` | Application VMs, Cloudflare Tunnels/DNS, and R2 buckets |
+| `cmd-and-ctrl-monitoring` | `cmd-and-ctrl-monitoring-prd` | Monitoring VM, data disk, static address, and first-boot bootstrap |
 | `frontends` | `frontends-prd` | Gateway VM, cloud-init, and Docker Compose bootstrap |
 | `gh-runner` | `GH-Controller`, `GH-Worker` | Runner VMs and cloud-init snippets |
 | `lab` | `lab` | OpenClaw, pwnbox, and Windows VMs |

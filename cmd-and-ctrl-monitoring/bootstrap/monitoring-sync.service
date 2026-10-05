@@ -1,0 +1,19 @@
+[Unit]
+Description=Reconcile the cmd_and_ctrl monitoring stack with the HomeLab repo
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+RequiresMountsFor=/var/lib/monitoring
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/monitoring-sync
+
+# A failed sync must not take the stack down: the script validates every
+# incoming config first and exits non-zero without touching what runs.
+# Failures show up in `systemctl status monitoring-sync`.
+SuccessExitStatus=0
+
+[Install]
+WantedBy=multi-user.target

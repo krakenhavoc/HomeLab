@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll the HomeLab repo for cmd_and_ctrl monitoring stack changes
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/cmd-and-ctrl-monitoring/README.md
+
+[Timer]
+# The stack changes rarely (an image bump, a retention tweak), so every
+# 10 minutes is plenty.
+OnBootSec=2min
+OnUnitActiveSec=10min
+RandomizedDelaySec=30s
+
+[Install]
+WantedBy=timers.target

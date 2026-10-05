@@ -49,6 +49,7 @@ The Proxmox host provides compute and storage. Terraform describes each workload
 | --- | --- | --- |
 | `lab` | OpenClaw hosts, a CTF workstation, and a Windows 11 VM | Plan on PR, apply after merge |
 | `cmd-and-ctrl` | Development and production game servers, ingress, and off-node backup buckets | Plan on PR, apply after merge |
+| `cmd-and-ctrl-monitoring` | A LAN-only monitoring host for `cmd_and_ctrl` (Prometheus, Loki, Grafana, Alertmanager) with repository-driven runtime configuration | Plan on PR, apply after merge |
 | `frontends` | The internal Caddy/Homepage gateway and private frontends | Plan on PR, apply after merge |
 | `lastdash` | A stateful application host with repository-driven runtime configuration | Plan on PR, apply after merge |
 | `wkjp` | A stateless app host (static app plus VOICEVOX) with repository-driven runtime configuration | Plan on PR, apply after merge |
@@ -67,6 +68,7 @@ The repository also retains earlier Kubernetes bootstrap scripts and space for f
 ├── .github/workflows/       Reusable CI/CD and deployment workflows
 ├── ansible/                 Reserved configuration-management workspace
 ├── diagrams/                Diagram conventions and architecture views
+├── cmd-and-ctrl-monitoring/ cmd_and_ctrl monitoring runtime configuration
 ├── gateway/                 Internal proxy and portal configuration
 ├── lastdash/                LastDash runtime configuration
 ├── wkjp/                    WaniKani listening practice runtime configuration
