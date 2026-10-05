@@ -72,6 +72,8 @@ Internal name resolution is supplied by the network's DNS infrastructure. The pr
 
 Cloudflare terminates public TLS for these services. Hostnames are kept one label below the zone so they remain covered by the standard wildcard certificate.
 
+The zone's WAF custom rules are code too: the `cmd-and-ctrl` deployment's prd workspace owns the zone's single custom-rules ruleset (`waf.tf`). Its one rule lets the off-site uptime check's `GET /healthz` past Cloudflare's challenges. Add new custom rules there; a rule created in the dashboard is removed by the next apply.
+
 ## Troubleshooting
 
 ### Guest has no lease

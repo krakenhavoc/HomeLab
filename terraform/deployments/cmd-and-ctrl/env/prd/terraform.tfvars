@@ -20,4 +20,8 @@ cmd_and_ctrl = {
   # Tunnel made by hand; token from CMD_AND_CTRL_TUNNEL_TOKEN.
   manage_tunnel = false
   bug_reports   = true
+  # prd owns the zone's custom WAF rules (waf.tf); dev must not set this.
+  # The peer is dev's fqdn, which this workspace cannot read.
+  manage_zone_waf    = true
+  healthz_peer_fqdns = ["cmd-dev.labxp.io"]
 }

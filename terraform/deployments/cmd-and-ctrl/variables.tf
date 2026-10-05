@@ -43,6 +43,16 @@ variable "cmd_and_ctrl" {
     manage_tunnel = optional(bool, false)
     # In-app bug reports (ADR 0017).
     bug_reports = optional(bool, false)
+    # The zone's custom-rules entrypoint (Security > WAF > Custom rules) is a
+    # single ruleset per zone, so exactly one workspace may own it: prd. See
+    # waf.tf.
+    manage_zone_waf = optional(bool, false)
+    # The other cmd_and_ctrl hostnames, besides this workspace's own fqdn,
+    # whose /healthz the uptime watcher probes. Read only with manage_zone_waf.
+    healthz_peer_fqdns = optional(list(string), [])
+    # Also skip Super Bot Fight Mode on /healthz. Pro plans and up only: a
+    # Free zone has Bot Fight Mode instead, which no rule can skip.
+    waf_skip_sbfm = optional(bool, false)
   })
 
   validation {
@@ -83,10 +93,11 @@ variable "cmd_and_ctrl_github_token" {
 
 variable "cloudflare_api_token" {
   description = <<-EOT
-    Cloudflare token for the tunnel, DNS and R2 buckets:
+    Cloudflare token for the tunnel, DNS, R2 buckets and (prd) WAF rules:
       Account : Cloudflare One Connector: cloudflared : Edit
       Account : Workers R2 Storage : Edit
       Zone    : DNS : Edit, Zone : Read (labxp.io)
+      Zone    : Zone WAF : Edit (labxp.io; prd only, for waf.tf)
     401 code 10000 from the runner: check the token's client IP filter first
     (see lab history, 2026-09-21).
   EOT
