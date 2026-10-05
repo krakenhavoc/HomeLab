@@ -16,12 +16,9 @@ monitoring = {
   # Pinned (Proxmox OUI); the router's DHCP reservation is keyed on it.
   mac_address = "BC:24:11:9F:CF:67"
 
-  # --- OWNER: the address is the one value left -------------------------------
-  # Reserve an address for MAC BC:24:11:9F:CF:67 on VLAN 200, outside the
-  # DHCP pool, and put it here as a.b.c.d/24. The 192.0.2.x placeholder is
-  # RFC 5737 documentation space; variables.tf fails the plan until it is
-  # replaced.
-  ipv4_address = "192.0.2.20/24"
+  # The router's DHCP reservation for the pinned MAC above (VLAN 200, outside
+  # the pool). The two must stay in step: change one, change the other.
+  ipv4_address = "192.168.200.11/24"
 
   # Read from the live cmd_and_ctrl dev VM on VLAN 200.
   ipv4_gateway = "192.168.200.1"
