@@ -17,6 +17,8 @@ locals {
     lastdash       = ["prd"]
     "cmd-and-ctrl" = ["dev", "prd"]
     wkjp           = ["prd"]
+    # Monitoring for cmd_and_ctrl (its ADR 0123): one VM, prd only.
+    "cmd-and-ctrl-monitoring" = ["prd"]
   }
 
   platform = {
