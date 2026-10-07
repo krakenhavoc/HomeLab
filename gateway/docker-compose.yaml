@@ -107,7 +107,9 @@ services:
       - no-new-privileges:true
 
   redlib:
-    image: quay.io/redlib/redlib:latest
+    # Our own source build, not quay.io/redlib/redlib: the official image fails
+    # Reddit's OAuth and every page errors. See docker/redlib/Dockerfile.
+    image: ghcr.io/krakenhavoc/homelab/redlib:latest
     container_name: redlib
     restart: unless-stopped
     # No `ports:` any more. It used to publish 8080 on the host; now Caddy
@@ -123,15 +125,15 @@ services:
       - ./redlib.env
     networks:
       - gateway
+    # The image is Ubuntu with no wget or curl, so probe /settings with bash's
+    # /dev/tcp. /settings, not /: Redlib answers / with 404 by design.
     healthcheck:
       test:
         [
           "CMD",
-          "wget",
-          "--spider",
-          "-q",
-          "--tries=1",
-          "http://localhost:8080/settings",
+          "bash",
+          "-c",
+          'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /settings HTTP/1.0\r\n\r\n" >&3 && head -1 <&3 | grep -q " 200"',
         ]
       interval: 5m
       timeout: 3s

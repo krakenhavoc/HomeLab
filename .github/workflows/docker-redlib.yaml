@@ -1,0 +1,93 @@
+name: Redlib CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/redlib/**"
+      - ".github/workflows/docker-redlib.yaml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docker/redlib/**"
+      - ".github/workflows/docker-redlib.yaml"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image name
+        id: image
+        run: echo "name=$(echo ${{ github.repository }}/redlib | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.name }}
+          tags: |
+            type=ref,event=branch,prefix=
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/redlib
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Load on pushes as well as PRs so the check below runs against the
+          # exact image this build produced.
+          load: true
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.image.outputs.name }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, steps.image.outputs.name) || '' }}
+
+      # Run it the way the gateway does (nobody, read-only, no caps) and probe
+      # /settings with the same bash /dev/tcp check the compose healthcheck
+      # uses. /settings is served locally, so this needs no Reddit access --
+      # runner IPs are blocked by Reddit anyway.
+      - name: Verify the image starts and serves /settings
+        run: |
+          set -euo pipefail
+          IMAGE="$(echo '${{ steps.meta.outputs.tags }}' | head -n1)"
+          docker run -d --name redlib --user nobody --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true "${IMAGE}"
+          for _ in $(seq 1 30); do
+            if docker exec redlib bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /settings HTTP/1.0\r\n\r\n" >&3 && head -1 <&3 | grep -q " 200"'; then
+              echo "redlib is serving /settings"
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs redlib
+          exit 1
+
+      - name: Image digest
+        if: github.event_name != 'pull_request'
+        run: echo "Image digest:${{ steps.build-and-push.outputs.digest }}"
