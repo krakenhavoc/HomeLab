@@ -31,6 +31,11 @@ is reachable only through the private gateway.
 - Each Talk reply gets a follow-up `/api/chat` call that splits it into words
   with reading and meaning, for the hover/tap glosses. Kanji words not in the
   learned set get a dotted underline.
+- Talk's prompt lists the learner's newest ~800 learned words, plus, when
+  Settings → "New words in Talk" is above 0% (default 15%), the nearest ~150
+  unlearned WaniKani words to draw new words from. The model treats the
+  percentage as a rough target. "Send automatically when I stop the mic" sends
+  the transcription as soon as Whisper returns it.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
   to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
   192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).
