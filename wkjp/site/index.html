@@ -365,6 +365,12 @@
         <button class="btn small" id="btnLlmConnect">Connect</button>
         <span class="note" id="llmStatus" style="margin-top:0;"></span>
       </div>
+      <label for="talkNewRange" style="margin-top:14px;">New words in Talk <span id="talkNewVal"></span></label>
+      <input type="range" id="talkNewRange" min="0" max="50" step="5" style="width:100%;">
+      <p class="note">Roughly how much of each reply uses words you haven't learned yet, picked from your upcoming WaniKani vocab when one fits. Hover or tap an underlined word for its reading. 0% keeps to known words only.</p>
+      <label style="margin:10px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkTalkAutoSend"> send automatically when I stop the mic
+      </label>
       <p class="note">Runs on base-station's GPU, so Talk only works while that PC is on.</p>
     </section>
   </main>
@@ -593,7 +599,7 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
-  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true},load("wkl_settings",{}));
+  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1199,16 +1205,31 @@ const isJa=t=>/[぀-ヿ一-鿿]/.test(t);
 const wkLevel=()=>DATA?DATA.user.level:1;
 let TALK=[],talkBusy=false;
 
+// Upcoming WaniKani vocab the learner hasn't learned yet, nearest levels first.
+// DATA holds subjects up to level+5, so this is what they'll meet next.
+function upcomingWords(known,n){
+  return (DATA?DATA.subjects:[]).filter(s=>s.c&&!known.has(s.c))
+    .sort((a,b)=>a.l-b.l).slice(0,n).map(s=>s.c);
+}
 function talkSystem(){
-  const words=getPools().words.slice().sort((a,b)=>a.l-b.l).slice(0,800).map(w=>w.c);
+  // newest first: the model knows basic words anyway, and the old order cut off
+  // a higher-level learner's recent vocab at 800
+  const learned=getPools().words.slice().sort((a,b)=>b.l-a.l);
+  const words=learned.slice(0,800).map(w=>w.c);
+  const pct=+S.talkNewPct||0;
+  const fresh=pct?upcomingWords(new Set(learned.map(w=>w.c)),150):[];
   return [
     `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
     "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
-    "Prefer the learner's known words below. Write any kanji word they don't know in hiragana. Keep grammar simple. Plain text only, no markdown, no readings in parentheses.",
+    "Keep grammar simple. Plain text only, no markdown, no readings in parentheses.",
+    pct
+      ?`Build replies mostly from the learner's known words below, but make about ${pct}% of your words new ones they haven't learned. Take new words from "New words" when one fits naturally; otherwise use a common everyday word. Write new words normally, kanji included: the app shows their reading. Any other kanji word they don't know: write it in hiragana.`
+      :"Use only the learner's known words below. Write any kanji word they don't know in hiragana.",
     "If the learner writes English or romaji, just carry on the conversation in Japanese.",
     "english: an English translation of your reply.",
-    words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words."
-  ].join("\n");
+    words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words.",
+    fresh.length?"New words: "+fresh.join("、"):""
+  ].filter(Boolean).join("\n");
 }
 function checkSystem(ja){
   if(ja) return [
@@ -1383,6 +1404,7 @@ async function talkMic(){
     stream.getTracks().forEach(t=>t.stop());
     micRec=null;
     btn.textContent="…"; btn.disabled=true;
+    let text="";
     try{
       const fd=new FormData();
       fd.append("file",new Blob(chunks,{type:chunks[0]?chunks[0].type:"audio/webm"}),"talk.webm");
@@ -1390,10 +1412,12 @@ async function talkMic(){
       fd.append("language","ja");
       const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
       if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
-      const text=((await r.json()).text||"").trim();
+      text=((await r.json()).text||"").trim();
       if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; talkGrow(); box.focus(); }
     }catch(e){ talkErr(e.message||"speech-to-text failed"); }
     btn.textContent="🎤"; btn.disabled=false;
+    // auto-send sends the whole box, so anything typed before recording goes too
+    if(text&&S.talkAutoSend) talkSend();
   };
   micRec.start();
   btn.textContent="⏹";
@@ -1595,6 +1619,12 @@ $("llmUrl").value=S.llmUrl||LLM_DEFAULT;
 $("llmUrl").onchange=e=>{ S.llmUrl=e.target.value.trim(); saveS(); llmConnect(); };
 $("llmModel").innerHTML=`<option>${esc(S.llmModel)}</option>`;
 $("llmModel").onchange=e=>{ S.llmModel=e.target.value; saveS(); };
+const tn=$("talkNewRange");
+tn.value=S.talkNewPct;
+$("talkNewVal").textContent=S.talkNewPct+"%";
+tn.oninput=e=>{ S.talkNewPct=+e.target.value; $("talkNewVal").textContent=S.talkNewPct+"%"; saveS(); };
+$("chkTalkAutoSend").checked=S.talkAutoSend;
+$("chkTalkAutoSend").onchange=e=>{ S.talkAutoSend=e.target.checked; saveS(); };
 $("btnLlmConnect").onclick=llmConnect;
 
 /* ---------- init ---------- */
