@@ -39,6 +39,14 @@ is reachable only through the private gateway.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
   to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
   192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).
+  That Quadlet runs with Silero VAD (`--vad --vad-model
+  /models/ggml-silero-v6.2.0.bin --vad-threshold 0.35 --vad-speech-pad-ms
+  200`), so silence and loud noise come back empty instead of as invented
+  subtitle lines such as ご視聴ありがとうございました. The default 0.5 threshold
+  clipped speech in moderate noise. The app also drops those stock phrases and
+  prompt echoes, and shows "didn't catch that" without auto-sending.
+  Settings → "Mic language" switches Whisper from forced Japanese to
+  auto-detect for English or mixed speech.
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.
