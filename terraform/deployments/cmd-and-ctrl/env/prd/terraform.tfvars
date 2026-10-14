@@ -1,6 +1,8 @@
 vm_disk_datastore_id      = "ssd_1641G_thin"
 vm_cloudinit_datastore_id = "ssd_1641G_thin"
 
+deploy_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAJzR/nmsZ1DXFgw0m3X4wHeNfn+tm+qQ7169GUhxd0T cmdctrl-deploy-prod"
+
 # Values copied from lab/env/lab as they were; names are frozen.
 cmd_and_ctrl = {
   name_prefix    = "cmd-and-ctrl"

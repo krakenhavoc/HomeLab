@@ -70,13 +70,14 @@ resource "proxmox_virtual_environment_file" "cloudinit" {
 
   source_raw {
     data = templatefile("${path.module}/templates/setup-cmd_and_ctrl.yaml.tftpl", {
-      hostname       = var.cmd_and_ctrl.name_prefix
-      admin_username = var.cmd_and_ctrl.admin_username
-      fqdn           = var.cmd_and_ctrl.fqdn
-      cmdctrl_env    = var.cmd_and_ctrl.cmdctrl_env
-      admin_token    = var.cmd_and_ctrl_admin_token
-      tunnel_token   = local.tunnel_token
-      github_token   = local.github_token
+      hostname              = var.cmd_and_ctrl.name_prefix
+      admin_username        = var.cmd_and_ctrl.admin_username
+      deploy_ssh_public_key = var.deploy_ssh_public_key
+      fqdn                  = var.cmd_and_ctrl.fqdn
+      cmdctrl_env           = var.cmd_and_ctrl.cmdctrl_env
+      admin_token           = var.cmd_and_ctrl_admin_token
+      tunnel_token          = local.tunnel_token
+      github_token          = local.github_token
     })
     file_name = "setup-${var.cmd_and_ctrl.name_prefix}.yaml"
   }

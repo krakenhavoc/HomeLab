@@ -1,6 +1,8 @@
 vm_disk_datastore_id      = "ssd_1641G_thin"
 vm_cloudinit_datastore_id = "ssd_1641G_thin"
 
+deploy_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIWlyvkZTVbWCA/bbJZYkYScZtw3nyno3ZOv+igiRZBz cmdctrl-deploy-dev"
+
 # Develop preview. Same shape as prd on purpose: it rehearses prd.
 cmd_and_ctrl = {
   name_prefix    = "cmd-and-ctrl-dev"
