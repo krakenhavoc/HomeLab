@@ -51,6 +51,11 @@ variable "cmd_and_ctrl" {
   }
 }
 
+variable "deploy_ssh_public_key" {
+  description = "Public half of this environment's CI deploy key (CMDCTRL_DEPLOY_SSH_KEY in cmd_and_ctrl's GitHub environment)."
+  type        = string
+}
+
 variable "cmd_and_ctrl_admin_token" {
   description = "CMDCTRL_ADMIN_TOKEN. Per environment; dev and prd must differ."
   type        = string

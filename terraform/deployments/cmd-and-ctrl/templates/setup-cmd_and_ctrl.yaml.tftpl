@@ -32,6 +32,8 @@ users:
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     ssh_authorized_keys:
       - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+      # Per-environment CI deploy key (cmd_and_ctrl#3335); only this env's key.
+      - ${deploy_ssh_public_key}
   - name: cmdctrl
     system: true
     shell: /usr/sbin/nologin
