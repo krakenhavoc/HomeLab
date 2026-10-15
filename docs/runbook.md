@@ -57,7 +57,7 @@ terraform plan -var-file=env/<environment>/terraform.tfvars
 
 The workspace and the variable file must name the same environment. Most roots select their workspace by tag, so a dev variable file planned against a prd workspace is easy to do by accident.
 
-The `gh-runner` stack uses flat variable files instead. Worker plans register with two repositories, so both registration tokens are required, along with the Proxmox SSH key:
+The `gh-runner` stack uses flat variable files instead. Worker plans register with three repositories, so all three registration tokens are required, along with the Proxmox SSH key:
 
 ```bash
 cd terraform/deployments/gh-runner
@@ -65,6 +65,7 @@ export TF_WORKSPACE=GH-Worker
 export TF_VAR_proxmox_private_key=...           # from your secret store, not typed inline
 export TF_VAR_gh_registration_token=...
 export TF_VAR_cmd_and_ctrl_registration_token=...
+export TF_VAR_netcrawl_registration_token=...
 terraform plan -var-file=env/gh-worker.tfvars
 ```
 
@@ -176,7 +177,19 @@ gh workflow run terraform-replace.yaml \
 
 ### GitHub runners
 
-Terraform Replace does not fit the `gh-runner` stack's flat variable-file layout, and `gh-runner-deploy.yaml` refuses any plan that deletes or replaces a resource. It only adds runners or changes them in place. No workflow rebuilds an existing runner; that is a deliberate local operation.
+Terraform Replace does not fit the `gh-runner` stack's flat variable-file layout. `gh-runner-deploy.yaml` refuses any plan that deletes or replaces a resource, except the one worker named by its `replace_instance` input. Rebuild workers one at a time, only while idle in every repository they serve:
+
+```bash
+gh workflow run gh-runner-deploy.yaml -f is_controller=false -f dry_run=true -f replace_instance=2
+```
+
+Cloud-init runs only on first boot, so a worker reaches the repositories the template knew when it was built. To add a repository to existing workers without rebuilding them, use `gh-runner-register-repo.yaml`. It installs one more runner service per worker, skips workers already registered, and needs `GH_PAT` to have Administration: write on that repository. Dry-run first:
+
+```bash
+gh workflow run gh-runner-register-repo.yaml -f repo=netcrawl -f runners="gunner-0 gunner-1" -f dry_run=true
+```
+
+Leave `runners` empty for every worker. For a repository new to the lab, also add it to the cloud-init template so later VMs register with it too.
 
 CPU and memory changes apply in place but land as pending Proxmox changes. Each runner picks them up on its next full stop and start. Restart runners one at a time, only while idle in every repository they serve, and confirm each is back online before moving on.
 
