@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll the HomeLab repo for NetCrawl web host updates
+Documentation=https://github.com/krakenhavoc/HomeLab/blob/main/netcrawl/README.md
+
+[Timer]
+# Every 5 minutes. Game releases don't wait on this; CI pushes them directly.
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
