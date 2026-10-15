@@ -12,6 +12,8 @@ packages:
   - curl
   - jq
   - rsync
+  # netcrawl checks out its art through Git LFS.
+  - git-lfs
 
 power_state:
   mode: reboot
@@ -120,6 +122,26 @@ runcmd:
     cd /opt/actions-runner-cmdctrl && ./svc.sh install ${gh_runner_admin_username}
     cd /opt/actions-runner-cmdctrl && ./svc.sh start
     echo "==> cmd_and_ctrl runner started."
+%{ endif ~}
+%{ if netcrawl_registration_token != "" ~}
+
+  # netcrawl's web workflow exports the Godot build here (its LFS objects,
+  # import cache and Godot install persist in this runner's workspace) and
+  # rsyncs it to the netcrawl VM; see docs/netcrawl-web.md. Same shape as the
+  # cmd_and_ctrl runner above, default labels.
+  - |
+    echo "==> Configuring netcrawl runner..."
+    /bin/mkdir -p /opt/actions-runner-netcrawl
+    /usr/bin/tar -xzf /opt/actions-runner/actions-runner-linux-x64-2.330.0.tar.gz -C /opt/actions-runner-netcrawl
+    /bin/chown -R ${gh_runner_admin_username}:${gh_runner_admin_username} /opt/actions-runner-netcrawl
+    TOKEN="${netcrawl_registration_token}"
+    sudo -u ${gh_runner_admin_username} /opt/actions-runner-netcrawl/config.sh \
+      --url https://github.com/krakenhavoc/netcrawl \
+      --token "$TOKEN" \
+      --unattended --replace
+    cd /opt/actions-runner-netcrawl && ./svc.sh install ${gh_runner_admin_username}
+    cd /opt/actions-runner-netcrawl && ./svc.sh start
+    echo "==> netcrawl runner started."
 %{ endif ~}
 
 final_message: "GitHub Runner for ${gh_runner_hostname} is up."
