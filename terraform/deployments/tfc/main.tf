@@ -17,6 +17,8 @@ locals {
     lastdash       = ["prd"]
     "cmd-and-ctrl" = ["dev", "prd"]
     wkjp           = ["prd"]
+    # NetCrawl web build; internal dev only for now (docs/netcrawl-web.md).
+    netcrawl = ["dev"]
     # Monitoring for cmd_and_ctrl (its ADR 0123): one VM, prd only.
     "cmd-and-ctrl-monitoring" = ["prd"]
   }

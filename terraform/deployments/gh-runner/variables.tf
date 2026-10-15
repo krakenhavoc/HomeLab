@@ -67,3 +67,20 @@ variable "cmd_and_ctrl_registration_token" {
     error_message = "register_cmd_and_ctrl is true but cmd_and_ctrl_registration_token is empty."
   }
 }
+
+variable "register_netcrawl" {
+  description = "Also register each new runner with krakenhavoc/netcrawl"
+  type        = bool
+  default     = false
+}
+
+variable "netcrawl_registration_token" {
+  description = "Registration token for krakenhavoc/netcrawl; required when register_netcrawl is true"
+  type        = string
+  sensitive   = true
+  default     = ""
+  validation {
+    condition     = !var.register_netcrawl || var.netcrawl_registration_token != ""
+    error_message = "register_netcrawl is true but netcrawl_registration_token is empty."
+  }
+}

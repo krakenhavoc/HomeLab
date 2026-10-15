@@ -9,8 +9,9 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
     data = templatefile("${path.module}/setup-gh-runner.yaml.tftpl", {
       gh_runner_admin_username = var.gh_runner.admin_username
       gh_registration_token    = var.gh_registration_token
-      # Empty unless this deployment also serves cmd_and_ctrl.
+      # Each empty unless this deployment also serves that repo.
       cmd_and_ctrl_registration_token = var.register_cmd_and_ctrl ? var.cmd_and_ctrl_registration_token : ""
+      netcrawl_registration_token     = var.register_netcrawl ? var.netcrawl_registration_token : ""
       gh_runner_hostname              = each.value.name
       proxmox_host                    = var.pve.host
       proxmox_private_key             = indent(4, var.proxmox_private_key)
@@ -116,11 +117,13 @@ resource "proxmox_virtual_environment_vm" "gh_runner" {
   # Cloud-init is first-boot only, so a changed template is not a reason to
   # rebuild a running runner. The cost: a genuine template change (runner
   # version bump, new repo registration) no longer reaches existing VMs. Roll
-  # those out deliberately with terraform-replace.yaml, one instance at a time:
+  # those out deliberately, one worker at a time, with gh-runner-deploy.yaml's
+  # replace_instance. It replaces this VM AND its snippet, so the rebuild gets
+  # freshly minted registration tokens (terraform-replace.yaml would reuse the
+  # old snippet's expired ones). Dry run first, then apply:
   #
-  #   gh workflow run terraform-replace.yaml \
-  #     -f replace_resource='proxmox_virtual_environment_vm.gh_runner["0"]' \
-  #     -f deployment_name=gh-runner -f environment=GH-Worker
+  #   gh workflow run gh-runner-deploy.yaml \
+  #     -f is_controller=false -f replace_instance=7 -f dry_run=true
   lifecycle {
     ignore_changes = [clone, initialization]
   }
