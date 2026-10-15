@@ -337,3 +337,18 @@ grafana.labxp.io {
 	import tls_krakenkey
 	reverse_proxy 192.168.200.11:3000
 }
+
+# --- Unrouted names ---------------------------------------------------------
+# A name the Pi-holes point here that no site above claims. Without this,
+# Caddy answers it with an empty 200 on every path, which reads as healthy:
+# the portal's status dot showed netcrawl-dev green after its DNS record
+# existed but before its route did. A 404 that names the gap is honest.
+#
+# Exact names always win over a wildcard, wherever they sit in this file, so
+# this never shadows a real site. A wildcard covers one label only, like the
+# certificate. It imports the KrakenKey cert like every other site; see
+# tls_krakenkey for why that is all or nothing.
+*.labxp.io {
+	import tls_krakenkey
+	respond "No gateway route for {host}. Add a site to gateway/caddy/Caddyfile in krakenhavoc/HomeLab." 404
+}
