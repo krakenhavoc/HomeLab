@@ -9,8 +9,9 @@ resource "proxmox_virtual_environment_file" "gh_runner_cloudinit" {
     data = templatefile("${path.module}/setup-gh-runner.yaml.tftpl", {
       gh_runner_admin_username = var.gh_runner.admin_username
       gh_registration_token    = var.gh_registration_token
-      # Empty unless this deployment also serves cmd_and_ctrl.
+      # Each empty unless this deployment also serves that repo.
       cmd_and_ctrl_registration_token = var.register_cmd_and_ctrl ? var.cmd_and_ctrl_registration_token : ""
+      netcrawl_registration_token     = var.register_netcrawl ? var.netcrawl_registration_token : ""
       gh_runner_hostname              = each.value.name
       proxmox_host                    = var.pve.host
       proxmox_private_key             = indent(4, var.proxmox_private_key)

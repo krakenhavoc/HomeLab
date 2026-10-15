@@ -68,6 +68,28 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "TF_VAR_cmd_and_ctrl_registration_token=$TOKEN" >> "$GITHUB_ENV"
 
+      # And with netcrawl (register_netcrawl in gh-worker.tfvars). GH_PAT
+      # needs Administration: write on that repo too.
+      - name: Generate netcrawl Runner Registration Token
+        if: ${{ !inputs.is_controller }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          RESP=$(curl -s -w '\n%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/krakenhavoc/netcrawl/actions/runners/registration-token)
+          CODE=$(echo "$RESP" | tail -n1)
+          TOKEN=$(echo "$RESP" | sed '$d' | jq -r '.token // empty')
+
+          if [ -z "$TOKEN" ]; then
+            echo "::error::netcrawl token generation failed: HTTP $CODE $(echo "$RESP" | sed '$d' | jq -r '.message // empty')"
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "TF_VAR_netcrawl_registration_token=$TOKEN" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -123,9 +145,9 @@ jobs:
 
           # config.sh runs with --replace, so a new VM sharing a registered name
           # (e.g. from state drift) would silently take over that runner, in
-          # either repo it registers with.
+          # any repo it registers with.
           REPOS="HomeLab"
-          if [ "${{ inputs.is_controller }}" != "true" ]; then REPOS="$REPOS cmd_and_ctrl"; fi
+          if [ "${{ inputs.is_controller }}" != "true" ]; then REPOS="$REPOS cmd_and_ctrl netcrawl"; fi
           REGISTERED=""
           for repo in $REPOS; do
             NAMES=$(curl -sf \
