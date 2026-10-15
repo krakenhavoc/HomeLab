@@ -2,6 +2,8 @@
 
 **Status: planned.** This is the design for serving the browser build of [NetCrawl](https://github.com/krakenhavoc/netcrawl), a Godot 4.6 game, from the lab. Phase 1 is internal only: trusted LAN and VPN clients, through the private [gateway](gateway.md). Nothing here is deployed yet.
 
+"NetCrawl" is a working name. The game is being renamed, so everything below that says `netcrawl` will change; [netcrawl/README.md](../netcrawl/README.md) lists what a rename touches.
+
 NetCrawl's repository is private and this one is public. This page describes the hosting shape and the contract between the two repositories; game internals stay in the NetCrawl repository, and internal addresses stay out of this page as they do everywhere else in `docs/`.
 
 ## Goals
@@ -66,7 +68,7 @@ The gateway terminates TLS with the existing wildcard certificate and proxies on
 
 ### Why push instead of an image
 
-`lastdash` ships private images through GHCR and gives its VM a `read:packages` token. That works for a few hundred megabytes of application images that change occasionally. A NetCrawl web build is expected to be on the order of 100–150 MB and change on every merge. Private package storage and transfer are metered against the account's plan quota, so a few deploys a month could exhaust them. Pushing over the LAN costs nothing, keeps the VM free of a GitHub credential, and lets the workflow that built a release confirm it is being served.
+`lastdash` ships private images through GHCR and gives its VM a `read:packages` token. That works for a few hundred megabytes of application images that change occasionally. A NetCrawl web build measured 117 MB on the wire after the phase 0 fixes, and it changes on every merge. Private package storage and transfer are metered against the account's plan quota, so a few deploys a month could exhaust them. Pushing over the LAN costs nothing, keeps the VM free of a GitHub credential, and lets the workflow that built a release confirm it is being served.
 
 The cost is an inbound SSH path from the runners to this VM. The key that uses it is limited to writing one directory (see [Delivery](#delivery)).
 
@@ -185,7 +187,7 @@ Runners register to a single repository, so NetCrawl needs its own registration 
 
 ### The deploy key
 
-Following the `cmd-and-ctrl` precedent, each environment has its own key pair. The private key is a secret in the NetCrawl repository's `dev` environment. The public key is a non-secret tfvars value rendered into cloud-init, so a rebuild keeps deploys working. On the VM it is authorized for a dedicated `deploy` user only, and forced through `rrsync`, which ships with Ubuntu's `rsync`:
+Following the `cmd-and-ctrl` precedent, each environment has its own key pair. The private key is a secret in the NetCrawl repository's `dev` environment. The public key is not a secret, so it lives in this repository at `netcrawl/deploy/authorized_keys`, and `netcrawl-sync` installs it. Adding, rotating or revoking a key is a pull request, not a VM rebuild, and a rebuilt VM gets the current keys on its first sync. `netcrawl-sync` refuses the whole file if any line lacks the forced command below. On the VM it is authorized for a dedicated `deploy` user only, and forced through `rrsync`, which ships with Ubuntu's `rsync`:
 
 ```text
 command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict ssh-ed25519 AAAA... netcrawl-dev-deploy
@@ -195,7 +197,7 @@ That key can write files under `www/` and nothing else: no shell, no forwarding,
 
 ## Host
 
-`terraform/deployments/netcrawl/`, environment `dev`, built from the `pm-cloudinit-vm` module at `v0.3.0` or later (which accepts a MAC address):
+`terraform/deployments/netcrawl/`, environment `dev`. It's a raw Proxmox VM resource with a pinned MAC, the same shape as `wkjp`:
 
 | Setting | Value | Why |
 | --- | --- | --- |
@@ -205,18 +207,20 @@ That key can write files under `www/` and nothing else: no shell, no forwarding,
 | Address | Static DHCP lease for a pinned MAC | The next free entry in the lease sequence `lastdash` and `wkjp` use. The lease and the Caddyfile upstream change together. |
 | Tags | `apps`, `dev` | |
 
-Cloud-init installs Docker, creates the `deploy` user with the forced-command key, creates `/srv/netcrawl/www` owned by `deploy` and readable by the nginx container, clones this repository, and installs and starts `netcrawl-sync.timer`, as the `wkjp` template does. It holds no secrets, so `secrets.env` is not needed for this environment.
+Cloud-init installs Docker, creates the `deploy` user (with no key; see above), creates `/srv/netcrawl/www` owned by `deploy` and readable by the nginx container, clones this repository, and installs and starts `netcrawl-sync.timer`, as the `wkjp` template does. It holds no secrets, so `secrets.env` is not needed for this environment.
 
-`netcrawl-sync` is a copy of `wkjp-sync` with one added step: prune releases. It deletes all but the newest five directories under `www/r/`, never the one the root page currently points at, and skips pruning entirely if it cannot parse that page.
+`netcrawl-sync` is a copy of `wkjp-sync` with two added steps: install the deploy keys, and prune releases. It deletes all but the newest five directories under `www/r/`, never the one the root page currently points at, and skips pruning entirely if it cannot parse that page.
 
 ## Prerequisites in the NetCrawl repository
 
-These are game-side changes that must land before phase 1. Each one is tracked there; they are listed here because hosting depends on them.
+These are game-side changes that must land before phase 1. They are listed here because hosting depends on them. The first four are in [netcrawl#49](https://github.com/krakenhavoc/netcrawl/pull/49).
+
+Measured there with Godot 4.6.1, served through `netcrawl/nginx/` and loaded in headless Chromium: the pack went from 418 MB to 114 MB, which is 117 MB on the wire with the wasm gzipped. The title art, starter sprites and overworld rendered with no console errors, where `main` showed placeholder squares.
 
 - **A committed Web export preset.** Single-threaded, no PWA, with export filters that exclude source art, generation prompts, design documents, and tests.
 - **The Compatibility renderer.** Godot's web platform runs only the Compatibility (WebGL 2) renderer, so the project's mobile-renderer lighting and glow must be checked visually under it.
 - **Loading art from the exported pack.** Several runtime loaders read source PNGs directly from `res://`. Export packs contain the imported textures, not the source files, so in any exported build those loaders fail and the game silently falls back to placeholder art. They need to load through the resource loader when running from an export.
-- **A size budget the browser can hold.** Godot loads the whole pack into browser memory before the title screen. Sprite art is currently authored far above its on-screen size. Capping the import size of the largest sprite sets, where the game already scales them to fit, is expected to bring the download into the phase 1 budget. The first test export measures this; the decision does not depend on the estimate.
+- **A size budget the browser can hold.** Godot loads the whole pack into browser memory before the title screen. Sprite art is currently authored far above its on-screen size. Capping the import size of the largest sprite sets, where the game already scales them to fit, brought the download into the phase 1 budget (418 MB to 114 MB). Music stays in the main pack.
 - **Browser-specific behavior.** Check web audio playback through the runtime buses. `Escape` leaves browser fullscreen before the game sees it. `F1` may open browser help.
 
 ## Rollout
@@ -238,5 +242,5 @@ These are game-side changes that must land before phase 1. Each one is tracked t
 ## Open questions
 
 - Do the runners reach this VLAN on SSH today, or does the router need a new rule?
-- Which GitHub plan the account is on, which decides whether the image-based fallback is viable at all.
-- The real pack size after phase 0, which decides whether music needs to move into a separately loaded pack before phase 1.
+- Which address the static lease for the new MAC gets. The gateway route assumes the next one in sequence.
+- Battles, saving to IndexedDB, and audio in a real browser, which the phase 0 run did not exercise.
