@@ -11,7 +11,7 @@ register_cmd_and_ctrl = true
 
 # netcrawl's web export and deploy (docs/netcrawl-web.md). Like the line
 # above, only VMs created after this reach netcrawl: add an instance or
-# replace one with terraform-replace.yaml.
+# rebuild one with gh-runner-deploy.yaml's replace_instance.
 register_netcrawl = true
 
 deployment_tag = "gh-worker"
