@@ -15,6 +15,11 @@ on:
         required: true
         type: boolean
         default: true
+      replace_instance:
+        description: "Rebuild ONE existing worker by index (e.g. 7) so it re-registers with every repo. Empty for a normal deploy."
+        required: false
+        type: string
+        default: ""
 
 env:
   PROXMOX_VE_API_TOKEN: ${{ secrets.PROXMOX_VE_API_TOKEN }}
@@ -68,6 +73,28 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "TF_VAR_cmd_and_ctrl_registration_token=$TOKEN" >> "$GITHUB_ENV"
 
+      # And with netcrawl (register_netcrawl in gh-worker.tfvars). GH_PAT
+      # needs Administration: write on that repo too.
+      - name: Generate netcrawl Runner Registration Token
+        if: ${{ !inputs.is_controller }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          RESP=$(curl -s -w '\n%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/krakenhavoc/netcrawl/actions/runners/registration-token)
+          CODE=$(echo "$RESP" | tail -n1)
+          TOKEN=$(echo "$RESP" | sed '$d' | jq -r '.token // empty')
+
+          if [ -z "$TOKEN" ]; then
+            echo "::error::netcrawl token generation failed: HTTP $CODE $(echo "$RESP" | sed '$d' | jq -r '.message // empty')"
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "TF_VAR_netcrawl_registration_token=$TOKEN" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -97,46 +124,97 @@ jobs:
         working-directory: terraform/deployments/gh-runner
         run: terraform validate
 
+      # replace_instance rebuilds one worker, the deliberate way to roll a
+      # template change (a new repo registration, a runner bump) onto an
+      # existing VM. Both resources go: the snippet carries the registration
+      # tokens and ignores changes, so replacing only the VM would boot it
+      # with the old snippet's long-expired tokens.
       - name: Terraform Plan
         working-directory: terraform/deployments/gh-runner
+        env:
+          # Through the environment, not interpolated: a dispatch input must
+          # not be able to inject shell.
+          REPLACE_INSTANCE: ${{ inputs.replace_instance }}
+          IS_CONTROLLER: ${{ inputs.is_controller }}
         run: |
-          if [ "${{ inputs.is_controller }}" = "true" ]; then
-            terraform plan -input=false -var-file=env/gh-controller.tfvars -out=tfplan
+          set -eu
+          set --
+          if [ -n "$REPLACE_INSTANCE" ]; then
+            case "$REPLACE_INSTANCE" in
+              *[!0-9]*)
+                echo "::error::replace_instance must be a worker index, got '$REPLACE_INSTANCE'"
+                exit 1
+                ;;
+            esac
+            if [ "$IS_CONTROLLER" = "true" ]; then
+              echo "::error::replace_instance is for workers only"
+              exit 1
+            fi
+            set -- \
+              -replace="proxmox_virtual_environment_file.gh_runner_cloudinit[\"$REPLACE_INSTANCE\"]" \
+              -replace="proxmox_virtual_environment_vm.gh_runner[\"$REPLACE_INSTANCE\"]"
+          fi
+          if [ "$IS_CONTROLLER" = "true" ]; then
+            terraform plan -input=false -var-file=env/gh-controller.tfvars -out=tfplan "$@"
           else
-            terraform plan -input=false -var-file=env/gh-worker.tfvars -out=tfplan
+            terraform plan -input=false -var-file=env/gh-worker.tfvars -out=tfplan "$@"
           fi
 
       - name: Guard against touching existing runners
         working-directory: terraform/deployments/gh-runner
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
+          REPLACE_INSTANCE: ${{ inputs.replace_instance }}
         run: |
           set -o pipefail
           terraform show -json tfplan > plan.json
 
-          DESTROY=$(jq '[.resource_changes[]? | select(.change.actions | index("delete"))] | length' plan.json)
-          if [ "$DESTROY" -ne 0 ]; then
-            echo "::error::Plan destroys or replaces $DESTROY resource(s); refusing to apply."
-            jq -r '.resource_changes[] | select(.change.actions | index("delete")) | "  \(.address) \(.change.actions)"' plan.json
+          # Nothing may be destroyed or replaced, except exactly the one
+          # worker named by replace_instance, and then only by replacement.
+          ALLOWED='[]'
+          if [ -n "$REPLACE_INSTANCE" ]; then
+            ALLOWED=$(jq -cn --arg i "$REPLACE_INSTANCE" '[
+              "proxmox_virtual_environment_file.gh_runner_cloudinit[\"\($i)\"]",
+              "proxmox_virtual_environment_vm.gh_runner[\"\($i)\"]"]')
+            REPLACED=$(jq -c --argjson allowed "$ALLOWED" '[.resource_changes[]?
+              | select(.address as $a | $allowed | index($a))
+              | select((.change.actions | sort) == ["create", "delete"])] | length' plan.json)
+            if [ "$REPLACED" -ne 2 ]; then
+              echo "::error::Expected the plan to replace both resources of worker $REPLACE_INSTANCE; it replaces $REPLACED. Does that worker exist?"
+              exit 1
+            fi
+          fi
+          UNEXPECTED=$(jq -r --argjson allowed "$ALLOWED" '.resource_changes[]?
+            | select(.change.actions | index("delete"))
+            | select(.address as $a | ($allowed | index($a)) | not)
+            | "  \(.address) \(.change.actions)"' plan.json)
+          if [ -n "$UNEXPECTED" ]; then
+            echo "::error::Plan destroys or replaces resources it should not; refusing to apply."
+            echo "$UNEXPECTED"
             exit 1
           fi
+          REBUILT=$(jq -r --arg i "$REPLACE_INSTANCE" '.resource_changes[]?
+            | select(.address == "proxmox_virtual_environment_vm.gh_runner[\"\($i)\"]")
+            | .change.before.name // empty' plan.json)
+          [ -z "$REBUILT" ] || echo "Rebuilding $REBUILT; its new VM takes over its registrations."
 
           # config.sh runs with --replace, so a new VM sharing a registered name
           # (e.g. from state drift) would silently take over that runner, in
-          # either repo it registers with.
+          # any repo it registers with.
           REPOS="HomeLab"
-          if [ "${{ inputs.is_controller }}" != "true" ]; then REPOS="$REPOS cmd_and_ctrl"; fi
+          if [ "${{ inputs.is_controller }}" != "true" ]; then REPOS="$REPOS cmd_and_ctrl netcrawl"; fi
           REGISTERED=""
           for repo in $REPOS; do
-            NAMES=$(curl -sf \
+            # A failed request must stop the apply; an empty list is fine (a
+            # repo's first runners are registered by exactly this workflow).
+            if ! RESP=$(curl -sf \
               -H "Authorization: Bearer $GH_PAT" \
               -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/krakenhavoc/$repo/actions/runners?per_page=100" \
-              | jq -r '.runners[].name')
-            if [ -z "$NAMES" ]; then
+              "https://api.github.com/repos/krakenhavoc/$repo/actions/runners?per_page=100"); then
               echo "::error::Could not list runners registered with $repo; refusing to apply."
               exit 1
             fi
+            NAMES=$(echo "$RESP" | jq -r '.runners[].name')
             REGISTERED=$(printf '%s\n%s' "$REGISTERED" "$NAMES" | sed '/^$/d' | sort -u)
           done
           NEW_VMS=$(jq -r '.resource_changes[] | select(.type == "proxmox_virtual_environment_vm" and (.change.actions | index("create"))) | .change.after.name' plan.json)
@@ -145,6 +223,9 @@ jobs:
           echo "Runners to create:"; echo "${NEW_VMS:-(none)}" | sed 's/^/  /'
 
           for name in $NEW_VMS; do
+            # The rebuilt worker is registered by design; config.sh --replace
+            # hands its registrations to the new VM.
+            [ "$name" = "$REBUILT" ] && continue
             if echo "$REGISTERED" | grep -qx "$name"; then
               echo "::error::$name is already registered ($REPOS); refusing to apply."
               exit 1
