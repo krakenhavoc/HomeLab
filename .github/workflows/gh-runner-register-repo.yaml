@@ -1,0 +1,217 @@
+name: GitHub Runner Register Repo
+permissions:
+  contents: read
+
+# Adds a repository to existing workers without rebuilding them. A runner
+# registers with a single repo, so each selected worker installs one more
+# runner service, /opt/actions-runner-<repo>, beside its HomeLab one; cloud-init
+# does the same for cmd_and_ctrl and netcrawl on new VMs. Workers already
+# registered with the repo are skipped, so a rerun only fills the gaps.
+#
+# GH_PAT needs Administration: write on HomeLab (to label runners) and on the
+# target repo (to mint its registration token and list its runners).
+#
+# New VMs only reach repos the cloud-init template knows. For a new repo, run
+# this for the existing workers and add the repo to the template for later ones.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Repository under krakenhavoc to add (e.g. netcrawl)"
+        required: true
+        type: string
+      runners:
+        description: "Workers to add, space-separated (e.g. gunner-0 gunner-1). Empty for every worker."
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "List the workers that would be registered, without changing them"
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: gh-runner-register-${{ inputs.repo }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Pick workers
+    runs-on: ubuntu-latest
+    outputs:
+      runners: ${{ steps.pick.outputs.runners }}
+    steps:
+      # Inputs go through the environment, not interpolated: a dispatch input
+      # must not be able to inject shell.
+      - name: Pick workers not yet registered
+        id: pick
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPO: ${{ inputs.repo }}
+          RUNNERS: ${{ inputs.runners }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          case "$REPO" in
+            "" | *[!A-Za-z0-9._-]*)
+              echo "::error::repo must be a bare repository name, got '$REPO'"
+              exit 1
+              ;;
+          esac
+          if [ "$(echo "$REPO" | tr '[:upper:]' '[:lower:]')" = homelab ]; then
+            echo "::error::Workers already serve HomeLab; that registration belongs to cloud-init."
+            exit 1
+          fi
+          for name in $RUNNERS; do
+            case "$name" in
+              *[!A-Za-z0-9._-]*)
+                echo "::error::Not a runner name: '$name'"
+                exit 1
+                ;;
+            esac
+          done
+
+          api() {
+            curl -sf -H "Authorization: Bearer $GH_PAT" \
+              -H "Accept: application/vnd.github+json" "$@"
+          }
+          if ! homelab=$(api "https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners?per_page=100"); then
+            echo "::error::Could not list HomeLab's runners."
+            exit 1
+          fi
+          if ! target=$(api "https://api.github.com/repos/krakenhavoc/$REPO/actions/runners?per_page=100"); then
+            echo "::error::Could not list $REPO's runners. Does the repo exist, and does GH_PAT have Administration on it?"
+            exit 1
+          fi
+
+          workers=$(echo "$homelab" | jq -r '.runners[] | select(any(.labels[]; .name == "worker")) | .name' | sort)
+          if [ -n "$RUNNERS" ]; then
+            wanted=$(echo "$RUNNERS" | tr -s ' ' '\n' | sed '/^$/d' | sort -u)
+          else
+            wanted=$workers
+          fi
+          registered=$(echo "$target" | jq -r '.runners[].name' | sort)
+
+          todo=""
+          for name in $wanted; do
+            if ! grep -qx "$name" <<< "$workers"; then
+              echo "::error::$name is not a HomeLab worker."
+              exit 1
+            fi
+            if grep -qx "$name" <<< "$registered"; then
+              echo "$name: already registered with $REPO, skipping"
+              continue
+            fi
+            # Its job would wait for it; better to say so now.
+            status=$(echo "$homelab" | jq -r --arg n "$name" '.runners[] | select(.name == $n) | .status')
+            if [ "$status" != online ]; then
+              echo "::error::$name is $status. Bring it back or leave it out of runners."
+              exit 1
+            fi
+            todo="$todo $name"
+          done
+
+          # The register job targets each worker by a label of its own name.
+          for name in $todo; do
+            has=$(echo "$homelab" | jq --arg n "$name" '.runners[] | select(.name == $n) | any(.labels[]; .name == $n)')
+            [ "$has" = true ] && continue
+            if [ "$DRY_RUN" = true ]; then
+              echo "$name: would label it '$name'"
+              continue
+            fi
+            id=$(echo "$homelab" | jq -r --arg n "$name" '.runners[] | select(.name == $n) | .id')
+            api -X POST "https://api.github.com/repos/krakenhavoc/HomeLab/actions/runners/$id/labels" \
+              -d "$(jq -cn --arg n "$name" '{labels: [$n]}')" > /dev/null
+            echo "$name: labelled '$name'"
+          done
+
+          echo "To register with $REPO:${todo:- (none)}"
+          echo "runners=$(echo "$todo" | tr -s ' ' '\n' | jq -Rc 'select(. != "")' | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  register:
+    name: Register ${{ matrix.runner }}
+    needs: plan
+    if: ${{ !inputs.dry_run && needs.plan.outputs.runners != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(needs.plan.outputs.runners) }}
+    runs-on: [self-hosted, worker, "${{ matrix.runner }}"]
+    timeout-minutes: 15
+    steps:
+      # Minted in this job and masked, as in gh-runner-deploy.yaml: a job
+      # output is not a secret.
+      - name: Mint registration token
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPO: ${{ inputs.repo }}
+        run: |
+          set -euo pipefail
+          RESP=$(curl -s -w '\n%{http_code}' -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/krakenhavoc/$REPO/actions/runners/registration-token")
+          CODE=$(echo "$RESP" | tail -n1)
+          TOKEN=$(echo "$RESP" | sed '$d' | jq -r '.token // empty')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::$REPO token generation failed: HTTP $CODE $(echo "$RESP" | sed '$d' | jq -r '.message // empty')"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "REG_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # Same steps as the cloud-init template's extra runners. This job runs as
+      # the HomeLab runner's user (the admin user, passwordless sudo), which
+      # also owns the new runner.
+      - name: Install ${{ inputs.repo }} runner service
+        env:
+          REPO: ${{ inputs.repo }}
+          RUNNER: ${{ matrix.runner }}
+        run: |
+          set -euo pipefail
+          dir="/opt/actions-runner-$REPO"
+          user=$(id -un)
+          if [ -e "$dir/.runner" ]; then
+            echo "::error::$dir is already configured, but $RUNNER is not registered with $REPO. Uninstall it ($dir/svc.sh uninstall, then remove the directory) and rerun."
+            exit 1
+          fi
+          tarball=$(find /opt/actions-runner -maxdepth 1 -name 'actions-runner-linux-x64-*.tar.gz' | sort -V | tail -n1)
+          if [ -z "$tarball" ]; then
+            echo "::error::No runner tarball in /opt/actions-runner."
+            exit 1
+          fi
+
+          sudo mkdir -p "$dir"
+          sudo tar -xzf "$tarball" -C "$dir"
+          sudo chown -R "$user:$user" "$dir"
+          # A clean environment: this job's RUNNER_* and GITHUB_* variables
+          # describe the HomeLab runner, not the one being configured.
+          (cd "$dir" && env -i HOME="$HOME" PATH="$PATH" ./config.sh \
+            --url "https://github.com/krakenhavoc/$REPO" \
+            --token "$REG_TOKEN" \
+            --name "$RUNNER" \
+            --unattended --replace)
+          (cd "$dir" && sudo ./svc.sh install "$user" && sudo ./svc.sh start)
+
+      - name: Wait for it to come online
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+          REPO: ${{ inputs.repo }}
+          RUNNER: ${{ matrix.runner }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 24); do
+            status=$(curl -sf -H "Authorization: Bearer $GH_PAT" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/krakenhavoc/$REPO/actions/runners?per_page=100" \
+              | jq -r --arg n "$RUNNER" '.runners[] | select(.name == $n) | .status') || true
+            if [ "$status" = online ]; then
+              echo "$RUNNER is online in $REPO."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$RUNNER did not come online in $REPO within two minutes."
+          exit 1
