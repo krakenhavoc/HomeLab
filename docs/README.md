@@ -10,6 +10,7 @@ This directory explains how the lab is designed, deployed, and recovered. The ro
 | [Operations runbook](runbook.md) | Plan, deploy, replace, or troubleshoot infrastructure |
 | [Network design](network-setup.md) | Understand VLAN placement and network dependencies |
 | [Gateway and internal portal](gateway.md) | Understand the private reverse-proxy and portal design |
+| [NetCrawl web hosting](netcrawl-web.md) | Understand how the NetCrawl browser build will be served (planned) |
 | [Service deployment](service-deployment.md) | Add a workload or change an existing service |
 | [Security model](security.md) | Work with credentials, access controls, or incident response |
 | [Backup strategy](backup-strategy.md) | Recover a service or evaluate what is and is not protected |
