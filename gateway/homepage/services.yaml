@@ -227,6 +227,13 @@
         description: Game server — develop preview
         icon: mdi-cards-playing-outline
 
+    - NetCrawl (dev):
+        href: https://netcrawl-dev.labxp.io
+        # /healthz answers before the first release lands; / would 404.
+        siteMonitor: https://netcrawl-dev.labxp.io/healthz
+        description: Godot web build — internal
+        icon: mdi-controller-classic-outline
+
     - Grafana:
         href: https://grafana.labxp.io
         # /api/health, not /. The root is a 302 to /login, and /api/health is
