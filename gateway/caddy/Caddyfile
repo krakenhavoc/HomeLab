@@ -298,6 +298,20 @@ wkjp.labxp.io {
 	reverse_proxy 192.168.201.20:80
 }
 
+# NetCrawl's Godot web build (netcrawl VM, same VLAN). nginx there serves
+# immutable r/<sha>/ releases and the root redirect to the current one; see
+# docs/netcrawl-web.md. A plain proxy: the cache and cross-origin isolation
+# headers come from nginx and pass through untouched. No `encode` either --
+# CI precompresses and nginx serves the .gz files.
+#
+# Upstream is the static lease for MAC BC:24:11:00:02:70; change both
+# together. LAN/VPN only: -dev is the internal build. A public build later
+# gets its own name and a Cloudflare tunnel, not this route.
+netcrawl-dev.labxp.io {
+	import tls_krakenkey
+	reverse_proxy 192.168.201.21:80
+}
+
 # --- Monitoring -------------------------------------------------------------
 # Grafana on cmd_and_ctrl's monitoring VM (cmd_and_ctrl ADR 0123; VM in
 # terraform/deployments/cmd-and-ctrl-monitoring, stack in

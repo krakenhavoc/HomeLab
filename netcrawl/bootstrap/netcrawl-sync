@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#
+# Reconcile the NetCrawl web host with netcrawl/ in the HomeLab repository,
+# install the CI deploy key and prune old releases. Same shape as wkjp-sync;
+# see gateway/bootstrap/gateway-sync for the reasoning behind fetch/reset, the
+# self-update and the live copy.
+#
+# Releases themselves are not delivered here. NetCrawl CI writes them to
+# /srv/netcrawl/www over its write-only deploy key (docs/netcrawl-web.md).
+#
+# Run by netcrawl-sync.timer. Safe to run by hand at any time.
+
+set -euo pipefail
+
+REPO_DIR=/opt/netcrawl/repo
+LIVE_DIR=/opt/netcrawl/live
+SRC_DIR="${REPO_DIR}/netcrawl"
+WWW_DIR=/srv/netcrawl/www
+KEEP_RELEASES=5
+
+log() { echo "[netcrawl-sync] $*"; }
+
+git -C "${REPO_DIR}" fetch --quiet --depth 1 origin main
+git -C "${REPO_DIR}" reset --quiet --hard FETCH_HEAD
+
+if [[ ! -d "${SRC_DIR}" ]]; then
+  log "ERROR: ${SRC_DIR} missing from the checkout; refusing to sync"
+  exit 1
+fi
+
+# --- Self-update (takes effect next run) -------------------------------------
+if ! cmp -s "${SRC_DIR}/bootstrap/netcrawl-sync" /usr/local/bin/netcrawl-sync; then
+  install -m 0755 "${SRC_DIR}/bootstrap/netcrawl-sync" /usr/local/bin/.netcrawl-sync.new
+  mv /usr/local/bin/.netcrawl-sync.new /usr/local/bin/netcrawl-sync
+  log "netcrawl-sync updated; the next run will use it"
+fi
+
+units_changed=0
+for f in netcrawl-sync.service netcrawl-sync.timer; do
+  if ! cmp -s "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"; then
+    install -m 0644 "${SRC_DIR}/bootstrap/${f}" "/etc/systemd/system/${f}"
+    units_changed=1
+    log "${f} updated"
+  fi
+done
+if [[ "${units_changed}" -eq 1 ]]; then
+  systemctl daemon-reload
+fi
+
+# --- Deploy key --------------------------------------------------------------
+# Every non-comment line must carry the rrsync forced command. A line without
+# it would be a full shell for CI, so one bad line rejects the whole file and
+# the installed keys stay as they were.
+keys_src="${SRC_DIR}/deploy/authorized_keys"
+keys_dst=/home/deploy/.ssh/authorized_keys
+if grep -vE '^[[:space:]]*(#|$)' "${keys_src}" |
+  grep -vqE '^command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict '; then
+  log "ERROR: deploy/authorized_keys has a line without the rrsync forced command; keeping the installed keys"
+elif ! cmp -s "${keys_src}" "${keys_dst}"; then
+  install -d -o deploy -g deploy -m 0700 /home/deploy/.ssh
+  install -o deploy -g deploy -m 0600 "${keys_src}" "${keys_dst}"
+  log "deploy keys updated"
+fi
+
+# --- Validate, then publish --------------------------------------------------
+if ! docker compose -f "${SRC_DIR}/docker-compose.yaml" config --quiet; then
+  log "ERROR: incoming docker-compose.yaml is invalid; keeping the current stack"
+  exit 1
+fi
+
+mkdir -p "${LIVE_DIR}"
+changed=$(rsync -a --delete --itemize-changes \
+  --exclude 'bootstrap/' \
+  --exclude 'deploy/' \
+  --exclude 'README.md' \
+  "${SRC_DIR}/" "${LIVE_DIR}/")
+
+cd "${LIVE_DIR}"
+# Bounded: a hung registry must not block the sync.
+if ! timeout 300 docker compose pull --quiet; then
+  log "WARNING: image pull failed or timed out; using cached images"
+fi
+docker compose up -d --remove-orphans
+
+# The conf dir is mounted, but nginx only reads it on start or reload.
+if grep -q ' nginx/' <<< "${changed}"; then
+  if docker compose exec -T web nginx -t; then
+    docker compose exec -T web nginx -s reload
+    log "nginx reloaded"
+  else
+    log "ERROR: nginx config invalid; still serving the old one"
+  fi
+fi
+
+docker image prune -f --filter "until=168h" > /dev/null
+
+# --- Prune releases ----------------------------------------------------------
+# Keep the newest KEEP_RELEASES directories under r/, and always the one the
+# root page points at. If the pointer can't be read, delete nothing: a CI run
+# may be mid-upload, and guessing wrong would take the live build down.
+current=$(grep -oE 'r/[0-9a-f]{7,40}/' "${WWW_DIR}/index.html" 2> /dev/null | head -1 | cut -d/ -f2 || true)
+if [[ -z "${current}" ]]; then
+  log "no current release in ${WWW_DIR}/index.html; not pruning"
+elif [[ ! -d "${WWW_DIR}/r/${current}" ]]; then
+  log "WARNING: index.html points at missing release ${current}; not pruning"
+else
+  mapfile -t old < <(
+    find "${WWW_DIR}/r" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %f\n' |
+      sort -rn | tail -n +$((KEEP_RELEASES + 1)) | cut -d' ' -f2
+  )
+  for rel in "${old[@]}"; do
+    [[ "${rel}" == "${current}" ]] && continue
+    rm -rf -- "${WWW_DIR:?}/r/${rel:?}"
+    log "pruned release ${rel}"
+  done
+fi
+
+log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD); serving ${current:-nothing yet}"

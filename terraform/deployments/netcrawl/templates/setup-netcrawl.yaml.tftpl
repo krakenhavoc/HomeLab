@@ -1,0 +1,60 @@
+#cloud-config
+# First-boot bootstrap for the NetCrawl web host. See netcrawl/README.md.
+# Installs Docker, creates the deploy user and release directory, clones the
+# repo and hands over to netcrawl-sync. No secrets: the deploy key's public
+# half is installed by netcrawl-sync from netcrawl/deploy/authorized_keys.
+preserve_hostname: false
+hostname: ${hostname}
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+  - git
+  - rsync
+  # rrsync, the deploy key's forced command, is a Python script.
+  - python3
+
+users:
+  # docker group is added in runcmd once it exists.
+  - name: ${admin_username}
+    gecos: "NetCrawl Admin"
+    groups: sudo
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILZzMMk21CqtHkvN3b0euByxFNR042KCcot981yCwUlu
+  # NetCrawl CI. Its key is forced through rrsync into /srv/netcrawl/www;
+  # netcrawl-sync owns ~deploy/.ssh/authorized_keys.
+  - name: deploy
+    gecos: "NetCrawl CI deploy"
+    shell: /bin/sh
+    lock_passwd: true
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+  - systemctl enable --now docker
+  - usermod -aG docker ${admin_username}
+
+  - install -d -o deploy -g deploy -m 0755 /srv/netcrawl /srv/netcrawl/www /srv/netcrawl/www/r
+
+  - mkdir -p /opt/netcrawl
+  - git clone --depth 1 --branch main https://github.com/krakenhavoc/HomeLab.git /opt/netcrawl/repo
+  - install -m 0755 /opt/netcrawl/repo/netcrawl/bootstrap/netcrawl-sync /usr/local/bin/netcrawl-sync
+  - install -m 0644 /opt/netcrawl/repo/netcrawl/bootstrap/netcrawl-sync.service /etc/systemd/system/netcrawl-sync.service
+  - install -m 0644 /opt/netcrawl/repo/netcrawl/bootstrap/netcrawl-sync.timer /etc/systemd/system/netcrawl-sync.timer
+  - systemctl daemon-reload
+  - systemctl enable --now netcrawl-sync.timer
+  - systemctl start netcrawl-sync.service
+
+final_message: |
+  ${hostname} is up (address from the firewall's static DHCP lease).
+  Game: https://netcrawl-dev.labxp.io (via the gateway on pfe)

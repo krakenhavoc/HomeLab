@@ -1,0 +1,11 @@
+# Installed as ~deploy/.ssh/authorized_keys by netcrawl-sync. Public keys only.
+#
+# One line per NetCrawl CI environment key, each forced through rrsync so it
+# can only write files under /srv/netcrawl/www: no shell, no forwarding, no
+# reads, no deletes. Pruning old releases is netcrawl-sync's job.
+#
+#   command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict ssh-ed25519 AAAA... netcrawl-dev-deploy
+#
+# Empty until NetCrawl's web workflow has a deploy key (rollout phase 1b in
+# docs/netcrawl-web.md). Removing a line here revokes that key within one
+# sync.

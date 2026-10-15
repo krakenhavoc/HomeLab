@@ -1,0 +1,21 @@
+# NetCrawl web build on the netcrawl VM. Reconciled by netcrawl-sync from this
+# directory. The gateway (pfe, same VLAN) proxies netcrawl-dev.labxp.io to :80.
+name: netcrawl
+
+services:
+  web:
+    # Minor version pinned; netcrawl-sync pulls patch releases.
+    image: nginx:1.31-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # Directories, not files: rsync replaces files, and a file bind mount
+      # would keep the old copy.
+      - ./nginx:/etc/nginx/conf.d:ro
+      # Written by NetCrawl CI as the deploy user; read-only here.
+      - /srv/netcrawl/www:/srv/netcrawl/www:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 1m
+      timeout: 3s
