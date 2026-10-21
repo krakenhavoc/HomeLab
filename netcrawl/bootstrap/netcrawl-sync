@@ -115,4 +115,19 @@ else
   done
 fi
 
+# --- Prune the design site -----------------------------------------------------
+# CI rewrites every live file of www/design/ on each deploy but can't delete
+# (the key is -no-del), so files a newer build stopped using linger. Delete
+# design files more than 7 days older than the site's own index.html: that
+# keeps everything the current build uses however long ago it was deployed.
+design="${WWW_DIR}/design"
+if [[ -f "${design}/index.html" ]]; then
+  cutoff=$(mktemp)
+  touch -d "@$(( $(stat -c %Y "${design}/index.html") - 7 * 86400 ))" "${cutoff}"
+  pruned=$(find "${design}" -type f ! -newer "${cutoff}" -print -delete | wc -l)
+  find "${design}" -mindepth 1 -type d -empty -delete
+  rm -f "${cutoff}"
+  if (( pruned > 0 )); then log "pruned ${pruned} stale design site files"; fi
+fi
+
 log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD); serving ${current:-nothing yet}"

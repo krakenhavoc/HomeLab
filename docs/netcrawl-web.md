@@ -121,6 +121,15 @@ Godot's export names its files `index.*` on every build, so without per-build di
 
 Saves are unaffected by the layout: Godot keeps `user://` in IndexedDB, which is scoped to the origin, not the path, so every release on `niju-dev.labxp.io` sees the same save slots.
 
+## The design site
+
+NetCrawl's design site (its repository's `tools/site`: the design docs, trackers and maps, generated from the repository) is served from the same VM at `niju-dev.labxp.io/design/`. It needs no new name, certificate, VM or key:
+
+- NetCrawl CI builds it on every merge to `main` and pushes it with the same `dev` deploy key to `www/design/`, which `rrsync` already allows.
+- nginx serves `/design/_astro/` (content-hashed assets) as immutable and every other `/design/` file as `no-cache`. Everything else outside `/`, `/index.html` and `/r/` still returns 404.
+- The key can't delete, so `netcrawl-sync` removes design files more than seven days older than the site's `index.html`. Every file the current build uses is rewritten on each deploy, so only files a newer build dropped are old enough.
+- The site holds unreleased story and design, so it stays behind the gateway with the game. It loads nothing cross-origin (fonts are self-hosted), so the cross-origin isolation headers apply unchanged.
+
 ## Serving
 
 nginx on the VM, behind the gateway:
