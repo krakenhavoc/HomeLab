@@ -307,9 +307,18 @@ wkjp.labxp.io {
 # Upstream is the static lease for MAC BC:24:11:00:02:70; change both
 # together. LAN/VPN only: -dev is the internal build. A public build later
 # gets its own name and a Cloudflare tunnel, not this route.
-netcrawl-dev.labxp.io {
+#
+# /design/ is the game's design site, deployed beside the builds.
+niju-dev.labxp.io {
 	import tls_krakenkey
 	reverse_proxy 192.168.201.21:80
+}
+
+# Old name, kept so existing links land. Saves are per origin, so ones made
+# here don't follow. Drop with its Pi-hole records once nothing uses it.
+netcrawl-dev.labxp.io {
+	import tls_krakenkey
+	redir https://niju-dev.labxp.io{uri} 308
 }
 
 # --- Monitoring -------------------------------------------------------------

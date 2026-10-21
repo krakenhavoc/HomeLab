@@ -58,7 +58,7 @@ The gateway terminates TLS with the existing wildcard certificate and proxies on
 | Decision | Choice | Consequence |
 | --- | --- | --- |
 | Reach | Gateway only, trusted networks and VPN | No new public ingress. VPN clients can already play. |
-| Name | `netcrawl-dev.labxp.io`, environment `dev` | `netcrawl.labxp.io` stays free for a public `prd` later, so phase 1 never needs a split-horizon override. Both are one label under the zone, which the edge certificate requires (see the `cmd-and-ctrl` deployment). |
+| Name | `niju-dev.labxp.io`, environment `dev` (was `netcrawl-dev`, which now redirects) | `niju.labxp.io` stays free for a public `prd` later, so phase 1 never needs a split-horizon override. Both are one label under the zone, which the edge certificate requires (see the `cmd-and-ctrl` deployment). |
 | Placement | Dedicated VM, same VLAN as the gateway host | Same shape as `wkjp`. No inter-VLAN rule from the gateway. A stateless host can be replaced freely. |
 | Origin | `nginx:alpine`, pinned | Matches `wkjp`. It only serves files; the gateway already does TLS. |
 | Artifact delivery | CI pushes with `rsync` over a per-environment deploy key | No credential on the VM and no registry quota. See [Why push instead of an image](#why-push-instead-of-an-image). |
@@ -119,7 +119,7 @@ The host is responsible for:
 
 Godot's export names its files `index.*` on every build, so without per-build directories a browser can hold a cached `index.pck` from one build next to a new `index.wasm` from another. Per-build directories with a single mutable pointer remove that class of failure, and make every recent build reachable by URL for comparison.
 
-Saves are unaffected by the layout: Godot keeps `user://` in IndexedDB, which is scoped to the origin, not the path, so every release on `netcrawl-dev.labxp.io` sees the same save slots.
+Saves are unaffected by the layout: Godot keeps `user://` in IndexedDB, which is scoped to the origin, not the path, so every release on `niju-dev.labxp.io` sees the same save slots.
 
 ## Serving
 
@@ -154,7 +154,7 @@ The fragment shows intent; the real file lives at `netcrawl/nginx/default.conf`.
 The gateway route is a plain proxy with no header rewriting:
 
 ```caddyfile
-netcrawl-dev.labxp.io {
+niju-dev.labxp.io {
 	import tls_krakenkey
 	reverse_proxy <static lease>:80
 }
@@ -236,7 +236,7 @@ Measured there with Godot 4.6.1, served through `netcrawl/nginx/` and loaded in 
 
 - **Previews.** Any build can be uploaded as `r/<sha>/` without moving the root pointer, which gives pull-request previews with no new infrastructure. They share save slots with `main` because they share an origin. If save-format changes make that unsafe, previews move to their own name.
 - **Off-LAN playtesters.** VPN first. If testers can't use the VPN, put the same origin behind a Cloudflare tunnel with an Access policy, the way `cmd-and-ctrl` reaches the internet.
-- **Public.** A separate `prd` environment at `netcrawl.labxp.io` behind a Cloudflare tunnel, using the `cmd-and-ctrl` tunnel and DNS resources. A cache rule for `r/*` is needed for the edge to cache them, because Cloudflare doesn't cache `.pck` or `.wasm` by default; the immutable headers make that rule safe. Promotion copies the exact `r/<sha>/` that `dev` served, then moves `prd`'s root pointer. It never rebuilds.
+- **Public.** A separate `prd` environment at `niju.labxp.io` behind a Cloudflare tunnel, using the `cmd-and-ctrl` tunnel and DNS resources. A cache rule for `r/*` is needed for the edge to cache them, because Cloudflare doesn't cache `.pck` or `.wasm` by default; the immutable headers make that rule safe. Promotion copies the exact `r/<sha>/` that `dev` served, then moves `prd`'s root pointer. It never rebuilds.
 - **Monitoring.** nginx access logs to the existing Grafana stack, if usage ever makes that worth it.
 
 ## Open questions
