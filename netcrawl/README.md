@@ -27,7 +27,7 @@ The browser build of NetCrawl, a Godot game, served from its own VM and reachabl
 
 - `terraform/deployments/netcrawl/` (directory, tfvars `name_prefix`, backend tag) and its `tfc` workspace entry. Renaming the workspace means moving state, so plan it as a migration.
 - `netcrawl/` (directory, paths in the sync script, units, compose and cloud-init template).
-- The gateway site name, the portal card, both Pi-hole records and the TLS name. The wildcard certificate already covers any single-label name.
+- The gateway site name, the portal card, both Pi-hole records and the TLS name. The wildcard certificate already covers any single-label name. Done: the site is `niju-dev.labxp.io`, and `netcrawl-dev` redirects to it until its records are dropped.
 - The NetCrawl repository's deploy workflow (host, path, known_hosts).
 
 The VM is stateless, so the cheapest rename is to stand up the new name beside this one, point CI at it, and then remove this one.

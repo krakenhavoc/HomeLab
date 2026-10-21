@@ -1,5 +1,5 @@
 # NetCrawl web build on the netcrawl VM. Reconciled by netcrawl-sync from this
-# directory. The gateway (pfe, same VLAN) proxies netcrawl-dev.labxp.io to :80.
+# directory. The gateway (pfe, same VLAN) proxies niju-dev.labxp.io to :80.
 name: netcrawl
 
 services:
