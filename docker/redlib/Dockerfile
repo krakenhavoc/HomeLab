@@ -12,7 +12,7 @@
 # Pinned to a commit, NOT a branch. Reddit breaks Redlib every few months and
 # the fix is usually a newer upstream commit, so bump this on purpose, in a PR
 # where the build gets exercised.
-ARG REDLIB_REF=a4d36e954cf1bd64f209cd8868c5a29edc81b374
+ARG REDLIB_REF=654e6e3ac2db6fcd964b73525580c658d9523ba5
 
 FROM rust:slim-bookworm AS builder
 ARG REDLIB_REF
