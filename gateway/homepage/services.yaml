@@ -100,8 +100,10 @@
 
     - RedLib:
         href: https://redlib.labxp.io
-        # /settings, not /. RedLib has no landing page and answers / with 404.
-        siteMonitor: https://redlib.labxp.io/settings
+        # A real thread (archived, so it won't go away). /settings never calls
+        # Reddit and stayed green through every break; a thread that can't load
+        # renders Redlib's error page with a 404.
+        siteMonitor: https://redlib.labxp.io/r/announcements/comments/7jsyqt/
         description: Private Reddit frontend
         icon: redlib.png
 
