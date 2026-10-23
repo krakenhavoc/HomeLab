@@ -1,0 +1,144 @@
+name: Redlib candidate
+
+# Nightly: build upstream Redlib main, with and without docker/redlib/patches,
+# run probe.sh against Reddit, and open one PR bumping the pin when a build
+# passes. Self-hosted because Reddit blocks GitHub-hosted runner IPs.
+#
+# REDLIB_PR_TOKEN: fine-grained, this repo only, Contents + Pull requests
+# write. A GITHUB_TOKEN PR wouldn't run the required checks. Without it the
+# result only goes to the job summary.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: redlib-candidate
+
+jobs:
+  candidate:
+    runs-on: self-hosted
+    timeout-minutes: 60
+    env:
+      BRANCH: redlib/candidate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REDLIB_PR_TOKEN || github.token }}
+
+      - name: Compare the pin with upstream main
+        id: ref
+        run: |
+          set -euo pipefail
+          pinned=$(sed -n 's/^ARG REDLIB_REF=//p' docker/redlib/Dockerfile)
+          upstream=$(git ls-remote https://github.com/redlib-org/redlib.git refs/heads/main | cut -f1)
+          [[ $upstream =~ ^[0-9a-f]{40}$ ]] || { echo "::error::bad upstream ref: $upstream"; exit 1; }
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          if [ "$pinned" = "$upstream" ]; then
+            echo "Pin is already upstream main (\`${upstream:0:7}\`)." >> "$GITHUB_STEP_SUMMARY"
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and probe
+        id: test
+        if: steps.ref.outputs.new == 'true'
+        env:
+          UPSTREAM: ${{ steps.ref.outputs.upstream }}
+        run: |
+          set -uo pipefail
+          # name, REDLIB_PATCHES -> 0 if the image builds and probe.sh passes
+          try() {
+            local tag="redlib-candidate:$1"
+            if ! docker build -q --build-arg REDLIB_REF="$UPSTREAM" --build-arg REDLIB_PATCHES="$2" -t "$tag" docker/redlib >/dev/null; then
+              echo "$1: build failed" | tee -a results.txt
+              return 1
+            fi
+            docker rm -f "rc-$1" >/dev/null 2>&1
+            docker run -d --name "rc-$1" --user nobody --read-only --cap-drop ALL \
+              --security-opt no-new-privileges:true "$tag" >/dev/null
+            for _ in $(seq 1 30); do
+              docker exec "rc-$1" bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' 2>/dev/null && break
+              sleep 1
+            done
+            local out rc
+            out=$(docker exec "rc-$1" redlib-probe 2>&1)
+            rc=$?
+            echo "$1: $out" | tee -a results.txt
+            docker rm -f "rc-$1" >/dev/null
+            return $rc
+          }
+          : > results.txt
+          mode=none
+          if try plain off; then
+            mode=drop
+          elif ls docker/redlib/patches/*.patch >/dev/null 2>&1 && try patched on; then
+            mode=keep
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          {
+            echo "Upstream \`${UPSTREAM:0:7}\`: **$mode**"
+            echo
+            sed 's/^/    /' results.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update the bump PR
+        if: steps.test.outputs.mode == 'drop' || steps.test.outputs.mode == 'keep'
+        env:
+          GH_TOKEN: ${{ secrets.REDLIB_PR_TOKEN }}
+          UPSTREAM: ${{ steps.ref.outputs.upstream }}
+          MODE: ${{ steps.test.outputs.mode }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::REDLIB_PR_TOKEN is not set; not opening a PR"
+            exit 0
+          fi
+          short=${UPSTREAM:0:7}
+          title="fix(redlib): bump to upstream $short"
+          note="Upstream \`$short\` passes probe.sh with the patches in \`docker/redlib/patches/\`."
+          if [ "$MODE" = drop ]; then
+            title="$title and drop local patches"
+            note="Upstream \`$short\` passes probe.sh on its own, so this also removes \`docker/redlib/patches/\`."
+          fi
+
+          git config user.name "redlib-candidate"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          sed -i "s/^ARG REDLIB_REF=.*/ARG REDLIB_REF=$UPSTREAM/" docker/redlib/Dockerfile
+          if [ "$MODE" = drop ]; then git rm -q docker/redlib/patches/*.patch; fi
+          git commit -qam "$title"
+          git push -qf origin "$BRANCH"
+
+          {
+            echo "$note"
+            echo
+            echo "Probed from the lab by [this run]($GITHUB_SERVER_URL/$REPO/actions/runs/$GITHUB_RUN_ID):"
+            echo
+            sed 's/^/    /' results.txt
+            echo
+            echo "Upstream changes: https://github.com/redlib-org/redlib/compare/$(git show HEAD~1:docker/redlib/Dockerfile | sed -n 's/^ARG REDLIB_REF=//p')...$UPSTREAM"
+          } > body.md
+
+          api() { curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$@"; }
+          owner=${REPO%%/*}
+          pr=$(api "https://api.github.com/repos/$REPO/pulls?state=open&head=$owner:$BRANCH" | jq -r '.[0].number // empty')
+          payload=$(jq -n --arg t "$title" --rawfile b body.md --arg h "$BRANCH" '{title: $t, body: $b, head: $h, base: "main"}')
+          if [ -n "$pr" ]; then
+            api -X PATCH "https://api.github.com/repos/$REPO/pulls/$pr" -d "$(jq 'del(.head, .base)' <<<"$payload")" >/dev/null
+            echo "Updated #$pr" >> "$GITHUB_STEP_SUMMARY"
+          else
+            url=$(api -X POST "https://api.github.com/repos/$REPO/pulls" -d "$payload" | jq -r .html_url)
+            echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker rm -f rc-plain rc-patched >/dev/null 2>&1 || true
+          docker image rm redlib-candidate:plain redlib-candidate:patched >/dev/null 2>&1 || true

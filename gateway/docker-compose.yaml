@@ -125,18 +125,13 @@ services:
       - ./redlib.env
     networks:
       - gateway
-    # The image is Ubuntu with no wget or curl, so probe /settings with bash's
-    # /dev/tcp. /settings, not /: Redlib answers / with 404 by design.
+    # Loads a real thread (docker/redlib/probe.sh). /settings stayed 200 through
+    # every Reddit break, so it only proved the process was up. Nothing acts on
+    # unhealthy; it shows in `docker ps`.
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bash",
-          "-c",
-          'exec 3<>/dev/tcp/127.0.0.1/8080 && printf "GET /settings HTTP/1.0\r\n\r\n" >&3 && head -1 <&3 | grep -q " 200"',
-        ]
+      test: ["CMD", "redlib-probe"]
       interval: 5m
-      timeout: 3s
+      timeout: 30s
 
 networks:
   gateway:

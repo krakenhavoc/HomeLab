@@ -69,9 +69,9 @@ jobs:
           cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}/{1}:buildcache,mode=max', env.REGISTRY, steps.image.outputs.name) || '' }}
 
       # Run it the way the gateway does (nobody, read-only, no caps) and probe
-      # /settings with the same bash /dev/tcp check the compose healthcheck
-      # uses. /settings is served locally, so this needs no Reddit access --
-      # runner IPs are blocked by Reddit anyway.
+      # /settings over bash /dev/tcp. /settings is served locally, so this
+      # needs no Reddit access -- runner IPs are blocked by Reddit anyway. The
+      # Reddit check (probe.sh) runs from the lab in redlib-candidate.yaml.
       - name: Verify the image starts and serves /settings
         run: |
           set -euo pipefail
