@@ -130,6 +130,15 @@ NetCrawl's design site (its repository's `tools/site`: the design docs, trackers
 - The key can't delete, so `netcrawl-sync` removes design files more than seven days older than the site's `index.html`. Every file the current build uses is rewritten on each deploy, so only files a newer build dropped are old enough.
 - The site holds unreleased story and design, so it stays behind the gateway with the game. It loads nothing cross-origin (fonts are self-hosted), so the cross-origin isolation headers apply unchanged.
 
+## The promo site
+
+The promo site's dev build (the private `niju-site` repository: landing page, press kit) is served from the same VM at `niju-dev.labxp.io/site/`, behind the gateway like the rest. It has no CI here: the owner deploys it by hand from a workstation on the lab network.
+
+- It has its own deploy key, forced through `rrsync -wo -no-del /srv/netcrawl/www/site`, so it can only write `www/site/`. `netcrawl-sync` accepts a key line rooted at `www` or at `www/site` and nothing else, and creates `www/site/` for it (rrsync needs the directory to exist).
+- nginx serves it like the design site: `/site/_astro/` immutable, other files `no-cache`, `$uri.html` for its extensionless pages, its own 404.
+- `netcrawl-sync` prunes its stale files the same way as the design site's.
+- The cross-origin isolation headers apply. The site loads nothing cross-origin today; Steam's store widget (an iframe, added once a Steam page exists) would be blocked by `require-corp`, so it stays off on dev.
+
 ## Serving
 
 nginx on the VM, behind the gateway:

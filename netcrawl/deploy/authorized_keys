@@ -10,3 +10,6 @@
 
 # NetCrawl `dev` environment, secret NETCRAWL_DEPLOY_SSH_KEY. Created 2026-10-15.
 command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICYkWcmuQ+nKOIElWX+u7KaEuQ8BejhBQGwyMR1Nw1iF netcrawl-dev-deploy
+
+# The promo site's dev build (niju-site), deployed by hand from the owner's workstation. Writes only www/site/. Created 2026-10-23.
+command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www/site",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJ8Hdj8BGILhktJMDAkzB5VOSXXirP3+hvq/zMNf5nQ niju-site-dev-deploy

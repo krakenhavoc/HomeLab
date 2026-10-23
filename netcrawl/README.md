@@ -18,7 +18,7 @@ The browser build of NetCrawl, a Godot game, served from its own VM and reachabl
 - CI uploads `r/<sha>/` first and then replaces `index.html`, which redirects to it. `r/**` is cached forever, and `index.html` is never cached.
 - Upload with `--chmod=D755,F644`. nginx runs as a different user from `deploy`, and it can only serve what it can read.
 - `netcrawl-sync` keeps the newest five releases plus whichever one `index.html` points at. If it can't read the pointer, it deletes nothing.
-- The deploy key can only write under `/srv/netcrawl/www` (`rrsync -wo -no-del`). `netcrawl-sync` refuses to install an `authorized_keys` file that has any line without that forced command.
+- CI's deploy key can only write under `/srv/netcrawl/www` (`rrsync -wo -no-del`), and the promo site's only under `www/site/`. `netcrawl-sync` refuses to install an `authorized_keys` file that has any line without one of those forced commands.
 - Changes here go live within about 5 minutes of merging. nginx reloads only if `nginx -t` passes.
 
 ## Renaming
