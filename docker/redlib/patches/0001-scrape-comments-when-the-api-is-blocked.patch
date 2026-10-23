@@ -468,7 +468,7 @@ diff --git a/src/shreddit.rs b/src/shreddit.rs
 new file mode 100644
 --- /dev/null
 +++ b/src/shreddit.rs
-@@ -0,0 +1,395 @@
+@@ -0,0 +1,434 @@
 +// Fallback for post pages when Reddit blocks the `/comments/` JSON API
 +// (403 "blocked by network security" since 2026-10-20; the encoded-slash
 +// workaround in `client::request` was blocked too on 2026-10-22).
@@ -549,11 +549,40 @@ new file mode 100644
 +}
 +
 +async fn get(url: &str, quarantine: bool) -> Result<String, String> {
-+	let res = CLIENT.get(url).header("Cookie", cookies(quarantine)).send().await.map_err(|e| e.to_string())?;
-+	if !res.status().is_success() {
-+		return Err(format!("Reddit returned {} for comments | {url}", res.status()));
++	let mut url = url.to_string();
++	let mut cookies = cookies(quarantine);
++	// Some IPs first get a redirect back to the same page with `rdt=` added,
++	// sometimes setting a cookie. Follow it on reddit.com only, a few times.
++	for _ in 0..3 {
++		let res = CLIENT.get(&url).header("Cookie", &cookies).send().await.map_err(|e| e.to_string())?;
++		if res.status().is_redirection() {
++			let Some(next) = res.headers().get(wreq::header::LOCATION).and_then(|l| l.to_str().ok()).and_then(|l| reddit_url(&url, l)) else {
++				return Err(format!("Reddit returned {} for comments | {url}", res.status()));
++			};
++			for c in res.headers().get_all(wreq::header::SET_COOKIE) {
++				if let Some(pair) = c.to_str().ok().and_then(|c| c.split(';').next()).filter(|p| p.contains('=')) {
++					cookies += &format!("; {}", pair.trim());
++				}
++			}
++			url = next;
++			continue;
++		}
++		if !res.status().is_success() {
++			return Err(format!("Reddit returned {} for comments | {url}", res.status()));
++		}
++		return res.text().await.map_err(|e| e.to_string());
 +	}
-+	res.text().await.map_err(|e| e.to_string())
++	Err(format!("Too many redirects for comments | {url}"))
++}
++
++/// Absolute form of a redirect target, if it stays on www.reddit.com.
++fn reddit_url(from: &str, location: &str) -> Option<String> {
++	let next = if location.starts_with('/') {
++		format!("https://www.reddit.com{location}")
++	} else {
++		location.to_string()
++	};
++	(next.starts_with("https://www.reddit.com/") && next != from).then_some(next)
 +}
 +
 +/// Loads the comments behind a cursor, like reddit.com's "more replies" buttons.
@@ -803,6 +832,16 @@ new file mode 100644
 +		assert_eq!(parse_path("/comments/1xaxcyl/comments/abc.json?"), Some(("1xaxcyl".into(), Some("abc".into()))));
 +		assert_eq!(parse_path("/user/spez/comments/1xaxcyl.json?"), Some(("1xaxcyl".into(), None)));
 +		assert_eq!(parse_path("/r/linux/hot.json"), None);
++	}
++
++	#[test]
++	fn test_reddit_url() {
++		let from = "https://www.reddit.com/svc/shreddit/comments/r/a/t3_p?sort=TOP";
++		assert_eq!(reddit_url(from, &format!("{from}&rdt=1")), Some(format!("{from}&rdt=1")));
++		assert_eq!(reddit_url(from, "/svc/x?rdt=2"), Some("https://www.reddit.com/svc/x?rdt=2".into()));
++		assert_eq!(reddit_url(from, from), None);
++		assert_eq!(reddit_url(from, "https://evil.example/"), None);
++		assert_eq!(reddit_url(from, "https://www.reddit.com.evil.example/"), None);
 +	}
 +
 +	#[test]
