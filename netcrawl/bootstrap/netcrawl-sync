@@ -48,13 +48,16 @@ if [[ "${units_changed}" -eq 1 ]]; then
 fi
 
 # --- Deploy key --------------------------------------------------------------
-# Every non-comment line must carry the rrsync forced command. A line without
-# it would be a full shell for CI, so one bad line rejects the whole file and
-# the installed keys stay as they were.
+# Every non-comment line must carry the rrsync forced command, rooted at the
+# web root or at the promo site's directory in it. A line without it would be
+# a full shell for CI, so one bad line rejects the whole file and the
+# installed keys stay as they were.
 keys_src="${SRC_DIR}/deploy/authorized_keys"
 keys_dst=/home/deploy/.ssh/authorized_keys
+# rrsync refuses a root that doesn't exist, so the promo site's key needs it.
+install -d -o deploy -g deploy -m 0755 "${WWW_DIR}/site"
 if grep -vE '^[[:space:]]*(#|$)' "${keys_src}" |
-  grep -vqE '^command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict '; then
+  grep -vqE '^command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www(/site)?",restrict '; then
   log "ERROR: deploy/authorized_keys has a line without the rrsync forced command; keeping the installed keys"
 elif ! cmp -s "${keys_src}" "${keys_dst}"; then
   install -d -o deploy -g deploy -m 0700 /home/deploy/.ssh
@@ -115,19 +118,21 @@ else
   done
 fi
 
-# --- Prune the design site -----------------------------------------------------
-# CI rewrites every live file of www/design/ on each deploy but can't delete
-# (the key is -no-del), so files a newer build stopped using linger. Delete
-# design files more than 7 days older than the site's own index.html: that
-# keeps everything the current build uses however long ago it was deployed.
-design="${WWW_DIR}/design"
-if [[ -f "${design}/index.html" ]]; then
+# --- Prune the design and promo sites -----------------------------------------
+# Each deploy rewrites every live file of www/design/ (CI) or www/site/ (the
+# promo site) but can't delete (the keys are -no-del), so files a newer build
+# stopped using linger. Delete files more than 7 days older than the site's
+# own index.html: that keeps everything the current build uses however long
+# ago it was deployed.
+for name in design site; do
+  site_dir="${WWW_DIR}/${name}"
+  [[ -f "${site_dir}/index.html" ]] || continue
   cutoff=$(mktemp)
-  touch -d "@$(( $(stat -c %Y "${design}/index.html") - 7 * 86400 ))" "${cutoff}"
-  pruned=$(find "${design}" -type f ! -newer "${cutoff}" -print -delete | wc -l)
-  find "${design}" -mindepth 1 -type d -empty -delete
+  touch -d "@$(( $(stat -c %Y "${site_dir}/index.html") - 7 * 86400 ))" "${cutoff}"
+  pruned=$(find "${site_dir}" -type f ! -newer "${cutoff}" -print -delete | wc -l)
+  find "${site_dir}" -mindepth 1 -type d -empty -delete
   rm -f "${cutoff}"
-  if (( pruned > 0 )); then log "pruned ${pruned} stale design site files"; fi
-fi
+  if (( pruned > 0 )); then log "pruned ${pruned} stale ${name} site files"; fi
+done
 
 log "synced to $(git -C "${REPO_DIR}" rev-parse --short HEAD); serving ${current:-nothing yet}"
