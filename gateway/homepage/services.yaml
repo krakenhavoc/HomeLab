@@ -243,6 +243,13 @@
         description: Design docs — tracker, story map, registry and maps
         icon: mdi-book-open-page-variant-outline
 
+    - Nijū site (dev):
+        href: https://niju-dev.labxp.io/site/
+        # Red until the first niju-site deploy; /site/ 404s while empty.
+        siteMonitor: https://niju-dev.labxp.io/site/
+        description: Promo site — landing page and press kit
+        icon: mdi-web
+
     - Grafana:
         href: https://grafana.labxp.io
         # /api/health, not /. The root is a 302 to /login, and /api/health is
