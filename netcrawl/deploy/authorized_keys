@@ -13,3 +13,6 @@ command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www",restrict ssh-ed25519 AAA
 
 # The promo site's dev build (niju-site), deployed by hand from the owner's workstation. Writes only www/site/. Created 2026-10-23.
 command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www/site",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJ8Hdj8BGILhktJMDAkzB5VOSXXirP3+hvq/zMNf5nQ niju-site-dev-deploy
+
+# The promo site's CI (niju-site `dev` environment, secret DEPLOY_SSH_KEY): deploys every PR push and main to www/site/, served as dev.niju.gg. Created 2026-10-24.
+command="/usr/bin/rrsync -wo -no-del /srv/netcrawl/www/site",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB0Ahu4hKr97VDI9kYahofeo8SeHzqKfKVBETGyl8WqO niju-site-ci-dev
