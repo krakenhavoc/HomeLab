@@ -205,11 +205,37 @@
   #rvMic{width:54px; height:54px; flex:none; border-radius:50%; padding:0; font-size:1.25rem;}
   #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
   @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
-  #rvLevel{height:3px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
-  #rvLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
+  #rvLevel,#pcLevel{height:3px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
+  #rvLevelFill,#pcLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
   #rvKana{text-align:center; min-height:1.4em; color:var(--soft); font-size:1rem; margin-top:4px;}
   #rvStatus{text-align:center; font-size:.92rem; min-height:1.5em; margin-top:8px; color:var(--muted);}
   #rvStatus.good{color:var(--green);} #rvStatus.bad{color:var(--red);} #rvStatus.again{color:var(--amber);}
+  /* pronunciation check */
+  .pcOpts{display:flex; flex-direction:column; gap:2px; margin-top:12px;}
+  .pcOpts label{margin:0; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--text);}
+  #pcFrom{font-size:.8rem;}
+  .pcSay{font-family:var(--mincho); font-weight:700; font-size:1.5rem; letter-spacing:.04em;}
+  #pcLevel.off{visibility:hidden;}
+  #pcStatus{text-align:center; font-size:.98rem; min-height:1.5em; margin-top:10px; color:var(--muted);}
+  #pcStatus.good{color:var(--green);} #pcStatus.bad{color:var(--red);} #pcStatus.again{color:var(--amber);}
+  #pcHeard{margin-top:12px; background:var(--card2); border-radius:10px; padding:10px 14px; font-size:.9rem;}
+  .pcLine{display:grid; grid-template-columns:7.5em 1fr; gap:4px 10px; align-items:center; padding:3px 0;}
+  .pcLine b{color:var(--muted); font-weight:500;}
+  .pcLang{display:flex; align-items:center; gap:8px;}
+  .pcBar{flex:1; max-width:140px; height:6px; background:var(--bg); border-radius:99px; overflow:hidden;}
+  .pcBar span{display:block; height:100%; background:var(--soft);}
+  .pcWhy{margin-top:6px; color:var(--text);}
+  .pcRef{display:flex; flex-wrap:wrap; align-items:center; gap:2px 10px;}
+  #pcActions{flex-wrap:wrap;}
+  #pcActions .btn{flex:1 1 auto; min-width:0; white-space:nowrap;}
+  .pcScore{font-size:1.15rem; font-weight:700; margin-bottom:8px;}
+  .pcRow{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:.9rem;}
+  .pcRow .jp{font-family:var(--mincho); font-weight:700; font-size:1.15rem; min-width:3.2em;}
+  .pcRow .rd{color:var(--muted); min-width:5em;}
+  .pcRow .takes{flex:1; display:flex; flex-wrap:wrap; gap:4px;}
+  .pcTake{background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:2px 8px; cursor:pointer; font:inherit; font-size:.82rem;}
+  .pcTake.ok{border-color:var(--green);} .pcTake.near{border-color:var(--amber);} .pcTake.bad{border-color:var(--red);}
+  .pcRow .ref{font-size:.78rem; color:var(--muted); text-align:right;}
   .rvInfo{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.92rem;}
   .rvInfo div{margin:2px 0;} .rvInfo b{color:var(--muted); font-weight:700; margin-right:6px;}
   .rvInfo .say{float:right; margin-left:8px;}
@@ -408,6 +434,47 @@
 
   <!-- ============ SPEAK VIEW ============ -->
   <main id="viewSpeak" class="hidden">
+    <section class="card" id="pcCard">
+      <h2>Pronunciation check</h2>
+      <div id="pcSetup">
+        <p>Say each word as it comes up. You'll see what Whisper heard and how Japanese it sounded, next to the same for VOICEVOX saying it. If Whisper gets VOICEVOX wrong too, it's Whisper, not you. Words your reviews misheard come first.</p>
+        <label for="pcWords">Words to include (optional)</label>
+        <input type="text" id="pcWords" lang="ja" placeholder="変 へん, 了 りょう, がっこう" autocomplete="off">
+        <div class="pcOpts">
+          <label><input type="checkbox" id="chkPcSave"> Save my recordings on the wkjp server, for tuning Whisper</label>
+          <label><input type="checkbox" id="chkMicClean"> Browser noise suppression (Reviews uses it too)</label>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button class="btn primary" id="btnPcStart">Start</button>
+          <select id="pcCount" title="how many words" style="width:auto;">
+            <option value="5">5 words</option><option value="10">10 words</option><option value="20">20 words</option>
+          </select>
+        </div>
+        <p class="note" id="pcSrc"></p>
+        <div id="pcErr" class="err hidden"></div>
+      </div>
+      <div id="pcRun" class="hidden">
+        <div class="rvTop"><span id="pcPos"></span><span id="pcFrom"></span><span class="grow"></span><button class="btn small" id="btnPcStop">Finish</button></div>
+        <div class="rvItem vocabulary" id="pcItem"></div>
+        <div class="rvPrompt reading"><span class="qbadge">あ</span><span class="pcSay" id="pcSay" lang="ja"></span><span class="how">say it</span></div>
+        <div id="pcLevel"><div id="pcLevelFill"></div></div>
+        <div id="pcStatus"></div>
+        <div id="pcHeard" class="hidden"></div>
+        <div class="actionRow" id="pcActions">
+          <button class="btn" id="btnPcRef" title="VOICEVOX saying it (p)">🔊 Hear it</button>
+          <button class="btn" id="btnPcMine" title="your take (m)">▶ Mine</button>
+          <button class="btn" id="btnPcAgain" title="r or space">Again</button>
+          <button class="btn primary" id="btnPcNext" title="Enter">Next</button>
+        </div>
+        <p class="note">Space starts and stops the mic. Enter next, r again, p hear it, m yours.</p>
+      </div>
+      <div id="pcDone" class="hidden">
+        <div class="pcScore" id="pcScore"></div>
+        <div id="pcTable"></div>
+        <p class="note" id="pcSaved"></p>
+        <div class="actionRow"><button class="btn primary" id="btnPcNew">New check</button></div>
+      </div>
+    </section>
     <section class="card">
       <h2>Speak anything</h2>
       <p>Paste Japanese, or type romaji — it converts to kana automatically. Long text plays sentence by sentence through whichever audio engine is active in Settings.</p>
@@ -875,7 +942,8 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
-  rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true},load("wkl_settings",{}));
+  rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
+  pcSave:true,pcCount:10,micClean:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1777,7 +1845,8 @@ async function rvLoad(){
 let MIC=null;
 async function micOpen(){
   if(MIC) return MIC;
-  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  const c=S.micClean!==false;
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:c,noiseSuppression:c,autoGainControl:c}});
   const ctx=new (window.AudioContext||window.webkitAudioContext)();
   const an=ctx.createAnalyser(); an.fftSize=1024;
   ctx.createMediaStreamSource(stream).connect(an);
@@ -1796,11 +1865,13 @@ function micLevel(){
   return Math.sqrt(s/MIC.buf.length);
 }
 // The recording, or null if nobody spoke or alive() went false.
-function micUtterance(alive){
+// opt.fill: level meter; opt.stopNow(): stop and keep what's recorded so far
+function micUtterance(alive,opt={}){
   return new Promise(resolve=>{
     if(!MIC){ resolve(null); return; }
     MIC.ctx.resume().catch(()=>{});
-    const chunks=[],rec=new MediaRecorder(MIC.stream),fill=$("rvLevelFill");
+    const chunks=[],rec=new MediaRecorder(MIC.stream),fill=opt.fill||$("rvLevelFill");
+    const stopNow=opt.stopNow||(()=>RV&&RV.micStop);
     let t=0,speech=0,quiet=0,heard=false,keep=false;
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>resolve(keep&&chunks.length?new Blob(chunks,{type:chunks[0].type||"audio/webm"}):null);
@@ -1813,12 +1884,13 @@ function micUtterance(alive){
       fill.style.width=Math.min(100,40*lv/thr)+"%";
       if(lv>thr){ speech+=50; quiet=0; if(speech>=150) heard=true; } else quiet+=50;
       let stop=!alive()||!MIC;
-      if(!stop&&RV&&RV.micStop){ keep=true; stop=true; }
+      if(!stop&&stopNow()){ keep=true; stop=true; }
       else if(!stop&&heard&&(quiet>=800||t>=9000)){ keep=true; stop=true; }
       else if(!stop&&!heard&&t>=10000) stop=true;
       if(!stop) return;
       clearInterval(tick); fill.style.width="0%";
       if(RV) RV.micStop=false;
+      if(PC) PC.micStop=false;
       try{ rec.stop(); }catch(e){ resolve(null); }
     },50);
     rec.start();
@@ -1896,6 +1968,7 @@ function rvNext(){
   RV.cur={item,q:left[Math.floor(Math.random()*left.length)],near:false,gaveUp:false,empties:0};
   rvRender();
 }
+const cellFit=n=>n<=3?1:n===4?.85:n===5?.72:n===6?.62:n<=8?.5:.42;
 function rvRender(){
   const {item,q}=RV.cur,s=item.sub;
   const left=RV.active.length+RV.backlog.length,done=RV.finished.length;
@@ -1905,7 +1978,7 @@ function rvRender(){
   // one practice-sheet square per character; long words shrink to fit
   const el=$("rvItem"),chars=s.chars?[...s.chars]:[];
   el.className="rvItem "+s.type;
-  el.style.setProperty("--fit",chars.length<=3?1:chars.length===4?.85:chars.length===5?.72:chars.length===6?.62:chars.length<=8?.5:.42);
+  el.style.setProperty("--fit",cellFit(chars.length));
   el.innerHTML=chars.length?chars.map(c=>`<span class="cell">${esc(c)}</span>`).join("")
     :`<span class="cell">${s.img?`<img src="${esc(s.img)}" alt="${esc(s.pm)}">`:"?"}</span>`;
   const pr=$("rvPrompt");
@@ -2073,6 +2146,14 @@ function rvRight(res){
   const go=()=>{ if(RV&&RV.phase==="right"&&RV.cur.item===item&&RV.cur.q===q) rvNext(); };
   if(say) rvSay(say).then(()=>setTimeout(go,250)); else setTimeout(go,800);
 }
+// spoken readings that missed: the pronunciation check offers these first
+let VOICE_MISS=load("wkl_voice_misses",[]);
+function noteVoiceMiss(s,heard){
+  const r=(s.readings.find(x=>x.acc&&x.primary)||s.readings.find(x=>x.acc)||{}).r;
+  if(!s.chars||!r) return;
+  VOICE_MISS=VOICE_MISS.filter(m=>!(m.c===s.chars&&m.r===r)).concat({c:s.chars,r,h:heard||"",at:Date.now()}).slice(-30);
+  store("wkl_voice_misses",VOICE_MISS);
+}
 // play back what the mic recorded for this answer, mic off meanwhile
 function rvPlayClip(){
   if(!RV||!RV.cur.clip) return;
@@ -2100,6 +2181,7 @@ function rvInfoHTML(s){
 }
 function rvWrong(heard,gaveUp,spoken){
   const s=RV.cur.item.sub;
+  if(spoken&&!gaveUp&&RV.cur.q==="reading") noteVoiceMiss(s,heard);
   RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
   const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
   rvStatus(gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite","bad");
@@ -2133,6 +2215,7 @@ function rvConfirm(heard,msg){
   const s=RV.cur.item.sub;
   const want=(s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)).r;
   RV.phase="confirm"; RV.cur.want=want; RV.cur.heard=heard;
+  if(msg) noteVoiceMiss(s,heard);       // dropped r: worth practising
   rvStatus(msg||`Heard ${heard}, which fits more than one reading. Did you say ${want}?`,"again");
   $("rvActions").innerHTML=(RV.cur.clip?`<button class="btn" id="btnRvClipC" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+
     `<button class="btn" id="btnRvNo">No (n)</button><button class="btn primary" id="btnRvYes">Yes (y)</button>`;
@@ -2310,12 +2393,283 @@ async function rvResume(){
   else if((RV.phase==="wrong"||RV.phase==="confirm")&&RV.voice&&S.rvHands) rvListenCommand();
 }
 
+/* ---------- Pronunciation check (Speak tab) ---------- */
+// Each take goes through the same Whisper call as a review reading, verbose so
+// it also says how Japanese the clip sounded. VOICEVOX saying the word goes
+// through it too: if Whisper misses that as well, the word is the problem.
+let PC=null,pcSeq=0;
+const LANG_NAME={ja:"Japanese",en:"English",ko:"Korean",zh:"Chinese",es:"Spanish",de:"German",fr:"French",ru:"Russian"};
+const recExt=t=>/mp4|m4a|aac/.test(t||"")?"mp4":/ogg/.test(t||"")?"ogg":"webm";
+const PC_PAIRS=[["料","りょう"],["変","へん"],["天","てん"],["旅行","りょこう"],["病院","びょういん"],["美容院","びよういん"],
+  ["切手","きって"],["来て","きて"],["おばあさん","おばあさん"],["おばさん","おばさん"]];
+async function sttDetail(blob){
+  const fd=new FormData();
+  fd.append("file",blob,"take."+recExt(blob.type));
+  fd.append("language","ja");
+  fd.append("prompt",RV_JA_PROMPT);
+  fd.append("response_format","verbose_json");
+  const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
+  if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
+  const j=await r.json(),lp=j.language_probabilities||{};
+  return {text:(j.text||"").trim(),ja:Math.round(100*(lp.ja||0)),
+    top:Object.entries(lp).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>[k,Math.round(100*v)])};
+}
+async function pcJudge(text,w){
+  const c=[];
+  for(const t of answerSegs(text)){
+    c.push(t,normalizeReading(t));
+    if(/[0-9０-９]/.test(t)) c.push(...numberReadings(t),digitSound(t));
+    if(t===w.c){ c.push(w.r); continue; }            // wrote the word itself
+    if(/[一-鿿々]/.test(t)){
+      const x=DATA&&DATA.subjects.find(v=>v.c===t);
+      if(x) c.push(...x.r);
+      c.push(await vvKana(t));
+    }
+  }
+  return text?judgeReading(c.filter(Boolean),[{r:w.r,acc:true}]):{v:"none"};
+}
+// a long vowel only counts as short if the kana heard is shorter: VOICEVOX
+// spells 学校 as がっこお, which is the same length as がっこう
+const pcShort=(v,w)=>!!v.len&&kanaKey(v.heard).length<kanaKey(w.r).length;
+const pcGrade=(v,w)=>v.v==="ok"&&!pcShort(v,w)?"ok":v.v==="ok"||v.v==="near"?"near":"bad";
+async function pcWordList(n){
+  const out=[],seen=new Set();
+  const add=(c,r,src)=>{
+    r=kataToHira(String(r||"")).trim();
+    if(!c||!/^[ぁ-ゖー]+$/.test(r)||seen.has(c+"|"+r)) return;
+    seen.add(c+"|"+r); out.push({c,r,src});
+  };
+  for(const part of $("pcWords").value.split(/[,、，;\n]+/).map(x=>x.trim()).filter(Boolean)){
+    const [a,b]=part.split(/\s+/);
+    if(b) add(a,normalizeReading(b),"typed");
+    else if(/[一-鿿々]/.test(a)){ const x=DATA&&DATA.subjects.find(v=>v.c===a); add(a,x&&x.pr?x.pr:await vvKana(a),"typed"); }
+    else{ const k=normalizeReading(a); add(k,k,"typed"); }
+  }
+  const want=Math.max(n,out.length);
+  for(const m of VOICE_MISS.slice().reverse()) if(out.length<want) add(m.c,m.r,"missed");
+  const started=new Set((DATA?DATA.assignments:[]).map(a=>a.sid));
+  for(const x of shuffle((DATA?DATA.subjects:[]).filter(v=>started.has(v.id)&&v.c&&v.pr))){ if(out.length>=want) break; add(x.c,x.pr,"learned"); }
+  for(const [c,r] of shuffle(PC_PAIRS)){ if(out.length>=want) break; add(c,r,"pairs"); }
+  return out;
+}
+function pcSrcNote(){
+  const started=new Set((DATA?DATA.assignments:[]).map(a=>a.sid));
+  const learned=(DATA?DATA.subjects:[]).filter(v=>started.has(v.id)&&v.c&&v.pr).length;
+  $("pcSrc").textContent=(VOICE_MISS.length?`${VOICE_MISS.length} word${VOICE_MISS.length>1?"s":""} your reviews misheard, then `:"")+
+    (learned?"random words you've learned.":"pairs that differ by one sound (病院/美容院, 切手/来て).");
+}
+function pcShow(id){ ["pcSetup","pcRun","pcDone"].forEach(c=>$(c).classList.toggle("hidden",c!==id)); }
+function pcStatus(text,cls){ const st=$("pcStatus"); st.textContent=text; st.className=cls||""; }
+function pcMicUI(on){ $("pcLevel").classList.toggle("off",!on); }
+// play a clip with the mic off; resolves when it ends
+function pcPlay(url){
+  return new Promise(res=>{
+    if(!url){ res(); return; }
+    const tm=setTimeout(res,8000),done=()=>{ clearTimeout(tm); res(); };
+    stopAudio(); vvPlay(url,done);
+  });
+}
+// VOICEVOX saying the word with silence around it, like a mic take: Whisper
+// clips a bare word (がっこう comes back as かっこ)
+async function pcRefAudio(text,spk){
+  const q=await fetch(vvBase()+"/audio_query?speaker="+spk+"&text="+encodeURIComponent(text),{method:"POST"});
+  if(!q.ok) throw new Error("VOICEVOX audio_query failed ("+q.status+")");
+  const query=await q.json();
+  query.prePhonemeLength=0.5; query.postPhonemeLength=0.6;
+  const s=await fetch(vvBase()+"/synthesis?speaker="+spk,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
+  if(!s.ok) throw new Error("VOICEVOX synthesis failed ("+s.status+")");
+  return s.blob();
+}
+// VOICEVOX saying the word, and what Whisper makes of it; once per reading.
+// Always voice 11: Whisper got 12 of 14 short words right from it, against
+// 8 to 10 for the others (四国めたん, the default, often comes back blank).
+const PC_REF_VOICE=11;
+function pcRef(w){
+  PC.ref[w.r]=PC.ref[w.r]||(async()=>{
+    const blob=await pcRefAudio(w.r,PC_REF_VOICE),url=URL.createObjectURL(blob);
+    PC.refUrls.push(url);
+    const d=await sttDetail(blob);
+    const v=await pcJudge(sttClean(d.text),w);
+    return {url,heard:sttClean(d.text),g:pcGrade(v,w),ja:d.ja,top:d.top};
+  })().catch(e=>({err:e.message||"VOICEVOX failed"}));
+  return PC.ref[w.r];
+}
+async function pcStart(){
+  const err=$("pcErr");
+  err.classList.add("hidden");
+  unlockAudio();
+  if(!canRecord){ err.textContent="⚠ This browser can't record audio."; err.classList.remove("hidden"); return; }
+  $("btnPcStart").disabled=true;
+  try{ await micOpen(); }
+  catch(e){ err.textContent="⚠ mic blocked ("+(e.message||e.name)+")"; err.classList.remove("hidden"); $("btnPcStart").disabled=false; return; }
+  const words=await pcWordList(+$("pcCount").value||10);
+  $("btnPcStart").disabled=false;
+  const d=new Date(),z=x=>String(x).padStart(2,"0");
+  PC={id:`${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`,
+    started:d.toISOString(),words,i:0,takes:[],ref:{},refs:{},refUrls:[],phase:"idle",save:!!S.pcSave,saved:0,saveErr:"",q:Promise.resolve()};
+  pcShow("pcRun");
+  pcRender();
+}
+function pcRender(){
+  const w=PC.words[PC.i],chars=[...w.c];
+  $("pcPos").textContent=`${PC.i+1} of ${PC.words.length}`;
+  $("pcFrom").textContent={missed:"misheard in a review",typed:"your word",learned:"learned",pairs:"sound pair"}[w.src]||"";
+  const el=$("pcItem");
+  el.style.setProperty("--fit",cellFit(chars.length));
+  el.innerHTML=chars.map(c=>`<span class="cell">${esc(c)}</span>`).join("");
+  $("pcSay").textContent=w.r;
+  $("pcHeard").classList.add("hidden");
+  pcRef(w);
+  pcListen();
+}
+const pcWordTakes=()=>PC.takes.filter(t=>t.i===PC.i);
+async function pcListen(){
+  if(!PC||PC.phase==="done") return;
+  const my=++pcSeq,w=PC.words[PC.i];
+  PC.phase="listen"; pcMicUI(true);
+  pcStatus(`Listening. Say ${w.r}`,"");
+  pcActions();
+  const blob=await micUtterance(()=>my===pcSeq&&!!PC&&PC.phase==="listen",{fill:$("pcLevelFill"),stopNow:()=>!!PC&&PC.micStop});
+  if(my!==pcSeq||!PC||PC.phase!=="listen") return;
+  pcMicUI(false);
+  if(!blob){ PC.phase="result"; pcStatus("Didn't hear anything. Press Again or space to try once more.","again"); pcActions(); return; }
+  PC.phase="checking"; pcStatus("…",""); pcActions();
+  let d;
+  try{ d=await sttDetail(blob); }
+  catch(e){ if(my===pcSeq&&PC){ PC.phase="result"; pcStatus("⚠ "+e.message,"bad"); pcActions(); } return; }
+  const heard=sttClean(d.text),v=await pcJudge(heard,w);
+  if(my!==pcSeq||!PC) return;
+  const n=pcWordTakes().length+1;
+  const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,g:pcGrade(v,w),len:pcShort(v,w),rdrop:!!v.rdrop,ja:d.ja,top:d.top,
+    mime:blob.type,bytes:blob.size,at:new Date().toISOString(),file:`${String(PC.i+1).padStart(2,"0")}-${n}.${recExt(blob.type)}`,
+    url:URL.createObjectURL(blob)};
+  PC.takes.push(t);
+  pcSave(t,blob);
+  pcResult(t,my);
+}
+function pcLangHTML(ja,top){
+  const lead=top&&top[0]&&top[0][0]!=="ja"?` <span class="note">(most like ${esc(LANG_NAME[top[0][0]]||top[0][0])}, ${top[0][1]}%)</span>`:"";
+  return `<span class="pcLang"><span class="pcBar"><span style="width:${Math.min(100,ja)}%"></span></span>${ja}% Japanese${lead}</span>`;
+}
+const pcHeardText=h=>!h?"nothing":sttSlipped(h)?`“${firstSeg(h)||h}”, not Japanese`:(firstSeg(h)||h);
+async function pcResult(t,my){
+  const w=PC.words[PC.i];
+  PC.phase="result";
+  const raw=firstSeg(t.heard)||t.heard;
+  const msg=t.g==="ok"?`✓ Whisper heard ${w.r}`+(raw&&kanaKey(raw)!==kanaKey(w.r)?` (it wrote “${raw}”)`:""):t.v==="none"?"✗ Whisper didn't catch anything"
+    :t.len?`≈ Heard ${firstSeg(t.heard)}: a long vowel came out short`
+    :t.rdrop?`≈ Heard ${firstSeg(t.heard)}: the r went missing`
+    :t.g==="near"?`≈ Close: heard ${firstSeg(t.heard)}`:`✗ Heard ${pcHeardText(t.heard)}`;
+  pcStatus(msg,t.g==="ok"?"good":t.g==="near"?"again":"bad");
+  pcActions();
+  const box=$("pcHeard");
+  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div><div class="pcLine"><b>VOICEVOX</b><span class="note">checking…</span></div>`;
+  box.classList.remove("hidden");
+  if(t.g==="ok") setTimeout(()=>{ if(PC&&PC.phase==="result"&&PC.takes.at(-1)===t) pcNext(); },1600);
+  const ref=await pcRef(w);
+  if(my!==pcSeq||!PC||PC.phase!=="result"||PC.takes.at(-1)!==t) return;
+  PC.refs[w.r]={heard:ref.heard,g:ref.g,ja:ref.ja,top:ref.top,err:ref.err};
+  const refLine=ref.err?`<span class="note">${esc(ref.err)}</span>`
+    :`<span class="pcRef"><span>${ref.g==="ok"?"✓ heard right":`${ref.g==="near"?"≈":"✗"} heard ${esc(pcHeardText(ref.heard))}`}</span>${pcLangHTML(ref.ja,ref.top)}</span>`;
+  const why=t.g==="ok"?"":ref.err?"":ref.g!=="ok"?"Whisper gets VOICEVOX's version wrong too, so this word is hard for Whisper, not just you."
+    :ref.ja-t.ja>=20?"Whisper hears VOICEVOX right and it sounds more Japanese than your take. Listen to both, then try again."
+    :"Whisper hears VOICEVOX right but not yours. Listen to both, then try again.";
+  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div><div class="pcLine"><b>VOICEVOX</b>${refLine}</div>`+
+    (why?`<div class="pcWhy">${esc(why)}</div>`:"");
+  pcSaveMeta();
+  if(t.g!=="ok"&&S.rvSayWrong&&!ref.err) pcPlayRef();
+}
+function pcActions(){
+  const res=PC&&PC.phase==="result",has=PC&&pcWordTakes().length;
+  $("btnPcRef").disabled=!PC||PC.phase==="listen";
+  $("btnPcMine").disabled=!res||!has||!PC.takes.at(-1).url||PC.takes.at(-1).i!==PC.i;
+  $("btnPcAgain").disabled=!res||pcWordTakes().length>=9;
+  $("btnPcNext").disabled=!PC||PC.phase==="checking";
+}
+function pcStopListening(){ pcSeq++; if(PC&&PC.phase==="listen"){ PC.phase="result"; pcMicUI(false); pcStatus("",""); pcActions(); } }
+async function pcPlayRef(){
+  if(!PC) return;
+  pcStopListening();
+  const ref=await pcRef(PC.words[PC.i]);
+  if(ref.url) await pcPlay(ref.url);
+}
+function pcPlayMine(){
+  if(!PC) return;
+  const t=PC.takes.at(-1);
+  if(t&&t.i===PC.i){ pcStopListening(); pcPlay(t.url); }
+}
+function pcAgain(){ if(PC&&PC.phase==="result"&&pcWordTakes().length<9){ stopAudio(); pcListen(); } }
+function pcNext(){
+  if(!PC||PC.phase==="checking") return;
+  pcSeq++; stopAudio();
+  if(++PC.i>=PC.words.length) return pcFinish();
+  pcRender();
+}
+function pcMicToggle(){
+  if(!PC) return;
+  if(PC.phase==="listen") PC.micStop=true;
+  else pcAgain();
+}
+// saves run one at a time, so session.json is never overwritten by an older copy
+function pcSave(t,blob){
+  if(!PC.save) return;
+  const id=PC.id;
+  PC.q=PC.q.then(async()=>{
+    const r=await fetch(`rec/${id}/${t.file}`,{method:"PUT",body:blob,headers:{"Content-Type":blob.type||"application/octet-stream"}});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(PC&&PC.id===id) PC.saved++;
+  }).catch(e=>{ if(PC&&PC.id===id) PC.saveErr=e.message||"failed"; });
+  pcSaveMeta();
+}
+function pcSaveMeta(){
+  if(!PC||!PC.save) return;
+  const P=PC,body=JSON.stringify({session:P.id,started:P.started,ua:navigator.userAgent,micClean:S.micClean!==false,
+    stt:{language:"ja",prompt:RV_JA_PROMPT,format:"verbose_json"},voicevox:PC_REF_VOICE,
+    words:P.words,takes:P.takes.map(({url,...t})=>t),voicevoxHeard:P.refs},null,1);
+  P.q=P.q.then(async()=>{
+    const r=await fetch(`rec/${P.id}/session.json`,{method:"PUT",body,headers:{"Content-Type":"application/json"}});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+  }).catch(e=>{ P.saveErr=e.message||"failed"; });
+}
+async function pcFinish(){
+  if(!PC) return;
+  pcSeq++; stopAudio();
+  PC.phase="done";
+  micClose();
+  const P=PC,byWord=P.words.map((w,i)=>({w,takes:P.takes.filter(t=>t.i===i)})).filter(x=>x.takes.length);
+  const right=byWord.filter(x=>x.takes.some(t=>t.g==="ok")).length;
+  $("pcScore").textContent=byWord.length?`Whisper heard ${right} of ${byWord.length} word${byWord.length>1?"s":""} as meant`:"No takes recorded.";
+  $("pcTable").innerHTML=byWord.map(x=>{
+    const ref=P.refs[x.w.r];
+    return `<div class="pcRow"><span class="jp" lang="ja">${esc(x.w.c)}</span><span class="rd" lang="ja">${esc(x.w.r)}</span><span class="takes">`+
+      x.takes.map(t=>`<button class="pcTake ${t.g}" data-i="${P.takes.indexOf(t)}" title="play this take">▶ ${esc(t.heard?firstSeg(t.heard):"—")} ${t.ja}%</button>`).join("")+
+      `</span><span class="ref">${ref&&!ref.err?`VOICEVOX ${ref.g==="ok"?"✓":"✗ "+esc(firstSeg(ref.heard)||"—")} ${ref.ja}%`:""}</span></div>`;
+  }).join("");
+  pcShow("pcDone");
+  $("pcSaved").textContent=P.save?"Saving…":"Not saved (turned off).";
+  if(P.save){
+    await P.q;
+    if(PC!==P) return;
+    $("pcSaved").textContent=P.saveErr?`⚠ Some takes weren't saved (${P.saveErr}). ${P.saved} of ${P.takes.length} are on the server as session ${P.id}.`
+      :`Saved on the wkjp server as session ${P.id} (${P.saved} take${P.saved===1?"":"s"}).`;
+  }
+}
+function pcReset(){
+  if(PC){ PC.takes.forEach(t=>t.url&&URL.revokeObjectURL(t.url)); PC.refUrls.forEach(u=>URL.revokeObjectURL(u)); }
+  PC=null; pcSeq++;
+  pcShow("pcSetup"); pcSrcNote();
+}
+// leaving the tab ends a running check; what's recorded is kept
+function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
+
 /* ---------- tabs & wiring ---------- */
 const views={tabPractice:"viewPractice",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
     const wasReviews=!$("viewReviews").classList.contains("hidden");
     if(wasReviews&&t!=="tabReviews") rvPause();
+    if(t!=="tabSpeak") pcPause();
+    if(t==="tabSpeak"&&!PC) pcSrcNote();
     if(t==="tabReviews"&&!wasReviews) rvResume();
     Object.entries(views).forEach(([tab,view])=>{
       $(tab).classList.toggle("active",tab===t);
@@ -2510,6 +2864,33 @@ document.addEventListener("keydown",e=>{
   if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); return; }
   if(e.key==="p"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPronounce(); }
   if(e.key==="m"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPlayClip(); }
+});
+
+/* pronunciation check */
+$("btnPcStart").onclick=pcStart;
+$("btnPcStop").onclick=pcFinish;
+$("btnPcNew").onclick=pcReset;
+$("btnPcRef").onclick=pcPlayRef;
+$("btnPcMine").onclick=pcPlayMine;
+$("btnPcAgain").onclick=pcAgain;
+$("btnPcNext").onclick=pcNext;
+$("pcCount").value=String(S.pcCount||10);
+$("pcCount").onchange=e=>{ S.pcCount=+e.target.value; saveS(); };
+$("chkPcSave").checked=!!S.pcSave;
+$("chkPcSave").onchange=e=>{ S.pcSave=e.target.checked; saveS(); };
+$("chkMicClean").checked=S.micClean!==false;
+$("chkMicClean").onchange=e=>{ S.micClean=e.target.checked; saveS(); micClose(); };
+$("pcTable").onclick=e=>{ const b=e.target.closest("[data-i]"); if(b&&PC) pcPlay(PC.takes[+b.dataset.i].url); };
+document.addEventListener("keydown",e=>{
+  if(!PC||PC.phase==="done"||$("viewSpeak").classList.contains("hidden")) return;
+  if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const k=e.key;
+  if(k===" "){ e.preventDefault(); pcMicToggle(); }
+  else if(k==="Enter"){ e.preventDefault(); pcNext(); }
+  else if(k==="r"){ e.preventDefault(); pcAgain(); }
+  else if(k==="p"){ e.preventDefault(); pcPlayRef(); }
+  else if(k==="m"){ e.preventDefault(); pcPlayMine(); }
+  else if(k==="Escape"){ e.preventDefault(); pcFinish(); }
 });
 
 /* speak tab */

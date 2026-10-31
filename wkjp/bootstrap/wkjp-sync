@@ -10,6 +10,7 @@ set -euo pipefail
 
 REPO_DIR=/opt/wkjp/repo
 LIVE_DIR=/opt/wkjp/live
+REC_DIR=/opt/wkjp/rec
 SRC_DIR="${REPO_DIR}/wkjp"
 
 log() { echo "[wkjp-sync] $*"; }
@@ -50,8 +51,16 @@ fi
 mkdir -p "${LIVE_DIR}"
 changed=$(rsync -a --delete --itemize-changes \
   --exclude 'bootstrap/' \
+  --exclude 'tools/' \
   --exclude 'README.md' \
   "${SRC_DIR}/" "${LIVE_DIR}/")
+
+# Pronunciation check recordings: nginx (uid 101 in nginx:alpine) writes
+# here. Disposable; sessions older than 90 days go.
+mkdir -p "${REC_DIR}"
+chown 101:101 "${REC_DIR}"
+chmod 0750 "${REC_DIR}"
+find "${REC_DIR}" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +90 -exec rm -rf {} +
 
 cd "${LIVE_DIR}"
 # Bounded: a hung registry must not block the sync.

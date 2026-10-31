@@ -11,13 +11,15 @@ is reachable only through the private gateway.
 | The app itself | `wkjp/site/index.html` |
 | `/vv/` proxy to VOICEVOX | `wkjp/nginx/default.conf` |
 | Reconcile loop | `wkjp/bootstrap/` |
+| Pronunciation check report | `wkjp/tools/rec-report.py` |
 | TLS and private routing | `gateway/caddy/Caddyfile` |
 | Portal entry | `gateway/homepage/services.yaml` |
 
 ## Notes
 
-- No server-side state or secrets. The WaniKani token and study stats live in
-  the browser's localStorage, per origin, and API calls go straight from the
+- No secrets, and no server-side state apart from pronunciation check
+  recordings (below). The WaniKani token and study stats live in the
+  browser's localStorage, per origin, and API calls go straight from the
   browser to WaniKani.
 - VOICEVOX is not published. nginx proxies an allowlist of endpoints under
   `/vv/` and drops the `Origin` header, which the engine would otherwise 403.
@@ -87,6 +89,34 @@ is reachable only through the private gateway.
   wait in localStorage (`wkl_rv_outbox`) until a token that can write is
   pasted on the Reviews tab. "Send results to WaniKani" off makes it
   practice only.
+- The Speak tab's pronunciation check plays words one at a time:
+  - **Word order:** words you type first, then readings your reviews
+    misheard (`wkl_voice_misses`, the last 30), then random learned
+    vocabulary. With nothing loaded, it uses one-sound pairs
+    (病院/美容院, 切手/来て).
+  - **Each take:** goes through the Reviews reading call with
+    `response_format=verbose_json`. That gives whisper.cpp's language
+    probabilities even when forced to Japanese, shown as "% Japanese".
+  - **The control:** VOICEVOX says the word, with half a second of silence
+    each side because Whisper clips a bare word, and goes through the same
+    call. When Whisper misses VOICEVOX too, the page says the word is hard
+    for Whisper.
+  - **"Browser noise suppression":** switches the browser's
+    noise/echo/gain processing for the check and Reviews alike.
+- Check takes are PUT to `/rec/<session>/NN-T.webm`, with a `session.json`
+  holding what was heard. nginx stores them in `/opt/wkjp/rec` with WebDAV
+  PUT:
+  - It takes nothing else: a name pattern, 2 MB at most, no DELETE.
+  - `GET /rec/` lists sessions as JSON.
+  - wkjp-sync creates the directory for nginx's uid 101 and deletes
+    sessions older than 90 days.
+  - The directory sits outside the synced tree, so the VM is still
+    disposable: losing it only loses recordings.
+- `wkjp/tools/rec-report.py [session]` (newest by default) runs a session's
+  takes through five Whisper settings: the app's, no prompt, the answer as
+  the prompt, auto language, and beam search. It also runs three VOICEVOX
+  voices, then sorts each word into fine, whisper, settings, close or you
+  (see the script header). Run it from the LAN.
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.

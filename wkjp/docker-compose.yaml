@@ -14,6 +14,9 @@ services:
       # would keep the old copy.
       - ./site:/usr/share/nginx/html:ro
       - ./nginx:/etc/nginx/conf.d:ro
+      # Pronunciation check recordings (nginx /rec/). Outside the synced
+      # tree so rsync --delete leaves them alone.
+      - /opt/wkjp/rec:/srv/rec
     depends_on:
       - voicevox
 
