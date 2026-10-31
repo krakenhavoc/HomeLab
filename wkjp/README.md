@@ -72,6 +72,11 @@ is reachable only through the private gateway.
   answer still isn't Japanese, the app asks once more before marking it
   wrong. The server ignores `suppress_regex`, so Latin tokens can't be
   banned outright.
+- When Whisper can't make out the speech it fills in a stock phrase from
+  its subtitle training data, such as お待ちしております for a mumbled ぶんか
+  or "Thank you." for a cough. Reviews treat those as "couldn't make that
+  out, say it again" rather than as an answer, unless the phrase really is
+  the item's answer (`sttStock`, `rvIsAnswer`).
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
@@ -101,6 +106,13 @@ is reachable only through the private gateway.
     each side because Whisper clips a bare word, and goes through the same
     call. When Whisper misses VOICEVOX too, the page says the word is hard
     for Whisper.
+  - **Mic:** each take shows how far the voice stands above the
+    background, measured from the clip. It also flags 0.3 s or more of
+    exact digital silence, which means a gate in the browser or headset
+    holds the mic shut until you speak and can clip the first consonant.
+    A G733 headset through Brave measured 21–34 dB with the gate on every
+    take. VOICEVOX measures about 66 dB.
+  - **Stock phrases** are labelled as such, not as what you said.
   - **"Browser noise suppression":** switches the browser's
     noise/echo/gain processing for the check and Reviews alike.
 - Check takes are PUT to `/rec/<session>/NN-T.webm`, with a `session.json`
