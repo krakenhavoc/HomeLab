@@ -49,6 +49,13 @@ is reachable only through the private gateway.
   prompt echoes, and shows "didn't catch that" without auto-sending.
   Settings → "Mic language" switches Whisper from forced Japanese to
   auto-detect for English or mixed speech.
+- KBU's RX 6800M runs hot, and `kbu-gpu-guard` there freezes `whisper-server`
+  near 100 °C, sometimes for a couple of minutes. Requests hang meanwhile,
+  then nginx answers 504, or 502 as Whisper resumes. Reviews, the
+  pronunciation check and Talk hold the clip and send it again (`sttPost`):
+  one request at a time, 8 s apart, for up to 3 minutes, with a "Whisper on
+  KBU isn't answering" status. The Reviews "next / again" listener doesn't
+  retry.
 - The Reviews tab does the WaniKani reviews that are due, WaniKani-style
   (meaning and reading, ~10 items in play, misses come back), answered by
   voice or typing. Meaning answers go to the same Whisper as English,

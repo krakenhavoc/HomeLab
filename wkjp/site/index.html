@@ -1773,9 +1773,9 @@ async function talkMic(){
       fd.append("prompt",STT_PROMPT);
       // "auto" lets Whisper detect English or mixed speech; forcing ja garbles English
       fd.append("language",S.sttLang==="auto"?"auto":"ja");
-      const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
-      if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
-      text=sttClean(((await r.json()).text||"").trim());
+      const j=await sttPost(fd,{retry:true,onWait:n=>talkErr(`${STT_BUSY} Trying again (${n})…`)});
+      $("talkErr").classList.add("hidden");
+      text=sttClean((j.text||"").trim());
       if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; talkGrow(); box.focus(); }
       else talkErr("didn't catch that — try again, closer to the mic or somewhere quieter");
     }catch(e){ talkErr(e.message||"speech-to-text failed"); }
@@ -1903,15 +1903,38 @@ function micUtterance(alive,opt={}){
     rec.start();
   });
 }
-async function sttTranscribe(blob,lang,prompt){
+// KBU's GPU guard pauses Whisper for up to a couple of minutes when the GPU
+// runs hot: requests hang, then nginx answers 504 (or 502 as it resumes).
+// With opt.retry the clip is sent again once Whisper is back, instead of the
+// answer being lost. One request at a time, 8 s apart, so a hot GPU doesn't
+// wake up to a pile of work; gives up after 3 minutes or when alive() is false.
+const STT_BUSY=`Whisper on KBU isn't answering, probably paused while its GPU cools.`;
+async function sttPost(fd,opt={}){
+  const t0=Date.now();
+  for(let n=1;;n++){
+    let r=null;
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),75000);
+    try{ r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd,signal:ac.signal}); }catch(e){}
+    clearTimeout(tm);
+    if(r&&r.ok) return r.json();
+    if(r&&![502,503,504].includes(r.status)) throw new Error("speech-to-text error "+r.status);
+    const down=`can't reach speech-to-text on KBU${r?` (${r.status})`:""}`;
+    if(!opt.retry||Date.now()-t0>180000||(opt.alive&&!opt.alive())) throw new Error(down);
+    if(opt.onWait) opt.onWait(n);
+    await new Promise(res=>setTimeout(res,8000));
+    if(opt.alive&&!opt.alive()) throw new Error(down);
+  }
+}
+async function sttTranscribe(blob,lang,prompt,opt){
   const fd=new FormData();
   fd.append("file",blob,"answer.webm");
   fd.append("language",lang);
   if(prompt) fd.append("prompt",prompt);
-  const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
-  if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
-  return ((await r.json()).text||"").trim();
+  return ((await sttPost(fd,opt)).text||"").trim();
 }
+// reviews: retry while this answer is still the one being asked for
+const rvSttWait=alive=>({retry:true,alive,
+  onWait:n=>{ if(alive()) rvStatus(`${STT_BUSY} Holding your answer and trying again (${n})…`,"again"); }});
 // VOICEVOX's text analysis gives a reading for kanji Whisper wrote
 async function vvKana(text){
   try{
@@ -2026,7 +2049,8 @@ async function rvListen(){
   if(!blob){ if(S.rvHands) rvListen(); else rvStatus("Didn't hear anything.",""); return; }
   rvStatus("…","");
   let text="";
-  try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:""); }
+  try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:"",
+    rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
   catch(e){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; }
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
   text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
@@ -2077,7 +2101,8 @@ async function readingCands(text,s,spoken){
 // Whisper can copy the list in the prompt, so only the first part counts.
 async function rvRelisten(blob,s){
   rvStatus("…","");
-  try{ return firstSeg(sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"))); }
+  try{ return firstSeg(sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。",
+    rvSttWait(()=>!!RV&&RV.phase==="checking")))); }
   catch(e){ return ""; }
 }
 async function rvAnswer(text,spoken,blob){
@@ -2417,15 +2442,13 @@ const LANG_NAME={ja:"Japanese",en:"English",ko:"Korean",zh:"Chinese",es:"Spanish
 const recExt=t=>/mp4|m4a|aac/.test(t||"")?"mp4":/ogg/.test(t||"")?"ogg":"webm";
 const PC_PAIRS=[["料","りょう"],["変","へん"],["天","てん"],["旅行","りょこう"],["病院","びょういん"],["美容院","びよういん"],
   ["切手","きって"],["来て","きて"],["おばあさん","おばあさん"],["おばさん","おばさん"]];
-async function sttDetail(blob){
+async function sttDetail(blob,opt){
   const fd=new FormData();
   fd.append("file",blob,"take."+recExt(blob.type));
   fd.append("language","ja");
   fd.append("prompt",RV_JA_PROMPT);
   fd.append("response_format","verbose_json");
-  const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
-  if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
-  const j=await r.json(),lp=j.language_probabilities||{};
+  const j=await sttPost(fd,opt),lp=j.language_probabilities||{};
   return {text:(j.text||"").trim(),ja:Math.round(100*(lp.ja||0)),
     top:Object.entries(lp).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>[k,Math.round(100*v)])};
 }
@@ -2503,7 +2526,7 @@ function pcRef(w){
   PC.ref[w.r]=PC.ref[w.r]||(async()=>{
     const blob=await pcRefAudio(w.r,PC_REF_VOICE),url=URL.createObjectURL(blob);
     PC.refUrls.push(url);
-    const d=await sttDetail(blob);
+    const d=await sttDetail(blob,{retry:true,alive:()=>!!PC});
     const v=await pcJudge(sttClean(d.text),w);
     return {url,heard:sttClean(d.text),g:pcGrade(v,w),ja:d.ja,top:d.top};
   })().catch(e=>({err:e.message||"VOICEVOX failed"}));
@@ -2563,7 +2586,8 @@ async function pcListen(){
   if(!blob){ PC.phase="result"; pcStatus("Didn't hear anything. Press Again or space to try once more.","again"); pcActions(); return; }
   PC.phase="checking"; pcStatus("…",""); pcActions();
   let d;
-  try{ d=await sttDetail(blob); }
+  try{ d=await sttDetail(blob,{retry:true,alive:()=>my===pcSeq&&!!PC,
+    onWait:n=>{ if(my===pcSeq) pcStatus(`${STT_BUSY} Holding your take and trying again (${n})…`,"again"); }}); }
   catch(e){ if(my===pcSeq&&PC){ PC.phase="result"; pcStatus("⚠ "+e.message,"bad"); pcActions(); } return; }
   const heard=sttClean(d.text);
   const stock=heard&&sttStock(heard,"ja")&&heard.trim()!==w.c&&kanaKey(heard)!==kanaKey(w.r)?firstSeg(heard)||heard:"";
