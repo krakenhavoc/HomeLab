@@ -1913,7 +1913,7 @@ async function sttPost(fd,opt={}){
   const t0=Date.now();
   for(let n=1;;n++){
     let r=null;
-    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),75000);
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),opt.timeout||75000);
     try{ r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd,signal:ac.signal}); }catch(e){}
     clearTimeout(tm);
     if(r&&r.ok) return r.json();
@@ -1924,6 +1924,18 @@ async function sttPost(fd,opt={}){
     await new Promise(res=>setTimeout(res,8000));
     if(opt.alive&&!opt.alive()) throw new Error(down);
   }
+}
+// ReazonSpeech on the wkjp VM (wkjp/asr): Japanese only, CPU, ~0.1 s a word.
+// Optional: null when it's missing or failing, and callers go on with Whisper.
+const ASR_BASE=location.protocol==="file:"?"http://localhost:8000":location.origin+"/asr";
+async function asrTranscribe(blob){
+  try{
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),12000);
+    const r=await fetch(ASR_BASE+"/transcribe",{method:"POST",body:blob,signal:ac.signal,
+      headers:{"Content-Type":blob.type||"application/octet-stream"}});
+    clearTimeout(tm);
+    return r.ok?((await r.json()).text||"").trim():null;
+  }catch(e){ return null; }
 }
 async function sttTranscribe(blob,lang,prompt,opt){
   const fd=new FormData();
@@ -2048,16 +2060,33 @@ async function rvListen(){
   rvListenEnd(my);
   if(!blob){ if(S.rvHands) rvListen(); else rvStatus("Didn't hear anything.",""); return; }
   rvStatus("…","");
+  // Readings go to ReazonSpeech first (~0.1 s, on the VM). If it heard an
+  // accepted reading, that's the answer; if not, Whisper gets its turn.
+  let alt=null;
+  if(q==="reading"){
+    alt=await asrTranscribe(blob);
+    if(my!==rvSeq||!RV||RV.phase!=="question") return;
+    if(alt&&await rvHeardRight(alt,RV.cur.item.sub)){
+      if(my!==rvSeq||!RV||RV.phase!=="question") return;
+      if(RV.cur.clip) URL.revokeObjectURL(RV.cur.clip);
+      RV.cur.clip=URL.createObjectURL(blob);
+      return rvAnswer(sttClean(alt),true,blob);
+    }
+    if(my!==rvSeq||!RV||RV.phase!=="question") return;
+  }
   let text="";
+  // with ReazonSpeech's answer in hand, don't sit out a paused Whisper
   try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:"",
-    rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
-  catch(e){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; }
+    alt?{timeout:15000}:rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
+  catch(e){ if(!alt){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; } }
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
   text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
   if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
   // a stock fill-in means Whisper couldn't make it out: ask again, don't mark it
   let stock="";
   if(text&&sttStock(text,q==="reading"?"ja":"en")&&!rvIsAnswer(text,RV.cur.item.sub,q)){ stock=q==="reading"?firstSeg(text)||text:text; text=""; }
+  // Whisper heard nothing usable but ReazonSpeech did: judge what it heard
+  if(!text&&alt&&sttClean(alt)){ text=sttClean(alt); stock=""; }
   if(!text){
     RV.cur.empties++;
     const why=stock?`Couldn't make that out (Whisper filled in “${stock}”)`:"Didn't catch that";
@@ -2077,6 +2106,11 @@ function rvMicToggle(){
   if(rvListening()) RV.micStop=true;
   else if(RV.phase==="question") rvListen();
   else if(RV.phase==="wrong"||RV.phase==="confirm") rvListenCommand();
+}
+// did this transcript hear an accepted reading outright? (its own kanji alone doesn't say which)
+async function rvHeardRight(text,s){
+  const c=await readingCands(sttClean(text),s,true);
+  return !c.own&&judgeReading(c.cands,s.readings).v==="ok";
 }
 // the stock phrase could be the actual answer (a kana vocab item, a meaning)
 const rvIsAnswer=(t,s,q)=>q==="meaning"?s.meanings.some(m=>meaningKey(m)===meaningKey(t))
@@ -2470,6 +2504,9 @@ async function pcJudge(text,w){
 // spells 学校 as がっこお, which is the same length as がっこう
 const pcShort=(v,w)=>!!v.len&&kanaKey(v.heard).length<kanaKey(w.r).length;
 const pcGrade=(v,w)=>v.v==="ok"&&!pcShort(v,w)?"ok":v.v==="ok"||v.v==="near"?"near":"bad";
+// a take passes if either recogniser heard it (Whisper on KBU, ReazonSpeech on the VM)
+const pcBest=(a,b)=>a==="ok"||b==="ok"?"ok":a==="near"||b==="near"?"near":"bad";
+const pcMark=g=>g==="ok"?"✓":g==="near"?"≈":"✗";
 async function pcWordList(n){
   const out=[],seen=new Set();
   const add=(c,r,src)=>{
@@ -2526,9 +2563,11 @@ function pcRef(w){
   PC.ref[w.r]=PC.ref[w.r]||(async()=>{
     const blob=await pcRefAudio(w.r,PC_REF_VOICE),url=URL.createObjectURL(blob);
     PC.refUrls.push(url);
-    const d=await sttDetail(blob,{retry:true,alive:()=>!!PC});
-    const v=await pcJudge(sttClean(d.text),w);
-    return {url,heard:sttClean(d.text),g:pcGrade(v,w),ja:d.ja,top:d.top};
+    const [d,rz]=await Promise.all([sttDetail(blob,{retry:true,alive:()=>!!PC}).catch(()=>null),asrTranscribe(blob)]);
+    if(!d&&rz==null) throw new Error("speech-to-text unavailable");
+    const heard=d?sttClean(d.text):"";
+    const wg=d?pcGrade(await pcJudge(heard,w),w):"bad",rzg=rz?pcGrade(await pcJudge(sttClean(rz),w),w):"bad";
+    return {url,heard,rz,wg,rzg,g:pcBest(wg,rzg),ja:d?d.ja:0,top:d?d.top:[]};
   })().catch(e=>({err:e.message||"VOICEVOX failed"}));
   return PC.ref[w.r];
 }
@@ -2585,17 +2624,23 @@ async function pcListen(){
   pcMicUI(false);
   if(!blob){ PC.phase="result"; pcStatus("Didn't hear anything. Press Again or space to try once more.","again"); pcActions(); return; }
   PC.phase="checking"; pcStatus("…",""); pcActions();
-  let d;
-  try{ d=await sttDetail(blob,{retry:true,alive:()=>my===pcSeq&&!!PC,
-    onWait:n=>{ if(my===pcSeq) pcStatus(`${STT_BUSY} Holding your take and trying again (${n})…`,"again"); }}); }
-  catch(e){ if(my===pcSeq&&PC){ PC.phase="result"; pcStatus("⚠ "+e.message,"bad"); pcActions(); } return; }
-  const heard=sttClean(d.text);
-  const stock=heard&&sttStock(heard,"ja")&&heard.trim()!==w.c&&kanaKey(heard)!==kanaKey(w.r)?firstSeg(heard)||heard:"";
-  const v=stock?{v:"none"}:await pcJudge(heard,w),mic=await micStats(blob);
+  // ReazonSpeech first (fast); with its answer in hand, don't sit out a paused Whisper
+  const rz=await asrTranscribe(blob);
   if(my!==pcSeq||!PC) return;
-  const n=pcWordTakes().length+1;
-  const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,g:pcGrade(v,w),len:pcShort(v,w),rdrop:!!v.rdrop,ja:d.ja,top:d.top,
-    stock,snr:mic?mic.snr:null,gated:mic?mic.gated:null,
+  let d=null,wErr="";
+  try{ d=await sttDetail(blob,rz!=null?{timeout:15000}:{retry:true,alive:()=>my===pcSeq&&!!PC,
+    onWait:n=>{ if(my===pcSeq) pcStatus(`${STT_BUSY} Holding your take and trying again (${n})…`,"again"); }}); }
+  catch(e){ wErr=e.message; }
+  if(my!==pcSeq||!PC) return;
+  if(!d&&rz==null){ PC.phase="result"; pcStatus("⚠ "+wErr,"bad"); pcActions(); return; }
+  const heard=d?sttClean(d.text):"";
+  const stock=heard&&sttStock(heard,"ja")&&heard.trim()!==w.c&&kanaKey(heard)!==kanaKey(w.r)?firstSeg(heard)||heard:"";
+  const v=!d||stock?{v:"none"}:await pcJudge(heard,w),mic=await micStats(blob);
+  const rv=rz?await pcJudge(sttClean(rz),w):{v:"none"};
+  if(my!==pcSeq||!PC) return;
+  const n=pcWordTakes().length+1,wg=pcGrade(v,w),rzg=rz?pcGrade(rv,w):"bad";
+  const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,wg,rz,rzg,g:pcBest(wg,rzg),len:pcShort(v,w),rdrop:!!v.rdrop,
+    ja:d?d.ja:0,top:d?d.top:[],wErr,stock,snr:mic?mic.snr:null,gated:mic?mic.gated:null,
     mime:blob.type,bytes:blob.size,at:new Date().toISOString(),file:`${String(PC.i+1).padStart(2,"0")}-${n}.${recExt(blob.type)}`,
     url:URL.createObjectURL(blob)};
   PC.takes.push(t);
@@ -2610,31 +2655,34 @@ const pcHeardText=h=>!h?"nothing":sttSlipped(h)?`“${firstSeg(h)||h}”, not Ja
 async function pcResult(t,my){
   const w=PC.words[PC.i];
   PC.phase="result";
-  const raw=firstSeg(t.heard)||t.heard;
-  const msg=t.g==="ok"?`✓ Whisper heard ${w.r}`+(raw&&kanaKey(raw)!==kanaKey(w.r)?` (it wrote “${raw}”)`:"")
-    :t.stock?`✗ Whisper couldn't make it out and filled in a stock phrase (“${t.stock}”)`
-    :t.v==="none"?"✗ Whisper didn't catch anything"
-    :t.len?`≈ Heard ${firstSeg(t.heard)}: a long vowel came out short`
-    :t.rdrop?`≈ Heard ${firstSeg(t.heard)}: the r went missing`
-    :t.g==="near"?`≈ Close: heard ${firstSeg(t.heard)}`:`✗ Heard ${pcHeardText(t.heard)}`;
+  const raw=firstSeg(t.heard)||t.heard,rzRaw=t.rz?firstSeg(t.rz)||t.rz:"";
+  const who=t.wg==="ok"&&t.rzg==="ok"?"":t.wg==="ok"?" (Whisper only)":" (ReazonSpeech only)";
+  const msg=t.g==="ok"?`✓ Heard ${w.r}${who}`
+    :t.wg==="near"&&t.len?`≈ Heard ${raw}: a long vowel came out short`
+    :t.wg==="near"&&t.rdrop?`≈ Heard ${raw}: the r went missing`
+    :t.g==="near"?`≈ Close: heard ${t.wg==="near"?raw:rzRaw}`
+    :`✗ Neither recogniser heard ${w.r}`;
   pcStatus(msg,t.g==="ok"?"good":t.g==="near"?"again":"bad");
   pcActions();
   const box=$("pcHeard");
+  const wLine=`<div class="pcLine"><b>Whisper</b>`+(t.wErr&&!t.heard?`<span class="note">${esc(t.wErr)}</span>`
+    :`<span class="pcRef"><span>${pcMark(t.wg)} ${t.stock?`made it up: “${esc(t.stock)}”`:`heard ${esc(pcHeardText(t.heard))}`}</span>${pcLangHTML(t.ja,t.top)}</span>`)+`</div>`;
+  const rLine=`<div class="pcLine"><b>ReazonSpeech</b>`+(t.rz==null?`<span class="note">not available</span>`
+    :`<span>${pcMark(t.rzg)} heard ${esc(rzRaw||"nothing")}</span>`)+`</div>`;
   const micLine=t.snr==null?"":`<div class="pcLine"><b>Mic</b><span>voice ${t.snr} dB above the background`+
     (t.gated?`. Silent until you speak, so something (browser or headset) is gating the mic`:"")+`</span></div>`;
-  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div>${micLine}<div class="pcLine"><b>VOICEVOX</b><span class="note">checking…</span></div>`;
+  box.innerHTML=wLine+rLine+micLine+`<div class="pcLine"><b>VOICEVOX</b><span class="note">checking…</span></div>`;
   box.classList.remove("hidden");
   if(t.g==="ok") setTimeout(()=>{ if(PC&&PC.phase==="result"&&PC.takes.at(-1)===t) pcNext(); },1600);
   const ref=await pcRef(w);
   if(my!==pcSeq||!PC||PC.phase!=="result"||PC.takes.at(-1)!==t) return;
-  PC.refs[w.r]={heard:ref.heard,g:ref.g,ja:ref.ja,top:ref.top,err:ref.err};
+  PC.refs[w.r]={heard:ref.heard,rz:ref.rz,wg:ref.wg,rzg:ref.rzg,g:ref.g,ja:ref.ja,top:ref.top,err:ref.err};
   const refLine=ref.err?`<span class="note">${esc(ref.err)}</span>`
-    :`<span class="pcRef"><span>${ref.g==="ok"?"✓ heard right":`${ref.g==="near"?"≈":"✗"} heard ${esc(pcHeardText(ref.heard))}`}</span>${pcLangHTML(ref.ja,ref.top)}</span>`;
-  const why=t.g==="ok"?"":ref.err?"":ref.g!=="ok"?"Whisper gets VOICEVOX's version wrong too, so this word is hard for Whisper, not just you."
-    :ref.ja-t.ja>=20?"Whisper hears VOICEVOX right and it sounds more Japanese than your take. Listen to both, then try again."
-    :"Whisper hears VOICEVOX right but not yours. Listen to both, then try again.";
-  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div>${micLine}<div class="pcLine"><b>VOICEVOX</b>${refLine}</div>`+
-    (why?`<div class="pcWhy">${esc(why)}</div>`:"");
+    :`<span class="pcRef"><span>${pcMark(ref.g)} ${ref.g==="ok"?"heard right":`heard ${esc(pcHeardText(ref.heard||ref.rz))}`}</span>`+
+      `<span class="note">Whisper ${pcMark(ref.wg)}, ReazonSpeech ${pcMark(ref.rzg)}</span></span>`;
+  const why=t.g==="ok"?"":ref.err?"":ref.g!=="ok"?"Neither recogniser gets VOICEVOX's version right either, so this word is hard for them, not just you."
+    :"They hear VOICEVOX right but not yours. Listen to both, then try again.";
+  box.innerHTML=wLine+rLine+micLine+`<div class="pcLine"><b>VOICEVOX</b>${refLine}</div>`+(why?`<div class="pcWhy">${esc(why)}</div>`:"");
   pcSaveMeta();
   if(t.g!=="ok"&&S.rvSayWrong&&!ref.err) pcPlayRef();
 }
@@ -2697,12 +2745,12 @@ async function pcFinish(){
   micClose();
   const P=PC,byWord=P.words.map((w,i)=>({w,takes:P.takes.filter(t=>t.i===i)})).filter(x=>x.takes.length);
   const right=byWord.filter(x=>x.takes.some(t=>t.g==="ok")).length;
-  $("pcScore").textContent=byWord.length?`Whisper heard ${right} of ${byWord.length} word${byWord.length>1?"s":""} as meant`:"No takes recorded.";
+  $("pcScore").textContent=byWord.length?`Heard ${right} of ${byWord.length} word${byWord.length>1?"s":""} as meant`:"No takes recorded.";
   $("pcTable").innerHTML=byWord.map(x=>{
     const ref=P.refs[x.w.r];
     return `<div class="pcRow"><span class="jp" lang="ja">${esc(x.w.c)}</span><span class="rd" lang="ja">${esc(x.w.r)}</span><span class="takes">`+
-      x.takes.map(t=>`<button class="pcTake ${t.g}" data-i="${P.takes.indexOf(t)}" title="play this take">▶ ${esc(t.heard?firstSeg(t.heard):"—")} ${t.ja}%</button>`).join("")+
-      `</span><span class="ref">${ref&&!ref.err?`VOICEVOX ${ref.g==="ok"?"✓":"✗ "+esc(firstSeg(ref.heard)||"—")} ${ref.ja}%`:""}</span></div>`;
+      x.takes.map(t=>`<button class="pcTake ${t.g}" data-i="${P.takes.indexOf(t)}" title="play this take: Whisper heard ${esc(t.heard||"nothing")}, ReazonSpeech ${esc(t.rz==null?"n/a":t.rz||"nothing")}">▶ ${esc(firstSeg(t.g===t.rzg&&t.rz?t.rz:t.heard)||"—")}</button>`).join("")+
+      `</span><span class="ref">${ref&&!ref.err?`VOICEVOX ${pcMark(ref.g)}`:""}</span></div>`;
   }).join("");
   pcShow("pcDone");
   $("pcSaved").textContent=P.save?"Saving…":"Not saved (turned off).";

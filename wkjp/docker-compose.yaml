@@ -23,3 +23,15 @@ services:
   voicevox:
     image: voicevox/voicevox_engine:cpu-latest
     restart: unless-stopped
+
+  # ReazonSpeech for spoken reading answers (CPU, see asr/server.py). Only
+  # nginx's /asr/transcribe reaches it. Built here, never pulled: the build
+  # is cached, so the sync's `up` is a no-op until asr/ changes.
+  asr:
+    build: ./asr
+    image: wkjp-asr:local
+    pull_policy: build
+    restart: unless-stopped
+    environment:
+      THREADS: "2"
+    mem_limit: 1g

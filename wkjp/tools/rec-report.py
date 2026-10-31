@@ -13,13 +13,14 @@ Reads the session from https://wkjp.labxp.io/rec/ (LAN only) and uses the same
     told    language=ja, prompt is the answer itself (can Whisper get there at all?)
     auto    language detection, no prompt
     beam    app settings plus beam_size=5
+    reazon  ReazonSpeech on the wkjp VM (/asr/, what Reviews tries first)
 
 VOICEVOX says each word in three voices (the ones Whisper gets right most
 often) with silence around it, through the app settings. Verdicts:
 
     fine      the app setting heard it
     whisper   VOICEVOX fails too in 2+ voices: the word is hard for Whisper
-    settings  the app setting missed it but plain/auto/beam got it: tune Whisper
+    settings  the app setting missed it but plain/auto/beam/reazon got it
     close     only "told" got it: near enough to steer, not clear on its own
     you       no setting got it while VOICEVOX passes: listen to the take
 """
@@ -62,6 +63,21 @@ def stt(audio, name, **fields):
     )
     lp = j.get("language_probabilities") or {}
     return (j.get("text") or "").strip(), round(100 * lp.get("ja", 0))
+
+
+def asr(audio):
+    """ReazonSpeech on the wkjp VM; None if it isn't there"""
+    try:
+        j = json.loads(
+            http(
+                f"{BASE}/asr/transcribe",
+                audio,
+                {"Content-Type": "application/octet-stream"},
+            )
+        )
+        return (j.get("text") or "").strip()
+    except Exception:
+        return None
 
 
 def voicevox(text, speaker):
@@ -205,6 +221,7 @@ def main():
         "told": None,  # per word
         "auto": {"language": "auto"},
         "beam": {"language": "ja", "prompt": "ひらがな。", "beam_size": "5"},
+        "reazon": "asr",
     }
     verdicts, wins = {}, {k: 0 for k in configs}
     for w in meta["words"]:
@@ -236,8 +253,17 @@ def main():
             audio = http(f"{BASE}/rec/{sid}/{t['file']}")
             row, got = [], {}
             for name, fields in configs.items():
-                f = dict(fields or {"language": "ja", "prompt": w["r"] + "。"})
-                text, ja = stt(audio, t["file"], response_format="verbose_json", **f)
+                if fields == "asr":
+                    text, ja = asr(audio), 0
+                    if text is None:
+                        got[name] = "miss"
+                        row.append(f"{name} n/a")
+                        continue
+                else:
+                    f = dict(fields or {"language": "ja", "prompt": w["r"] + "。"})
+                    text, ja = stt(
+                        audio, t["file"], response_format="verbose_json", **f
+                    )
                 v, _ = judge(text, w["r"], w["c"])
                 got[name] = v
                 row.append(
@@ -253,10 +279,10 @@ def main():
             verdict = "fine"
         elif ref_fail >= 2:
             verdict = "whisper"
-        elif any(hit(n) for n in ("plain", "auto", "beam")):
+        elif any(hit(n) for n in ("plain", "auto", "beam", "reazon")):
             verdict = (
                 "settings ("
-                + ", ".join(n for n in ("plain", "auto", "beam") if hit(n))
+                + ", ".join(n for n in ("plain", "auto", "beam", "reazon") if hit(n))
                 + " got it)"
             )
         elif hit("told"):

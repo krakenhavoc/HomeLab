@@ -10,6 +10,7 @@ is reachable only through the private gateway.
 | App and VOICEVOX | `wkjp/docker-compose.yaml` |
 | The app itself | `wkjp/site/index.html` |
 | `/vv/` proxy to VOICEVOX | `wkjp/nginx/default.conf` |
+| ReazonSpeech for reading answers | `wkjp/asr/` (built on the VM) |
 | Reconcile loop | `wkjp/bootstrap/` |
 | Pronunciation check report | `wkjp/tools/rec-report.py` |
 | TLS and private routing | `gateway/caddy/Caddyfile` |
@@ -49,6 +50,29 @@ is reachable only through the private gateway.
   prompt echoes, and shows "didn't catch that" without auto-sending.
   Settings → "Mic language" switches Whisper from forced Japanese to
   auto-detect for English or mixed speech.
+- Spoken **readings** go to ReazonSpeech k2 v2 first. It's a Japanese-only
+  int8 transducer, built from `wkjp/asr/` and run on this VM's CPU behind
+  `/asr/transcribe` (raw clip in, `{"text"}` out), at about 0.1 s a word.
+  - If ReazonSpeech hears an accepted reading, that's the answer.
+    Otherwise Whisper gets its turn as before. When ReazonSpeech has an
+    answer, Whisper isn't waited on past 15 s.
+  - If Whisper hears nothing or a stock phrase, ReazonSpeech's text is
+    judged instead.
+  - Meanings and Talk stay on Whisper; ReazonSpeech is Japanese only.
+  - The pronunciation check runs both on every take and on the VOICEVOX
+    control, and shows each one's result.
+  - **Why:** on 23 real takes from the user (G733 headset, Brave), Whisper
+    large-v3-turbo heard 9 as meant, kotoba-whisper v2 11, ReazonSpeech 11,
+    and "either Whisper or ReazonSpeech" 15. The same Whisper weights scored
+    the same on base-station's CPU as on KBU, so KBU's hardware wasn't the
+    limit.
+  - **Failure handling:** nginx resolves `asr` per request, so a missing or
+    crashing container only turns `/asr/` into a 502, and the app falls
+    back to Whisper alone. compose builds the image (`pull_policy: build`);
+    the first build downloads the model (~160 MB, pinned revision).
+  - **CPU type:** the VM's `x86-64-v2-AES` CPU type hides AVX/AVX2, which
+    ONNX Runtime would use. An AVX2 type (`x86-64-v3`) would speed it up,
+    once the Proxmox host is confirmed to support it.
 - KBU's RX 6800M runs hot, and `kbu-gpu-guard` there freezes `whisper-server`
   near 100 °C, sometimes for a couple of minutes. Requests hang meanwhile,
   then nginx answers 504, or 502 as Whisper resumes. Reviews, the
