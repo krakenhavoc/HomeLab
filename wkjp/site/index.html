@@ -36,11 +36,20 @@
   #vvQuickSpeaker{width:auto; max-width:190px; font-size:.78rem; padding:4px 8px; border-radius:99px; background:var(--card); color:var(--text); border:1px solid var(--line);}
   nav{display:flex; gap:2px; margin-bottom:16px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow-x:auto;}
   nav button{
-    flex:1; background:none; color:var(--muted); border:none; white-space:nowrap;
-    padding:8px 10px; border-radius:9px; cursor:pointer; font:inherit; font-size:.88rem; font-weight:700;
+    flex:1; display:flex; align-items:baseline; justify-content:center; gap:6px;
+    background:none; color:var(--muted); border:none; white-space:nowrap;
+    padding:8px 8px; border-radius:9px; cursor:pointer; font:inherit; font-size:.84rem; font-weight:700;
   }
+  nav .tabJa{font-family:var(--mincho); font-size:1.08rem; font-weight:700; color:var(--text); opacity:.8;}
   nav button:hover{color:var(--text);}
+  nav button:hover .tabJa{opacity:1;}
   nav button.active{background:var(--card2); color:var(--text); box-shadow:inset 0 -2px 0 var(--accent);}
+  nav button.active .tabJa{color:var(--accent); opacity:1;}
+  /* narrow: the word above its English */
+  @media (max-width:700px){
+    nav button{flex-direction:column; align-items:center; gap:0; line-height:1.25; padding:6px 4px;}
+    nav .tabJa{font-size:1.12rem;}
+  }
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
   .card h2{font-size:1.02rem; margin-bottom:10px;}
   .card p{font-size:.9rem; color:var(--muted);}
@@ -214,7 +223,7 @@
   .holdRow .res .ok{color:var(--green);} .holdRow .res .bad{color:var(--red);}
   .holdRow.off{opacity:.45;}
 
-  @media (max-width:480px){ nav button{font-size:.78rem; padding:8px 6px;} }
+  @media (max-width:480px){ nav button{font-size:.72rem; padding:6px 2px;} }
   @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important; transition:none !important;} }
 </style>
 </head>
@@ -231,12 +240,12 @@
   <div id="voiceWarn" class="warn hidden"></div>
 
   <nav>
-    <button id="tabPractice" class="active">Practice</button>
-    <button id="tabReviews">Reviews</button>
-    <button id="tabSpeak">Speak</button>
-    <button id="tabTalk">Talk</button>
-    <button id="tabStats">Stats</button>
-    <button id="tabSettings">Settings</button>
+    <button id="tabPractice" class="active" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span>Practice</button>
+    <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span>Reviews</button>
+    <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span>Speak</button>
+    <button id="tabTalk" title="会話 (かいわ)"><span class="tabJa" lang="ja">会話</span>Talk</button>
+    <button id="tabStats" title="統計 (とうけい)"><span class="tabJa" lang="ja">統計</span>Stats</button>
+    <button id="tabSettings" title="設定 (せってい)"><span class="tabJa" lang="ja">設定</span>Settings</button>
   </nav>
 
   <!-- ============ PRACTICE VIEW ============ -->
