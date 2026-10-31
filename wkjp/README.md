@@ -155,6 +155,15 @@ is reachable only through the private gateway.
     sessions older than 90 days.
   - The directory sits outside the synced tree, so the VM is still
     disposable: losing it only loses recordings.
+- Reviews records what the app's own mic detector saw every time it
+  listened: peak level against the threshold, speech time and background
+  floor, as `sent`, `silent` or `cancelled`.
+  - With "save my spoken answers" on (the default), each answer clip goes to
+    `/rec/<session>/NNNN-1.webm`. A `session.json` with `kind: "reviews"`
+    holds what Whisper and ReazonSpeech heard and the verdict.
+  - A listen where the voice got within half of the threshold, but never
+    crossed it, says so instead of quietly starting over.
+  - The level meters mark the threshold at 40% and turn green above it.
 - `wkjp/tools/rec-report.py [session]` (newest by default) runs a session's
   takes through five Whisper settings: the app's, no prompt, the answer as
   the prompt, auto language, and beam search. It also runs three VOICEVOX
