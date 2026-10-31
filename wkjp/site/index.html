@@ -848,6 +848,13 @@ function numberReadings(digits){
   [M,K,H,T,U].forEach((tab,i)=>{ out=out.flatMap(p=>tab[d[i]].map(x=>p+x)); });
   return out.filter(Boolean);
 }
+// Whisper slipped into English on a reading: "10" for てん, "Hen." for へん
+const sttSlipped=t=>/[A-Za-z0-9Ａ-Ｚａ-ｚ０-９]/.test(String(t||""));
+// the sound behind a slipped number: 10 → ten → てん
+function digitSound(t){
+  const d=String(t||"").normalize("NFKC");
+  return /^\d+$/.test(d)&&NUM_WORDS[+d]?romajiToHiragana(NUM_WORDS[+d]):"";
+}
 // one spoken answer: drop a prompt echo or anything after the first pause
 const firstSeg=t=>String(t||"").split(/[、。,.!?！？\s]+/).find(Boolean)||"";
 const GIVE_UP_EN=/^(i dont know|i do not know|dont know|no idea|not sure|skip( it)?|pass|give up)$/;
@@ -1969,7 +1976,7 @@ async function readingCands(text,s,spoken){
   let own=0;
   for(const t of segs){
     out.push(t,normalizeReading(t));
-    if(/[0-9０-９]/.test(t)) out.push(...numberReadings(t));
+    if(/[0-9０-９]/.test(t)) out.push(...numberReadings(t),spoken?digitSound(t):"");
     if(!/[一-鿿々0-9０-９]/.test(t)) continue;
     // its own kanji alone says nothing about which reading was spoken
     if(s.type==="kanji"&&t===s.chars){ own++; continue; }
@@ -1979,11 +1986,18 @@ async function readingCands(text,s,spoken){
   }
   return {own:own>0&&own===segs.length,cands:out.filter(Boolean)};
 }
+// listen to the same clip again, choosing among the item's own readings, in kana.
+// Whisper can copy the list in the prompt, so only the first part counts.
+async function rvRelisten(blob,s){
+  rvStatus("…","");
+  try{ return firstSeg(sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"))); }
+  catch(e){ return ""; }
+}
 async function rvAnswer(text,spoken,blob){
   if(!RV||RV.phase!=="question") return;
   const {q}=RV.cur,s=RV.cur.item.sub;
   const my=++rvSeq;             // stops listening
-  RV.phase="checking";
+  RV.phase="checking"; RV.cur.wrote="";
   rvMicUI(false);
   if(spoken) $("rvInput").value=text;
   if(q==="meaning"?GIVE_UP_EN.test(meaningKey(text)):GIVE_UP_JA.test(text.trim())){ rvWrong("",true); return; }
@@ -1993,27 +2007,37 @@ async function rvAnswer(text,spoken,blob){
     let c=await readingCands(text,s,spoken);
     // Whisper wrote the kanji itself: transcribe again choosing among its own readings, in kana
     if(c.own&&blob){
-      rvStatus("…","");
-      try{
-        const again=sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"));
-        if(again){ text=again; $("rvInput").value=again; c=await readingCands(again,s,true); }
-      }catch(e){}
+      const again=await rvRelisten(blob,s);
+      if(again){ text=again; $("rvInput").value=again; c=await readingCands(again,s,true); }
     }
     if(my!==rvSeq||!RV) return;
     if(c.own){ rvConfirm(text.trim()); return; }
     res=judgeReading(c.cands,s.readings);
+    // A reading is Japanese, so English or digits mean Whisper slipped. Its romaji
+    // and number sounds are already candidates; if those miss, listen again for kana.
+    // That can only make it right: a different word still comes out wrong.
+    if(spoken&&sttSlipped(text)){
+      RV.cur.wrote=firstSeg(text)||text;
+      if(res.v!=="ok"&&blob){
+        const again=await rvRelisten(blob,s);
+        const r2=again&&!sttSlipped(again)?judgeReading((await readingCands(again,s,true)).cands,s.readings):null;
+        if(my!==rvSeq||!RV) return;
+        if(r2&&r2.v==="ok"){ res=r2; $("rvInput").value=again; }
+      }
+      if(res.v!=="ok"&&!RV.cur.slip){
+        RV.cur.slip=true;
+        return rvAgain(`Heard “${RV.cur.wrote}”, which isn't Japanese. Say the reading again.`);
+      }
+    }
     // typed: a missing r is just wrong; spoken: the r may be all Whisper missed
     if(res.rdrop&&!spoken) res={v:"wrong"};
     // transcribe again choosing among its own readings; only reached when the
     // answer already sounded like one of them minus the r
     if(res.rdrop&&blob){
-      rvStatus("…","");
-      try{
-        const again=sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"));
-        const r2=again?judgeReading((await readingCands(again,s,true)).cands,s.readings):null;
-        if(r2&&r2.v==="ok"){ res=r2; $("rvInput").value=again; }
-      }catch(e){}
+      const again=await rvRelisten(blob,s);
+      const r2=again?judgeReading((await readingCands(again,s,true)).cands,s.readings):null;
       if(my!==rvSeq||!RV) return;
+      if(r2&&r2.v==="ok"){ res=r2; RV.cur.wrote=firstSeg(text)||text; $("rvInput").value=again; }
     }
   }
   if(res.v==="ok"){ rvRight(res); return; }
@@ -2041,7 +2065,8 @@ function rvRight(res){
   RV.phase="right"; RV.answers++; RV.right++;
   item.done[q]=true;
   const inp=$("rvInput"); inp.className="ok"; inp.disabled=true;
-  const heard=q==="reading"&&res.heard&&kanaKey(res.heard)!==kanaKey(res.r)?` (heard ${res.heard})`:"";
+  const heard=q!=="reading"?"":RV.cur.wrote?` (heard ${RV.cur.wrote})`
+    :res.heard&&kanaKey(res.heard)!==kanaKey(res.r)?` (heard ${res.heard})`:"";
   rvStatus("✓ "+(q==="meaning"?(res.m||s.pm):res.r)+heard,"good");
   if(item.need.every(x=>item.done[x])) rvComplete(item);
   const say=!S.rvSay?"":q==="reading"?res.r:s.type==="kana_vocabulary"?s.chars:"";

@@ -60,6 +60,16 @@ is reachable only through the private gateway.
   only if it's still the kanji does the app ask "did you say …?". A near
   miss (dakuten, small kana) asks again; a wrong answer only counts after
   "next", so "again" covers a mishearing.
+- A spoken reading has to be Japanese, but forced-Japanese Whisper still
+  writes English or digits now and then: `10` for てん, because it heard
+  "ten". The app judges the sound instead. Romaji becomes kana, and a
+  number its English sound (10 → てん), so 天 passes and 変 (へん) doesn't.
+  If that misses, the clip is transcribed again with the item's readings as
+  the prompt. That pass can only turn a miss into a pass, and only its first
+  part counts, because Whisper sometimes copies the prompt's list. If the
+  answer still isn't Japanese, the app asks once more before marking it
+  wrong. The server ignores `suppress_regex`, so Latin tokens can't be
+  banned outright.
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
