@@ -60,6 +60,15 @@ is reachable only through the private gateway.
   only if it's still the kanji does the app ask "did you say …?". A near
   miss (dakuten, small kana) asks again; a wrong answer only counts after
   "next", so "again" covers a mishearing.
+- Meaning and reading questions look different on purpose: meaning is a
+  light paper bar and answer box with an `A` badge, reading is dark ink with
+  `あ`, following WaniKani's light/dark convention.
+- After a wrong answer the item's reading is spoken (setting, plus 🔊 / `p`).
+  The mic stays off while it plays, so it doesn't hear itself.
+- "Let me check the results before they're sent" (on by default) holds
+  finished items in localStorage (`wkl_rv_hold`) instead of sending them.
+  The done card lists them: mark a miss correct if Whisper misheard, untick
+  one to leave it due, then send. Held items are left out of new sessions.
 - Finished items are POSTed to `/v2/reviews`. That needs a token with
   `reviews:create`; the default read-only one gets a 403, and the results
   wait in localStorage (`wkl_rv_outbox`) until a token that can write is
