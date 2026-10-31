@@ -191,6 +191,36 @@ def mark(verdict, text):
     return {"ok": "✓", "len": "≈", "miss": "✗"}[verdict] + shown + stock
 
 
+def reviews(sid, meta):
+    """A Reviews session: what the mic detector saw on each listen, and each answer."""
+    cycles, takes = meta.get("cycles", []), meta.get("takes", [])
+    print(
+        f"reviews session {sid}: {len(cycles)} listens, {len(takes)} answers sent, "
+        f"browser noise suppression {'on' if meta.get('micClean') else 'off'}"
+    )
+    print(f"  {meta.get('ua', '')[:100]}\n")
+    by = {}
+    for c in cycles:
+        by.setdefault(c.get("outcome"), []).append(c)
+    for k, cs in sorted(by.items(), key=lambda x: -len(x[1])):
+        r = sorted(c.get("peakRatio", 0) for c in cs)
+        fl = sorted(c.get("floorDb", -120) for c in cs)
+        print(
+            f"  {k or '?':9} {len(cs):3}  peak/threshold median {r[len(r) // 2]:.2f}"
+            f"  (min {r[0]:.2f}, max {r[-1]:.2f})  floor median {fl[len(fl) // 2]} dB"
+        )
+    near = [c for c in by.get("silent", []) if c.get("peakRatio", 0) >= 0.5]
+    print(
+        f"  silent listens where the voice got within 2x of the threshold: {len(near)}\n"
+    )
+    for t in takes:
+        print(
+            f"  {t['n']:4} {t['c']} {t['q']:7} want {'/'.join(t.get('want') or [])[:24]:24} "
+            f"whisper {str(t.get('whisper'))[:16]:16} reazon {str(t.get('rz'))[:12]:12} "
+            f"peak {t.get('peakRatio')}  → {t.get('v', '?')}"
+        )
+
+
 def main():
     global BASE
     args = [a for a in sys.argv[1:] if not a.startswith("--base=")]
@@ -209,6 +239,8 @@ def main():
             sys.exit("no sessions saved yet")
         sid = sorted(sessions)[-1]
     meta = json.loads(http(f"{BASE}/rec/{sid}/session.json"))
+    if meta.get("kind") == "reviews":
+        return reviews(sid, meta)
     print(
         f"session {sid}: {len(meta['takes'])} takes, {len(meta['words'])} words, "
         f"browser noise suppression {'on' if meta.get('micClean') else 'off'}"

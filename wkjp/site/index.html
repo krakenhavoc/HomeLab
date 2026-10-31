@@ -205,8 +205,11 @@
   #rvMic{width:54px; height:54px; flex:none; border-radius:50%; padding:0; font-size:1.25rem;}
   #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
   @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
-  #rvLevel,#pcLevel{height:3px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
-  #rvLevelFill,#pcLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
+  /* the mark at 40% is the detector's threshold: speech has to cross it to count */
+  #rvLevel,#pcLevel{position:relative; height:6px; background:var(--bg); border-radius:99px; margin-top:10px;}
+  #rvLevel::after,#pcLevel::after{content:""; position:absolute; left:40%; top:-4px; bottom:-4px; width:2px; border-radius:1px; background:var(--muted);}
+  #rvLevelFill,#pcLevelFill{height:100%; width:0%; border-radius:99px; background:var(--accent); transition:width .05s;}
+  #rvLevelFill.over,#pcLevelFill.over{background:var(--green);}
   #rvKana{text-align:center; min-height:1.4em; color:var(--soft); font-size:1rem; margin-top:4px;}
   #rvStatus{text-align:center; font-size:.92rem; min-height:1.5em; margin-top:8px; color:var(--muted);}
   #rvStatus.good{color:var(--green);} #rvStatus.bad{color:var(--red);} #rvStatus.again{color:var(--amber);}
@@ -382,6 +385,9 @@
       </label>
       <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
         <input type="checkbox" id="chkRvConfirm"> let me check the results before they're sent
+      </label>
+      <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvSave"> save my spoken answers on the wkjp server, for tuning
       </label>
       <div id="rvHoldStart" class="hold hidden"></div>
       <div id="rvOutbox" class="warn hidden" style="margin:12px 0 0;"></div>
@@ -950,7 +956,7 @@ let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,conte
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
-  pcSave:true,pcCount:10,micClean:true},load("wkl_settings",{}));
+  pcSave:true,pcCount:10,micClean:true,rvSave:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1879,7 +1885,7 @@ function micUtterance(alive,opt={}){
     MIC.ctx.resume().catch(()=>{});
     const chunks=[],rec=new MediaRecorder(MIC.stream),fill=opt.fill||$("rvLevelFill");
     const stopNow=opt.stopNow||(()=>RV&&RV.micStop);
-    let t=0,speech=0,quiet=0,heard=false,keep=false;
+    let t=0,speech=0,quiet=0,heard=false,keep=false,peak=0,peakRatio=0,thr=0.015;
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>resolve(keep&&chunks.length?new Blob(chunks,{type:chunks[0].type||"audio/webm"}):null);
     const tick=setInterval(()=>{
@@ -1887,15 +1893,21 @@ function micUtterance(alive,opt={}){
       const lv=MIC?micLevel():0;
       // room noise: drops to quieter levels at once, creeps up slowly, kept across answers
       if(MIC) MIC.floor=Math.min(0.05,lv<MIC.floor?lv:MIC.floor*1.01+0.00005);
-      const thr=Math.max(0.015,(MIC?MIC.floor:0)*3);
+      thr=Math.max(0.015,(MIC?MIC.floor:0)*3);
       fill.style.width=Math.min(100,40*lv/thr)+"%";
+      fill.classList.toggle("over",lv>thr);
+      peak=Math.max(peak,lv); peakRatio=Math.max(peakRatio,lv/thr);
       if(lv>thr){ speech+=50; quiet=0; if(speech>=150) heard=true; } else quiet+=50;
       let stop=!alive()||!MIC;
       if(!stop&&stopNow()){ keep=true; stop=true; }
       else if(!stop&&heard&&(quiet>=800||t>=9000)){ keep=true; stop=true; }
       else if(!stop&&!heard&&t>=10000) stop=true;
       if(!stop) return;
-      clearInterval(tick); fill.style.width="0%";
+      clearInterval(tick); fill.style.width="0%"; fill.classList.remove("over");
+      // what the detector saw, for Reviews' diagnostics (dB relative to full scale)
+      const dB=v=>v>0?Math.round(20*Math.log10(v)):-120;
+      if(opt.stats) Object.assign(opt.stats,{ms:t,speechMs:speech,peakRatio:+peakRatio.toFixed(2),peakDb:dB(peak),
+        thrDb:dB(thr),floorDb:dB(MIC?MIC.floor:0),outcome:keep?"sent":!alive()||!MIC?"cancelled":"silent"});
       if(RV) RV.micStop=false;
       if(PC) PC.micStop=false;
       try{ rec.stop(); }catch(e){ resolve(null); }
@@ -1986,7 +1998,8 @@ async function rvStart(){
   try{
     const {items,byId}=await rvLoad();
     if(!items.length){ micClose(); rvCheck(); return; }
-    RV={backlog:items,active:[],byId,voice:voiceOk,cur:null,phase:"idle",answers:0,right:0,finished:[],wrapping:false};
+    RV={backlog:items,active:[],byId,voice:voiceOk,cur:null,phase:"idle",answers:0,right:0,finished:[],wrapping:false,
+      diag:[],rec:rvRecNew()};
     rvFill();
     $("btnRvWrap").disabled=false; $("btnRvWrap").textContent="Wrap up";
     rvShow("rvCard");
@@ -2055,10 +2068,19 @@ async function rvListen(){
   RV.listenSeq=my; rvMicUI(true);
   // keep a "say it again" hint on screen while listening for the retry
   if($("rvStatus").className!=="again") rvStatus(q==="reading"?"Listening — say the reading":"Listening — say the meaning","");
-  const blob=await micUtterance(()=>my===rvSeq&&RV&&RV.phase==="question");
+  const stats={};
+  const blob=await micUtterance(()=>my===rvSeq&&RV&&RV.phase==="question",{stats});
+  if(RV&&stats.outcome){ RV.diag.push({at:new Date().toISOString(),q,c:RV.cur.item.sub.chars||RV.cur.item.sub.pm,...stats}); RV.diag.splice(0,RV.diag.length-500); }
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
   rvListenEnd(my);
-  if(!blob){ if(S.rvHands) rvListen(); else rvStatus("Didn't hear anything.",""); return; }
+  if(!blob){
+    rvRecMeta(RV);
+    // the voice got close to the line but never over it: say so instead of starting over silently
+    const near=stats.peakRatio>=0.5;
+    if(S.rvHands){ if(near) rvStatus("Almost: your voice stayed just under the mic's threshold (the mark on the meter). A little louder or closer.","again"); rvListen(); }
+    else rvStatus(near?"Your voice stayed just under the mic's threshold (the mark on the meter). Try a little louder.":"Didn't hear anything.",near?"again":"");
+    return;
+  }
   rvStatus("…","");
   // Readings go to ReazonSpeech first (~0.1 s, on the VM). If it heard an
   // accepted reading, that's the answer; if not, Whisper gets its turn.
@@ -2068,6 +2090,7 @@ async function rvListen(){
     if(my!==rvSeq||!RV||RV.phase!=="question") return;
     if(alt&&await rvHeardRight(alt,RV.cur.item.sub)){
       if(my!==rvSeq||!RV||RV.phase!=="question") return;
+      rvRecTake(blob,{rz:alt,whisper:null,speechMs:stats.speechMs,peakRatio:stats.peakRatio});
       if(RV.cur.clip) URL.revokeObjectURL(RV.cur.clip);
       RV.cur.clip=URL.createObjectURL(blob);
       return rvAnswer(sttClean(alt),true,blob);
@@ -2080,6 +2103,7 @@ async function rvListen(){
     alt?{timeout:15000}:rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
   catch(e){ if(!alt){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; } }
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
+  rvRecTake(blob,{whisper:text,rz:alt,speechMs:stats.speechMs,peakRatio:stats.peakRatio});
   text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
   if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
   // a stock fill-in means Whisper couldn't make it out: ask again, don't mark it
@@ -2088,6 +2112,7 @@ async function rvListen(){
   // Whisper heard nothing usable but ReazonSpeech did: judge what it heard
   if(!text&&alt&&sttClean(alt)){ text=sttClean(alt); stock=""; }
   if(!text){
+    rvRecVerdict(stock?"stock phrase":"not caught");
     RV.cur.empties++;
     const why=stock?`Couldn't make that out (Whisper filled in “${stock}”)`:"Didn't catch that";
     // three blanks in a row: stop, rather than listen to the room forever
@@ -2200,6 +2225,7 @@ async function rvAnswer(text,spoken,blob){
   rvWrong(spoken?firstSeg(text)||text:"",false,spoken);
 }
 function rvAgain(msg){
+  rvRecVerdict("again: "+msg);
   RV.phase="question";
   const inp=$("rvInput");
   inp.className=""; void inp.offsetWidth; inp.className="again";
@@ -2207,6 +2233,7 @@ function rvAgain(msg){
   if(RV.voice&&S.rvHands) setTimeout(rvListen,600);
 }
 function rvRight(res){
+  rvRecVerdict("ok");
   const {item,q}=RV.cur,s=item.sub;
   RV.phase="right"; RV.answers++; RV.right++;
   item.done[q]=true;
@@ -2226,6 +2253,38 @@ function noteVoiceMiss(s,heard){
   if(!s.chars||!r) return;
   VOICE_MISS=VOICE_MISS.filter(m=>!(m.c===s.chars&&m.r===r)).concat({c:s.chars,r,h:heard||"",at:Date.now()}).slice(-30);
   store("wkl_voice_misses",VOICE_MISS);
+}
+/* Reviews' tuning record: every listen (what the mic detector saw) and every
+   answer clip with what each recogniser heard, PUT to /rec/<session>/ like the
+   pronunciation check's takes. wkjp/tools/rec-report.py reads it back. */
+function rvRecNew(){
+  const d=new Date(),z=x=>String(x).padStart(2,"0");
+  return {id:`${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`,
+    started:d.toISOString(),takes:[],n:0,save:!!S.rvSave,saved:0,q:Promise.resolve()};
+}
+function rvRecTake(blob,info){
+  const R=RV&&RV.rec;
+  if(!R) return;
+  const s=RV.cur.item.sub,q=RV.cur.q;
+  const t={n:++R.n,at:new Date().toISOString(),c:s.chars||s.pm,q,
+    want:q==="reading"?s.readings.filter(r=>r.acc).map(r=>r.r):s.meanings,...info,
+    file:`${String(R.n).padStart(4,"0")}-1.${recExt(blob.type)}`,bytes:blob.size,mime:blob.type};
+  R.takes.push(t); RV.cur.take=t;
+  if(R.save) R.q=R.q.then(()=>fetch(`rec/${R.id}/${t.file}`,{method:"PUT",body:blob,
+    headers:{"Content-Type":blob.type||"application/octet-stream"}})).then(r=>{ if(r.ok) R.saved++; }).catch(()=>{});
+}
+// what became of the answer just heard: ok, wrong, again, confirm, gave up, not caught
+function rvRecVerdict(v){
+  if(!RV||!RV.cur.take) return;
+  RV.cur.take.v=v; RV.cur.take=null;
+  rvRecMeta(RV);
+}
+function rvRecMeta(rv){
+  const R=rv&&rv.rec;
+  if(!R||!R.save||!R.n&&!rv.diag.length) return;
+  const body=JSON.stringify({kind:"reviews",session:R.id,started:R.started,ua:navigator.userAgent,micClean:S.micClean!==false,
+    takes:R.takes,cycles:rv.diag},null,1);
+  R.q=R.q.then(()=>fetch(`rec/${R.id}/session.json`,{method:"PUT",body,headers:{"Content-Type":"application/json"}})).catch(()=>{});
 }
 // play back what the mic recorded for this answer, mic off meanwhile
 function rvPlayClip(){
@@ -2253,6 +2312,7 @@ function rvInfoHTML(s){
     `<div class="note">${TYPE_NAME[s.type]} · level ${s.level}</div>`;
 }
 function rvWrong(heard,gaveUp,spoken){
+  rvRecVerdict(gaveUp?"gave up":"wrong");
   const s=RV.cur.item.sub;
   if(spoken&&!gaveUp&&RV.cur.q==="reading") noteVoiceMiss(s,heard);
   RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
@@ -2285,6 +2345,7 @@ function rvRetry(){
 }
 // Whisper can't tell 三 the さん from 三 the みっ; ask rather than guess
 function rvConfirm(heard,msg){
+  rvRecVerdict("confirm");
   const s=RV.cur.item.sub;
   const want=(s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)).r;
   RV.phase="confirm"; RV.cur.want=want; RV.cur.heard=heard;
@@ -2423,6 +2484,7 @@ function rvOutboxUI(){
 async function rvFinish(){
   rvSeq++;
   const R=RV; RV=null;
+  rvRecMeta(R);
   micClose(); stopAudio();
   const pct=R.answers?Math.round(100*R.right/R.answers):100;
   $("rvScore").textContent=pct+"%";
@@ -2454,6 +2516,7 @@ async function rvFinish(){
 }
 // leaving the tab releases the mic; coming back picks up where it was
 function rvPause(){
+  rvRecMeta(RV);
   rvSeq++;
   if(RV) RV.listenSeq=0;
   rvMicUI(false);
@@ -2940,7 +3003,7 @@ $("btnRvWrap").onclick=()=>{
 $("rvMic").onclick=rvMicToggle;
 $("rvHoldStart").addEventListener("click",rvHoldClick);
 $("rvHoldDone").addEventListener("click",rvHoldClick);
-[["chkRvHands","rvHands"],["chkRvSay","rvSay"],["chkRvSayWrong","rvSayWrong"],["chkRvSend","rvSend"],["chkRvConfirm","rvConfirm"]].forEach(([id,key])=>{
+[["chkRvHands","rvHands"],["chkRvSay","rvSay"],["chkRvSayWrong","rvSayWrong"],["chkRvSend","rvSend"],["chkRvConfirm","rvConfirm"],["chkRvSave","rvSave"]].forEach(([id,key])=>{
   $(id).checked=!!S[key];
   $(id).onchange=e=>{ S[key]=e.target.checked; saveS(); };
 });
