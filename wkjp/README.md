@@ -75,6 +75,9 @@ is reachable only through the private gateway.
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
+- Each tab carries its Japanese word (練習, 復習, 話す, 会話, 統計, 設定),
+  beside the English on wide screens and above it below 700px, with the
+  reading in the tooltip.
 - After a wrong answer the item's reading is spoken (setting, plus 🔊 / `p`).
   The mic stays off while it plays, so it doesn't hear itself.
 - "Let me check the results before they're sent" (on by default) holds
