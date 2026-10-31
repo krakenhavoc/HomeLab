@@ -1863,7 +1863,7 @@ async function micOpen(){
   const ctx=new (window.AudioContext||window.webkitAudioContext)();
   const an=ctx.createAnalyser(); an.fftSize=1024;
   ctx.createMediaStreamSource(stream).connect(an);
-  MIC={stream,ctx,an,buf:new Float32Array(an.fftSize),floor:0.01};
+  MIC={stream,ctx,an,buf:new Float32Array(an.fftSize),floor:0.001,hist:[]};
   return MIC;
 }
 function micClose(){
@@ -1877,6 +1877,10 @@ function micLevel(){
   let s=0; for(const v of MIC.buf) s+=v*v;
   return Math.sqrt(s/MIC.buf.length);
 }
+// Speech has to stand ~15 dB over the room and never under -48 dBFS. The old
+// fixed -36.5 dB missed a G733 headset with browser processing off: voices
+// peaked at -34 to -18 dB and only stayed over the line for 50-100 ms.
+const MIC_MIN=0.004,MIC_OVER=5.6,MIC_TAIL=0.18;
 // The recording, or null if nobody spoke or alive() went false.
 // opt.fill: level meter; opt.stopNow(): stop and keep what's recorded so far
 function micUtterance(alive,opt={}){
@@ -1885,19 +1889,24 @@ function micUtterance(alive,opt={}){
     MIC.ctx.resume().catch(()=>{});
     const chunks=[],rec=new MediaRecorder(MIC.stream),fill=opt.fill||$("rvLevelFill");
     const stopNow=opt.stopNow||(()=>RV&&RV.micStop);
-    let t=0,speech=0,quiet=0,heard=false,keep=false,peak=0,peakRatio=0,thr=0.015;
+    let t=0,speech=0,quiet=0,heard=false,keep=false,peak=0,peakRatio=0,thr=MIC_MIN;
     rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop=()=>resolve(keep&&chunks.length?new Blob(chunks,{type:chunks[0].type||"audio/webm"}):null);
     const tick=setInterval(()=>{
       t+=50;
       const lv=MIC?micLevel():0;
-      // room noise: drops to quieter levels at once, creeps up slowly, kept across answers
-      if(MIC) MIC.floor=Math.min(0.05,lv<MIC.floor?lv:MIC.floor*1.01+0.00005);
-      thr=Math.max(0.015,(MIC?MIC.floor:0)*3);
+      // room noise: the quietest level of the last 3 s, kept across answers. A
+      // minimum doesn't creep up while someone talks; a headset gate's silence
+      // just pins it at zero.
+      if(MIC){ MIC.hist.push(lv); if(MIC.hist.length>60) MIC.hist.shift(); MIC.floor=Math.min(...MIC.hist); }
+      thr=Math.max(MIC_MIN,(MIC?MIC.floor:0)*MIC_OVER);
       fill.style.width=Math.min(100,40*lv/thr)+"%";
       fill.classList.toggle("over",lv>thr);
       peak=Math.max(peak,lv); peakRatio=Math.max(peakRatio,lv/thr);
-      if(lv>thr){ speech+=50; quiet=0; if(speech>=150) heard=true; } else quiet+=50;
+      if(lv>thr){ speech+=50; if(speech>=150) heard=true; }
+      // the end: 0.8 s at 15 dB under this answer's loudest, so the hiss a
+      // headset lets through once its gate opens can't hold the mic open
+      if(lv>Math.max(thr,heard?peak*MIC_TAIL:0)) quiet=0; else quiet+=50;
       let stop=!alive()||!MIC;
       if(!stop&&stopNow()){ keep=true; stop=true; }
       else if(!stop&&heard&&(quiet>=800||t>=9000)){ keep=true; stop=true; }

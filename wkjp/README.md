@@ -155,6 +155,19 @@ is reachable only through the private gateway.
     sessions older than 90 days.
   - The directory sits outside the synced tree, so the VM is still
     disposable: losing it only loses recordings.
+- The app's mic detector (`micUtterance`) decides when an answer starts and
+  ends, before anything is sent:
+  - **Start:** speech must stand about 15 dB over the room and never under
+    -48 dBFS (`MIC_MIN`, `MIC_OVER`), for 150 ms.
+  - **Room level:** the quietest level of the last 3 s, so it doesn't creep
+    up while someone talks.
+  - **End:** 0.8 s at 15 dB under the answer's loudest point (`MIC_TAIL`),
+    so hiss a headset lets through after its gate opens can't hold the mic
+    open.
+  - **Why:** the old fixed -36.5 dB threshold missed a G733 headset with
+    browser processing off. Voices peaked at -34 to -18 dB, but some only
+    stayed over the line for 50–100 ms. The G733 gates its mic itself:
+    digital silence until speech, with or without browser processing.
 - Reviews records what the app's own mic detector saw every time it
   listened: peak level against the threshold, speech time and background
   floor, as `sent`, `silent` or `cancelled`.
