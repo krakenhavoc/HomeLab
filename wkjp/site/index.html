@@ -4,94 +4,107 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WaniKani Listening Practice</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#151a2d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
+  /* An evening study desk: 藍 indigo ground, 生成り paper for text, 山吹 gold for
+     anything you press. WaniKani's item colours stay as they are: they carry meaning. */
   :root{
-    --bg:#12141a; --card:#1c1f28; --card2:#242836; --line:#323848;
-    --text:#e8eaf0; --muted:#9aa1b5; --pink:#ff4b91; --purple:#a06bff;
-    --green:#2fbf71; --red:#ef476f; --amber:#ffb703;
+    --bg:#151a2d; --card:#1c2239; --card2:#262d4a; --line:#343d60;
+    --text:#ece6d6; --muted:#9ca3bf; --soft:#a3b2ff;
+    --paper:#ece6d6; --paper-ink:#1c2240; --ink:#0d1020;
+    --accent:#f0b13d; --accent-ink:#2a1c04;
+    --green:#4fc28b; --red:#ef6b82; --amber:#f59f5a;
+    --radical:#00a1f1; --kanji:#f100a1; --vocab:#a100f1;
     --radius:14px;
+    --sans:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
+    --mincho:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%;}
-  body{
-    background:var(--bg); color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
-    line-height:1.5;
-  }
-  .wrap{max-width:680px; margin:0 auto; padding:20px 16px 60px;}
-  header{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
-  header h1{font-size:1.15rem; font-weight:700;}
-  header h1 .accent{color:var(--pink);}
+  body{background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.55;}
+  .wrap{max-width:680px; margin:0 auto; padding:22px 16px 60px;}
+  header{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;}
+  header h1{display:flex; align-items:center; gap:10px; font-size:1.1rem; font-weight:700;}
+  header h1 img{width:30px; height:30px; flex:none;}
   #dataChip{font-size:.78rem; color:var(--muted); background:var(--card); border:1px solid var(--line); padding:4px 10px; border-radius:99px;}
   #vvQuickSpeaker{width:auto; max-width:190px; font-size:.78rem; padding:4px 8px; border-radius:99px; background:var(--card); color:var(--text); border:1px solid var(--line);}
-  nav{display:flex; gap:6px; margin-bottom:16px;}
+  nav{display:flex; gap:2px; margin-bottom:16px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow-x:auto;}
   nav button{
-    flex:1; background:var(--card); color:var(--muted); border:1px solid var(--line);
-    padding:9px 0; border-radius:10px; cursor:pointer; font-size:.9rem; font-weight:600;
+    flex:1; background:none; color:var(--muted); border:none; white-space:nowrap;
+    padding:8px 10px; border-radius:9px; cursor:pointer; font:inherit; font-size:.88rem; font-weight:700;
   }
-  nav button.active{background:var(--card2); color:var(--text); border-color:var(--purple);}
+  nav button:hover{color:var(--text);}
+  nav button.active{background:var(--card2); color:var(--text); box-shadow:inset 0 -2px 0 var(--accent);}
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
-  .card h2{font-size:1rem; margin-bottom:10px;}
+  .card h2{font-size:1.02rem; margin-bottom:10px;}
   .card p{font-size:.9rem; color:var(--muted);}
   .hidden{display:none !important;}
-  label{font-size:.82rem; color:var(--muted); display:block; margin:12px 0 4px;}
+  label{font-size:.84rem; color:var(--muted); display:block; margin:12px 0 4px;}
   input[type=text], input[type=password], select, textarea{
     width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
     border-radius:10px; padding:10px 12px; font-size:.95rem; font-family:inherit;
   }
+  input[type=checkbox], input[type=range]{accent-color:var(--accent);}
   textarea{resize:vertical; font-size:1.05rem; line-height:1.7;}
-  input:focus, select:focus, textarea:focus{outline:2px solid var(--purple); outline-offset:-1px;}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--soft); outline-offset:-1px;}
+  button:focus-visible, summary:focus-visible, input[type=checkbox]:focus-visible{outline:2px solid var(--soft); outline-offset:2px;}
   .btn{
     display:inline-block; background:var(--card2); color:var(--text); border:1px solid var(--line);
-    padding:10px 18px; border-radius:10px; cursor:pointer; font-size:.92rem; font-weight:600;
+    padding:10px 18px; border-radius:10px; cursor:pointer; font:inherit; font-size:.92rem; font-weight:700;
   }
-  .btn:hover{border-color:var(--purple);}
-  .btn.primary{background:var(--pink); border-color:var(--pink); color:#fff;}
-  .btn.primary:hover{filter:brightness(1.1);}
+  .btn:hover{border-color:var(--soft);}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .btn.primary:hover{filter:brightness(1.08);}
   .btn.small{padding:6px 12px; font-size:.8rem;}
   .btn:disabled{opacity:.5; cursor:default;}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
   .seg{display:flex; gap:6px; flex-wrap:wrap;}
   .seg button{
     background:var(--bg); border:1px solid var(--line); color:var(--muted);
-    padding:8px 14px; border-radius:99px; cursor:pointer; font-size:.85rem; font-weight:600;
+    padding:8px 14px; border-radius:99px; cursor:pointer; font:inherit; font-size:.85rem; font-weight:700;
   }
-  .seg button.on{background:var(--purple); border-color:var(--purple); color:#fff;}
+  .seg button.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
   .note{font-size:.78rem; color:var(--muted); margin-top:8px;}
-  .warn{background:#3a2b14; border:1px solid #6b4e1d; color:#ffd166; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-bottom:12px;}
-  .err{background:#3a1420; border:1px solid #6b1d33; color:#ff8fa8; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-top:10px;}
+  .warn{background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-bottom:12px;}
+  .err{background:#3d1a27; border:1px solid #6e2438; color:#ff9db0; font-size:.82rem; padding:10px 12px; border-radius:10px; margin-top:10px;}
   details{margin-top:12px; font-size:.85rem; color:var(--muted);}
   details summary{cursor:pointer; color:var(--text);}
   details li{margin:6px 0 6px 18px;}
-  progress{width:100%; height:8px; margin-top:10px;}
+  progress{width:100%; height:8px; margin-top:10px; accent-color:var(--accent);}
 
   /* quiz */
   #quizTop{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:.85rem; color:var(--muted);}
   #quizBar{height:6px; background:var(--bg); border-radius:99px; overflow:hidden; margin-bottom:18px;}
-  #quizBarFill{height:100%; width:0%; background:linear-gradient(90deg,var(--purple),var(--pink)); transition:width .25s;}
+  #quizBarFill{height:100%; width:0%; background:var(--accent); transition:width .25s;}
   .playRow{display:flex; gap:10px; justify-content:center; align-items:center; margin:10px 0 20px;}
   #btnPlay{
     width:84px; height:84px; border-radius:50%; border:none; cursor:pointer;
-    background:radial-gradient(circle at 35% 30%, var(--pink), #c2255f);
-    color:#fff; font-size:2rem; box-shadow:0 6px 24px rgba(255,75,145,.35);
+    background:radial-gradient(circle at 35% 30%, #ffd685, #d9921c);
+    color:var(--accent-ink); font-size:2rem; box-shadow:0 6px 24px rgba(240,177,61,.28);
   }
   #btnPlay:active{transform:scale(.96);}
   #btnSlow{width:52px; height:52px; border-radius:50%; font-size:1.1rem;}
-  .qhint{text-align:center; font-size:.82rem; color:var(--muted); margin-bottom:16px;}
+  .qhint{text-align:center; font-size:.84rem; color:var(--muted); margin-bottom:16px;}
   .options{display:grid; grid-template-columns:1fr; gap:8px;}
   .options button{
     text-align:left; background:var(--card2); border:1px solid var(--line); color:var(--text);
-    padding:12px 14px; border-radius:10px; cursor:pointer; font-size:.95rem;
+    padding:12px 14px; border-radius:10px; cursor:pointer; font:inherit; font-size:.95rem;
   }
-  .options button:hover{border-color:var(--purple);}
-  .options button.picked{outline:2px solid var(--purple);}
-  .options button.correct{background:#173626; border-color:var(--green);}
-  .options button.wrong{background:#3a1420; border-color:var(--red);}
+  .options button:hover{border-color:var(--soft);}
+  .options button.picked{outline:2px solid var(--soft);}
+  .options button.correct{background:#183b2c; border-color:var(--green);}
+  .options button.wrong{background:#3d1a27; border-color:var(--red);}
   .options button .idx{color:var(--muted); font-size:.78rem; margin-right:8px;}
   #dictWrap input{font-size:1.2rem; text-align:center;}
-  #kanaPreview{text-align:center; min-height:1.6em; font-size:1.1rem; color:var(--purple); margin-top:6px;}
-  .reveal-jp{font-size:1.7rem; text-align:center; margin:6px 0; font-weight:600;}
-  .reveal-kana{font-size:1rem; text-align:center; color:var(--purple);}
+  #kanaPreview{text-align:center; min-height:1.6em; font-size:1.1rem; color:var(--soft); margin-top:6px;}
+  .reveal-jp{font-size:1.8rem; text-align:center; margin:6px 0; font-family:var(--mincho); font-weight:700;}
+  .reveal-kana{font-size:1rem; text-align:center; color:var(--soft);}
   .reveal-en{font-size:.95rem; text-align:center; color:var(--muted); margin-top:6px;}
   .reveal-extra{font-size:.8rem; text-align:center; color:var(--muted); margin-top:10px;}
   #feedback{text-align:center; font-size:1rem; font-weight:700; margin:14px 0 4px; min-height:1.5em;}
@@ -99,20 +112,19 @@
   #answerDetail{text-align:center;}
   .actionRow{display:flex; gap:8px; justify-content:center; margin-top:16px;}
   .kbd{font-size:.72rem; color:var(--muted); text-align:center; margin-top:18px;}
-  .kbd b{background:var(--card2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-weight:600;}
+  .kbd b{background:var(--card2); border:1px solid var(--line); border-radius:5px; padding:1px 6px; font-weight:700;}
 
   /* results / stats */
   .bigScore{font-size:2.4rem; font-weight:800; text-align:center; margin:6px 0;}
   .missList{margin-top:12px;}
   .missItem{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:.9rem;}
   .missItem:last-child{border-bottom:none;}
-  .missItem .jp{font-size:1.05rem; min-width:90px;}
+  .missItem .jp{font-size:1.1rem; min-width:90px; font-family:var(--mincho); font-weight:700;}
   .missItem .mean{color:var(--muted); flex:1;}
   .statGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
   .statBox{background:var(--card2); border-radius:10px; padding:12px; text-align:center;}
   .statBox .v{font-size:1.4rem; font-weight:800;}
-  .statBox .l{font-size:.72rem; color:var(--muted);}
-  @media (max-width:480px){ .statGrid{grid-template-columns:repeat(3,1fr);} }
+  .statBox .l{font-size:.74rem; color:var(--muted);}
 
   /* talk */
   #talkCard{display:flex; flex-direction:column; margin-bottom:0; min-height:360px;}
@@ -129,55 +141,87 @@
   #talkCard .err{margin:0 0 10px;}
   .msg{max-width:85%; padding:10px 12px; border-radius:12px; font-size:1rem; line-height:1.6;}
   .msg.me{align-self:flex-end; background:var(--card2); border:1px solid var(--line);}
-  .msg.ai{align-self:flex-start; background:#22203a; border:1px solid #3b3366;}
+  .msg.ai{align-self:flex-start; background:#222a49; border:1px solid #39457a;}
   .msg .en{font-size:.82rem; color:var(--muted); margin-top:4px;}
   .msg .tools{display:flex; gap:6px; margin-top:6px;}
   .msg .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:2px 8px; cursor:pointer; font-size:.75rem;}
-  .fix{align-self:flex-end; max-width:85%; background:#3a2b14; border:1px solid #6b4e1d; color:#ffd166; font-size:.85rem; padding:8px 10px; border-radius:10px;}
+  .fix{align-self:flex-end; max-width:85%; background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
   #talkInput{font-size:1rem;}
   .msg .w{border-radius:3px; cursor:help;}
-  .msg .w:hover,.msg .w.on{background:#3b3366;}
-  .msg .w.new{border-bottom:1px dotted var(--purple);}
+  .msg .w:hover,.msg .w.on{background:#33407a;}
+  .msg .w.new{border-bottom:1px dotted var(--soft);}
   #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
     border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
   #glossTip .r{color:var(--muted); font-size:.78rem;}
 
-  /* reviews: WaniKani's colours per item type */
-  @media (max-width:480px){ nav{gap:4px;} nav button{font-size:.76rem;} }
-  .rvTop{display:flex; justify-content:space-between; align-items:center; font-size:.85rem; color:var(--muted); margin-bottom:10px;}
-  .rvItem{color:#fff; text-align:center; border-radius:12px 12px 0 0; padding:28px 12px; line-height:1.15;
-    font-size:clamp(2.4rem,11vw,4.6rem); font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif; word-break:keep-all;}
-  .rvItem img{height:1em; filter:invert(1);}
-  .rvItem.radical{background:#00a1f1;}
-  .rvItem.kanji{background:#f100a1;}
-  .rvItem.vocabulary,.rvItem.kana_vocabulary{background:#a100f1;}
-  .rvPrompt{text-align:center; padding:8px; font-size:.95rem; border-radius:0 0 12px 12px;}
-  .rvPrompt.meaning{background:#e9e9e9; color:#333;}
-  .rvPrompt.reading{background:#2b2b2b; color:#fff; border:1px solid #444; border-top:none;}
-  .rvAnswer{display:flex; gap:8px; margin-top:14px;}
-  #rvInput{font-size:1.3rem; text-align:center;}
-  #rvInput.ok{background:#173626; border-color:var(--green);}
-  #rvInput.bad{background:#3a1420; border-color:var(--red);}
-  #rvInput.again{border-color:var(--amber); animation:rvShake .35s;}
+  /* reviews */
+  .rvTop{display:flex; align-items:center; gap:12px; font-size:.85rem; color:var(--muted); margin-bottom:10px;}
+  .rvTop .grow{flex:1;}
+  #rvTrack{height:4px; background:var(--bg); border-radius:99px; overflow:hidden; margin-bottom:14px;}
+  #rvTrackFill{height:100%; width:0%; background:var(--accent); transition:width .3s;}
+  /* one square per character, like a kanji practice sheet */
+  .rvItem{display:flex; flex-wrap:wrap; justify-content:center; padding:26px 14px; border-radius:12px 12px 0 0;
+    color:#fff; font-family:var(--mincho); font-weight:700; line-height:1;
+    font-size:calc(clamp(2.4rem,11vw,4.2rem) * var(--fit,1));}
+  .rvItem.radical{background:var(--radical);}
+  .rvItem.kanji{background:var(--kanji);}
+  .rvItem.vocabulary,.rvItem.kana_vocabulary{background:var(--vocab);}
+  .rvItem .cell{width:1.3em; height:1.3em; display:grid; place-items:center; margin-left:-1px;
+    border:1px solid rgba(255,255,255,.4); text-shadow:0 2px 0 rgba(0,0,0,.12);
+    background:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,.3) 0 4px, transparent 4px 9px) center / 1px 100% no-repeat,
+      repeating-linear-gradient(to right, rgba(255,255,255,.3) 0 4px, transparent 4px 9px) center / 100% 1px no-repeat;}
+  .rvItem .cell:first-child{margin-left:0;}
+  .rvItem img{height:.9em; filter:invert(1);}
+  /* meaning is paper, reading is ink: the bar and the answer box both switch */
+  .rvPrompt{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px 10px;
+    padding:10px 12px; font-size:1rem; border-radius:0 0 12px 12px;}
+  .rvPrompt .how{font-size:.8rem; opacity:.72;}
+  .qbadge{display:inline-grid; place-items:center; width:1.8em; height:1.8em; border-radius:6px; font-weight:700; font-size:.9rem;}
+  .rvPrompt.meaning{background:var(--paper); color:var(--paper-ink);}
+  .rvPrompt.meaning .qbadge{background:var(--paper-ink); color:var(--paper);}
+  .rvPrompt.reading{background:var(--ink); color:var(--paper); box-shadow:inset 0 0 0 1px #2c3458;}
+  .rvPrompt.reading .qbadge{background:var(--paper); color:var(--ink);}
+  .rvAnswer{display:flex; gap:10px; align-items:center; margin-top:14px;}
+  #rvInput{font-size:1.35rem; text-align:center; padding:12px; border-width:2px;}
+  .rvAnswer.meaning #rvInput{background:var(--paper); color:var(--paper-ink); border-color:var(--paper);}
+  .rvAnswer.meaning #rvInput::placeholder{color:#77768a;}
+  .rvAnswer.reading #rvInput{background:var(--ink); color:var(--paper); border-color:#3a4370;}
+  .rvAnswer.reading #rvInput::placeholder{color:#6f7699;}
+  .rvAnswer #rvInput.ok{background:#183b2c; color:var(--text); border-color:var(--green);}
+  .rvAnswer #rvInput.bad{background:#3d1a27; color:var(--text); border-color:var(--red);}
+  .rvAnswer #rvInput.again{border-color:var(--amber); animation:rvShake .35s;}
   @keyframes rvShake{20%,60%{transform:translateX(-6px);} 40%,80%{transform:translateX(6px);}}
-  #rvMic{width:52px; flex:none; font-size:1.2rem; padding:0;}
-  #rvMic.on{background:var(--pink); border-color:var(--pink); animation:rvPulse 1.2s infinite;}
-  @keyframes rvPulse{50%{box-shadow:0 0 0 6px rgba(255,75,145,.25);}}
-  #rvLevel{height:4px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
-  #rvLevelFill{height:100%; width:0%; background:var(--pink); transition:width .05s;}
-  #rvKana{text-align:center; min-height:1.4em; color:var(--purple); font-size:1rem; margin-top:4px;}
-  #rvStatus{text-align:center; font-size:.9rem; min-height:1.5em; margin-top:8px; color:var(--muted);}
+  #rvMic{width:54px; height:54px; flex:none; border-radius:50%; padding:0; font-size:1.25rem;}
+  #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
+  @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
+  #rvLevel{height:3px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
+  #rvLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
+  #rvKana{text-align:center; min-height:1.4em; color:var(--soft); font-size:1rem; margin-top:4px;}
+  #rvStatus{text-align:center; font-size:.92rem; min-height:1.5em; margin-top:8px; color:var(--muted);}
   #rvStatus.good{color:var(--green);} #rvStatus.bad{color:var(--red);} #rvStatus.again{color:var(--amber);}
-  .rvInfo{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.9rem;}
-  .rvInfo div{margin:2px 0;} .rvInfo b{color:var(--muted); font-weight:600; margin-right:6px;}
+  .rvInfo{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.92rem;}
+  .rvInfo div{margin:2px 0;} .rvInfo b{color:var(--muted); font-weight:700; margin-right:6px;}
+  .rvInfo .say{float:right; margin-left:8px;}
   .rvMiss .jp{min-width:70px;}
+  /* results held for a check before sending */
+  .hold{margin-top:14px;}
+  .holdRow{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:.9rem;}
+  .holdRow input{width:18px; height:18px; flex:none;}
+  .holdRow .jp{font-size:1.15rem; min-width:72px; font-family:var(--mincho); font-weight:700;}
+  .holdRow .res{flex:1; color:var(--muted);}
+  .holdRow .res .ok{color:var(--green);} .holdRow .res .bad{color:var(--red);}
+  .holdRow.off{opacity:.45;}
+
+  @media (max-width:480px){ nav button{font-size:.78rem; padding:8px 6px;} }
+  @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important; transition:none !important;} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>🎧 WaniKani <span class="accent">Listening Practice</span></h1>
+    <h1><img src="favicon.svg" alt="">WaniKani Listening Practice</h1>
     <span style="display:flex; gap:8px; align-items:center;">
       <select id="vvQuickSpeaker" class="hidden" title="VOICEVOX voice"></select>
       <span id="dataChip">no data yet</span>
@@ -293,18 +337,26 @@
         <input type="checkbox" id="chkRvHands"> hands-free: listen for each answer automatically
       </label>
       <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
-        <input type="checkbox" id="chkRvSay"> say the reading after I answer
+        <input type="checkbox" id="chkRvSay"> say the reading after a right answer
+      </label>
+      <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvSayWrong"> say the reading after a wrong answer
       </label>
       <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
         <input type="checkbox" id="chkRvSend"> send results to WaniKani
       </label>
+      <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvConfirm"> let me check the results before they're sent
+      </label>
+      <div id="rvHoldStart" class="hold hidden"></div>
       <div id="rvOutbox" class="warn hidden" style="margin:12px 0 0;"></div>
       <div id="rvErr" class="err hidden"></div>
       <details>
         <summary>How voice answers work</summary>
         <li>Say the English meaning, or the Japanese reading, when the bar asks for it. You can also type (romaji turns into kana).</li>
         <li>Say "I don't know" (or わかりません) to see the answer.</li>
-        <li>After a wrong answer, say "next" to count it, or "again" if it misheard you. Nothing counts as wrong until then.</li>
+        <li>After a wrong answer, say "next" to count it, or "again" if it misheard you. Nothing counts as wrong until then. Press <b>p</b> or 🔊 to hear the reading.</li>
+        <li>With "let me check the results" on, nothing goes to WaniKani until you've looked over the list at the end. You can mark a miss as correct there, or untick an item to leave it due.</li>
         <li>Vowel length is forgiven (speech-to-text often hears がっこう as がっこ). A near miss, like じ for し, asks you to say it again.</li>
         <li>Sending results needs a token with the <b>reviews:create</b> permission (WaniKani → Settings → API Tokens). Unsent results wait here and resend.</li>
         <li>Speech-to-text runs on KBU, so voice answers need that PC on.</li>
@@ -313,12 +365,15 @@
 
     <section id="rvCard" class="card hidden">
       <div class="rvTop">
-        <span id="rvProgress"></span>
+        <span id="rvLeft"></span>
+        <span class="grow"></span>
+        <span id="rvAcc"></span>
         <button class="btn small" id="btnRvWrap" title="finish the items already started, then stop">Wrap up</button>
       </div>
+      <div id="rvTrack"><div id="rvTrackFill"></div></div>
       <div id="rvItem" class="rvItem"></div>
       <div id="rvPrompt" class="rvPrompt"></div>
-      <div class="rvAnswer">
+      <div class="rvAnswer" id="rvAnswerRow">
         <input type="text" id="rvInput" autocomplete="off" autocapitalize="off" spellcheck="false">
         <button class="btn hidden" id="rvMic" title="answer by voice (space)">🎤</button>
       </div>
@@ -327,15 +382,17 @@
       <div id="rvStatus"></div>
       <div id="rvInfo" class="rvInfo hidden"></div>
       <div class="actionRow" id="rvActions"></div>
-      <div class="kbd"><b>space</b> mic · <b>enter</b> check / next · <b>backspace</b> misheard, again · <b>esc</b> I don't know</div>
+      <div class="kbd"><b>space</b> mic · <b>enter</b> check / next · <b>backspace</b> misheard, again · <b>p</b> hear it · <b>esc</b> I don't know</div>
     </section>
 
     <section id="rvDoneCard" class="card hidden">
       <h2>Reviews done</h2>
       <div class="bigScore" id="rvScore"></div>
+      <p id="rvScoreNote" style="text-align:center;"></p>
       <p id="rvDoneNote" style="text-align:center;"></p>
+      <div id="rvHoldDone" class="hold hidden"></div>
       <div class="missList" id="rvMissList"></div>
-      <div class="actionRow"><button class="btn primary" id="btnRvBack">Back</button></div>
+      <div class="actionRow"><button class="btn" id="btnRvBack">Back</button></div>
     </section>
   </main>
 
@@ -789,7 +846,7 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
-  rvHands:true,rvSay:true,rvSend:true},load("wkl_settings",{}));
+  rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1636,13 +1693,15 @@ let RV=null,rvSeq=0;
 let RV_OUT=load("wkl_rv_outbox",[]);     // finished items WaniKani hasn't taken yet
 let rvOutErr="",rvFlushing=null,rvDropped=[];
 const saveOut=()=>store("wkl_rv_outbox",RV_OUT);
+let RV_HOLD=load("wkl_rv_hold",[]);      // finished, waiting for the learner to check them
+const saveHold=()=>store("wkl_rv_hold",RV_HOLD);
 const rvShow=id=>["rvStartCard","rvCard","rvDoneCard"].forEach(c=>$(c).classList.toggle("hidden",c!==id));
 function rvStatus(text,cls){ const st=$("rvStatus"); st.textContent=text; st.className=cls||""; }
 
 async function rvCheck(){
   const p=$("rvAvail"),b=$("btnRvStart");
   b.disabled=true;
-  rvFlush();
+  rvFlush(); rvHoldUI();
   if(!TOKEN){ p.textContent="Connect your WaniKani account on the Practice tab first."; return; }
   p.textContent="Checking WaniKani…";
   try{
@@ -1676,7 +1735,7 @@ async function rvLoad(){
     (await wkFetchAll(WK+"/study_materials?subject_ids="+chunk)).forEach(m=>{ syn[m.data.subject_id]=m.data.meaning_synonyms||[]; });
   }
   const byId=new Map(subs.map(s=>[s.id,rvSubject(s,syn[s.id])]));
-  const waiting=new Set(RV_OUT.map(o=>o.asg));
+  const waiting=new Set(RV_OUT.concat(RV_HOLD).map(o=>o.asg));
   const items=asg.filter(a=>byId.has(a.data.subject_id)&&!waiting.has(a.id)).map(a=>{
     const sub=byId.get(a.data.subject_id);
     return {asg:a.id,sub,need:sub.readings.some(r=>r.acc)?["meaning","reading"]:["meaning"],
@@ -1809,14 +1868,22 @@ function rvNext(){
 }
 function rvRender(){
   const {item,q}=RV.cur,s=item.sub;
-  const left=RV.active.length+RV.backlog.length;
-  $("rvProgress").textContent=`${RV.answers?Math.round(100*RV.right/RV.answers):100}% · ${RV.finished.length} done · ${left} left`;
-  const el=$("rvItem");
+  const left=RV.active.length+RV.backlog.length,done=RV.finished.length;
+  $("rvLeft").textContent=`${left} to go`;
+  $("rvAcc").textContent=RV.answers?`${Math.round(100*RV.right/RV.answers)}% correct`:"";
+  $("rvTrackFill").style.width=(100*done/Math.max(1,done+left))+"%";
+  // one practice-sheet square per character; long words shrink to fit
+  const el=$("rvItem"),chars=s.chars?[...s.chars]:[];
   el.className="rvItem "+s.type;
-  el.innerHTML=s.chars?esc(s.chars):(s.img?`<img src="${esc(s.img)}" alt="">`:"?");
+  el.style.setProperty("--fit",chars.length<=3?1:chars.length===4?.85:chars.length===5?.72:chars.length===6?.62:chars.length<=8?.5:.42);
+  el.innerHTML=chars.length?chars.map(c=>`<span class="cell">${esc(c)}</span>`).join("")
+    :`<span class="cell">${s.img?`<img src="${esc(s.img)}" alt="${esc(s.pm)}">`:"?"}</span>`;
   const pr=$("rvPrompt");
   pr.className="rvPrompt "+q;
-  pr.innerHTML=`${TYPE_NAME[s.type]} <b>${q==="meaning"?"Meaning":"Reading"}</b>`;
+  pr.innerHTML=q==="meaning"
+    ?`<span class="qbadge">A</span><span>${TYPE_NAME[s.type]} <b>meaning</b></span><span class="how">answer in English</span>`
+    :`<span class="qbadge">あ</span><span>${TYPE_NAME[s.type]} <b>reading</b></span><span class="how">answer in Japanese</span>`;
+  $("rvAnswerRow").className="rvAnswer "+q;
   const inp=$("rvInput");
   inp.value=""; inp.className=""; inp.disabled=false;
   inp.lang=q==="reading"?"ja":"en";
@@ -1930,6 +1997,16 @@ function rvRight(res){
   const go=()=>{ if(RV&&RV.phase==="right"&&RV.cur.item===item&&RV.cur.q===q) rvNext(); };
   if(say) rvSay(say).then(()=>setTimeout(go,250)); else setTimeout(go,800);
 }
+// what to say for an item: its main reading, or the word itself for kana vocab
+const rvSayText=s=>s.type==="kana_vocabulary"?s.chars:((s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)||{}).r||"");
+// play it with the mic off, then go back to listening for "next" / "again"
+function rvPronounce(){
+  if(!RV) return;
+  const text=rvSayText(RV.cur.item.sub),ph=RV.phase;
+  if(!text) return;
+  rvSeq++; RV.listenSeq=0; rvMicUI(false);
+  rvSay(text).then(()=>{ if(RV&&RV.phase===ph&&RV.voice&&S.rvHands) rvListenCommand(); });
+}
 function rvInfoHTML(s){
   const rd=s.readings.filter(r=>r.acc).map(r=>r.r).join("、");
   const other=s.readings.filter(r=>!r.acc).map(r=>r.r).join("、");
@@ -1942,12 +2019,16 @@ function rvWrong(heard,gaveUp,spoken){
   RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
   const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
   rvStatus(gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite","bad");
-  const info=$("rvInfo"); info.innerHTML=rvInfoHTML(s); info.classList.remove("hidden");
+  const info=$("rvInfo");
+  info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+rvInfoHTML(s);
+  info.classList.remove("hidden");
+  if($("btnRvSay")) $("btnRvSay").onclick=rvPronounce;
   $("rvActions").innerHTML=(gaveUp?"":`<button class="btn" id="btnRvRetry">Misheard, again (⌫)</button>`)+
     `<button class="btn primary" id="btnRvNext">Next ▸ (enter)</button>`;
   $("btnRvNext").onclick=rvCommitWrong;
   if(!gaveUp) $("btnRvRetry").onclick=rvRetry;
-  if(RV.voice&&S.rvHands) rvListenCommand();
+  if(S.rvSayWrong&&rvSayText(s)) rvPronounce();
+  else if(RV.voice&&S.rvHands) rvListenCommand();
 }
 // only now does the miss count; it comes back later in the session
 function rvCommitWrong(){
@@ -2005,9 +2086,50 @@ function rvComplete(item){
   RV.finished.push(item);
   rvFill();
   if(!S.rvSend) return;
-  RV_OUT.push({asg:item.asg,c:item.sub.chars||item.sub.pm,im:item.wrong.meaning,ir:item.wrong.reading,at:new Date().toISOString()});
+  const o={asg:item.asg,c:item.sub.chars||item.sub.pm,im:item.wrong.meaning,ir:item.wrong.reading,at:new Date().toISOString()};
+  if(S.rvConfirm){ RV_HOLD.push(Object.assign(o,{pm:item.sub.pm,on:true})); saveHold(); return; }
+  RV_OUT.push(o);
   saveOut();
   rvFlush();
+}
+// the check-before-sending list, on the done card and (if left over) the start card
+function rvHoldUI(){
+  const on=RV_HOLD.filter(h=>h.on).length;
+  const rows=RV_HOLD.map((h,i)=>{
+    const miss=[h.im?`meaning ×${h.im}`:"",h.ir?`reading ×${h.ir}`:""].filter(Boolean).join(", ");
+    const res=miss?`<span class="bad">missed ${miss}</span>`:`<span class="ok">${h.fixed?"marked correct":"correct"}</span>`;
+    const btn=miss?`<button class="btn small" data-fix="${i}">Mark correct</button>`
+      :h.fixed?`<button class="btn small" data-undo="${i}">Undo</button>`:"";
+    return `<div class="holdRow${h.on?"":" off"}"><input type="checkbox" data-on="${i}"${h.on?" checked":""} aria-label="send ${esc(h.c)}">`+
+      `<span class="jp">${esc(h.c)}</span><span class="res">${esc(h.pm)}, ${res}</span>${btn}</div>`;
+  }).join("");
+  const html=`<p>Check these before they go to WaniKani. Mark a miss correct if it misheard you; untick an item to leave it due there.</p>${rows}
+    <div class="row" style="margin-top:12px;"><button class="btn primary" data-send${on?"":" disabled"}>Send ${on} to WaniKani</button>
+    <button class="btn small" data-drop>Don't send any</button></div>`;
+  ["rvHoldStart","rvHoldDone"].forEach(id=>{
+    const box=$(id);
+    box.innerHTML=RV_HOLD.length?html:"";
+    box.classList.toggle("hidden",!RV_HOLD.length);
+  });
+}
+function rvHoldClick(e){
+  const t=e.target,i=+(t.dataset.fix??t.dataset.undo??t.dataset.on??-1),h=RV_HOLD[i];
+  if(t.dataset.fix!=null&&h){ h.om=h.im; h.or=h.ir; h.im=h.ir=0; h.fixed=true; }
+  else if(t.dataset.undo!=null&&h){ h.im=h.om||0; h.ir=h.or||0; h.fixed=false; }
+  else if(t.dataset.on!=null&&h){ h.on=t.checked; }
+  else if(t.dataset.send!=null){
+    RV_OUT.push(...RV_HOLD.filter(x=>x.on).map(({asg,c,im,ir,at})=>({asg,c,im,ir,at})));
+    RV_HOLD=[]; saveHold(); saveOut();
+    const note=$("rvDoneNote");
+    note.textContent="Sending to WaniKani…";
+    rvFlush().then(()=>{ note.textContent=RV_OUT.length?`${RV_OUT.length} not sent yet — they'll resend from the Reviews tab.`:"Sent to WaniKani."; });
+  }
+  else if(t.dataset.drop!=null){
+    if(!confirm("Don't send any of these? They stay due on WaniKani.")) return;
+    RV_HOLD=[]; $("rvDoneNote").textContent="Nothing was sent to WaniKani.";
+  }
+  else return;
+  saveHold(); rvHoldUI();
 }
 // one send loop at a time; .finally so an empty outbox can't leave it stuck "busy"
 function rvFlush(){
@@ -2059,9 +2181,12 @@ async function rvFinish(){
   const R=RV; RV=null;
   micClose(); stopAudio();
   const pct=R.answers?Math.round(100*R.right/R.answers):100;
-  $("rvScore").textContent=`${R.finished.length} item${R.finished.length===1?"":"s"} · ${pct}%`;
+  $("rvScore").textContent=pct+"%";
+  $("rvScoreNote").textContent=`${R.finished.length} item${R.finished.length===1?"":"s"} reviewed`;
   const ml=$("rvMissList"),missed=R.finished.filter(i=>i.wrong.meaning||i.wrong.reading);
-  ml.innerHTML=missed.length?"<h2>Missed</h2>":"";
+  const checking=S.rvSend&&S.rvConfirm&&RV_HOLD.length;
+  ml.innerHTML=missed.length&&!checking?"<h2>Missed</h2>":"";
+  if(checking) missed.length=0;          // the check list shows them
   missed.forEach(i=>{
     const s=i.sub,rd=(s.readings.find(r=>r.acc&&r.primary)||{}).r||"";
     const d=document.createElement("div");
@@ -2077,6 +2202,8 @@ async function rvFinish(){
   const note=$("rvDoneNote");
   rvShow("rvDoneCard");
   if(!S.rvSend){ note.textContent="Practice only — nothing was sent to WaniKani."; return; }
+  rvHoldUI();
+  if(checking){ note.textContent="Nothing is sent until you press Send."; rvFlush(); return; }
   note.textContent="Sending to WaniKani…";
   await rvFlush();
   note.textContent=RV_OUT.length?`${RV_OUT.length} not sent yet — they'll resend from the Reviews tab.`:"All results sent to WaniKani.";
@@ -2262,7 +2389,9 @@ $("btnRvWrap").onclick=()=>{
   $("btnRvWrap").disabled=true; $("btnRvWrap").textContent="Wrapping up";
 };
 $("rvMic").onclick=rvMicToggle;
-[["chkRvHands","rvHands"],["chkRvSay","rvSay"],["chkRvSend","rvSend"]].forEach(([id,key])=>{
+$("rvHoldStart").addEventListener("click",rvHoldClick);
+$("rvHoldDone").addEventListener("click",rvHoldClick);
+[["chkRvHands","rvHands"],["chkRvSay","rvSay"],["chkRvSayWrong","rvSayWrong"],["chkRvSend","rvSend"],["chkRvConfirm","rvConfirm"]].forEach(([id,key])=>{
   $(id).checked=!!S[key];
   $(id).onchange=e=>{ S[key]=e.target.checked; saveS(); };
 });
@@ -2290,7 +2419,8 @@ document.addEventListener("keydown",e=>{
   if(inInput) return;
   if(e.key===" "&&ph==="question"){ e.preventDefault(); rvMicToggle(); return; }
   if((e.key==="Backspace"||e.key==="r")&&ph==="wrong"){ e.preventDefault(); rvRetry(); return; }
-  if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); }
+  if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); return; }
+  if(e.key==="p"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPronounce(); }
 });
 
 /* speak tab */
