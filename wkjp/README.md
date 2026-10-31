@@ -47,6 +47,24 @@ is reachable only through the private gateway.
   prompt echoes, and shows "didn't catch that" without auto-sending.
   Settings → "Mic language" switches Whisper from forced Japanese to
   auto-detect for English or mixed speech.
+- The Reviews tab does the WaniKani reviews that are due, WaniKani-style
+  (meaning and reading, ~10 items in play, misses come back), answered by
+  voice or typing. Meaning answers go to the same Whisper as English,
+  reading answers as Japanese with a `ひらがな。` prompt, which gets kana
+  instead of kanji for most single words. Checking allows for Whisper's
+  habits: vowel length is ignored (がっこう heard as がっこ), digits map to
+  readings (さん comes back as `3`), and a word written in kanji is resolved
+  through the review's own subjects, the cached vocab, then VOICEVOX's
+  `audio_query` reading. When Whisper writes the kanji being asked about,
+  the clip is transcribed again with that kanji's readings as the prompt;
+  only if it's still the kanji does the app ask "did you say …?". A near
+  miss (dakuten, small kana) asks again; a wrong answer only counts after
+  "next", so "again" covers a mishearing.
+- Finished items are POSTed to `/v2/reviews`. That needs a token with
+  `reviews:create`; the default read-only one gets a 403, and the results
+  wait in localStorage (`wkl_rv_outbox`) until a token that can write is
+  pasted on the Reviews tab. "Send results to WaniKani" off makes it
+  practice only.
 - Changes to anything here go live within ~5 minutes of merging, via
   `wkjp-sync`. nginx config changes trigger a reload.
 - Stateless, so the VM can be replaced freely.

@@ -142,6 +142,36 @@
   #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
     border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
   #glossTip .r{color:var(--muted); font-size:.78rem;}
+
+  /* reviews: WaniKani's colours per item type */
+  @media (max-width:480px){ nav{gap:4px;} nav button{font-size:.76rem;} }
+  .rvTop{display:flex; justify-content:space-between; align-items:center; font-size:.85rem; color:var(--muted); margin-bottom:10px;}
+  .rvItem{color:#fff; text-align:center; border-radius:12px 12px 0 0; padding:28px 12px; line-height:1.15;
+    font-size:clamp(2.4rem,11vw,4.6rem); font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif; word-break:keep-all;}
+  .rvItem img{height:1em; filter:invert(1);}
+  .rvItem.radical{background:#00a1f1;}
+  .rvItem.kanji{background:#f100a1;}
+  .rvItem.vocabulary,.rvItem.kana_vocabulary{background:#a100f1;}
+  .rvPrompt{text-align:center; padding:8px; font-size:.95rem; border-radius:0 0 12px 12px;}
+  .rvPrompt.meaning{background:#e9e9e9; color:#333;}
+  .rvPrompt.reading{background:#2b2b2b; color:#fff; border:1px solid #444; border-top:none;}
+  .rvAnswer{display:flex; gap:8px; margin-top:14px;}
+  #rvInput{font-size:1.3rem; text-align:center;}
+  #rvInput.ok{background:#173626; border-color:var(--green);}
+  #rvInput.bad{background:#3a1420; border-color:var(--red);}
+  #rvInput.again{border-color:var(--amber); animation:rvShake .35s;}
+  @keyframes rvShake{20%,60%{transform:translateX(-6px);} 40%,80%{transform:translateX(6px);}}
+  #rvMic{width:52px; flex:none; font-size:1.2rem; padding:0;}
+  #rvMic.on{background:var(--pink); border-color:var(--pink); animation:rvPulse 1.2s infinite;}
+  @keyframes rvPulse{50%{box-shadow:0 0 0 6px rgba(255,75,145,.25);}}
+  #rvLevel{height:4px; background:var(--bg); border-radius:99px; overflow:hidden; margin-top:8px;}
+  #rvLevelFill{height:100%; width:0%; background:var(--pink); transition:width .05s;}
+  #rvKana{text-align:center; min-height:1.4em; color:var(--purple); font-size:1rem; margin-top:4px;}
+  #rvStatus{text-align:center; font-size:.9rem; min-height:1.5em; margin-top:8px; color:var(--muted);}
+  #rvStatus.good{color:var(--green);} #rvStatus.bad{color:var(--red);} #rvStatus.again{color:var(--amber);}
+  .rvInfo{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.9rem;}
+  .rvInfo div{margin:2px 0;} .rvInfo b{color:var(--muted); font-weight:600; margin-right:6px;}
+  .rvMiss .jp{min-width:70px;}
 </style>
 </head>
 <body>
@@ -158,6 +188,7 @@
 
   <nav>
     <button id="tabPractice" class="active">Practice</button>
+    <button id="tabReviews">Reviews</button>
     <button id="tabSpeak">Speak</button>
     <button id="tabTalk">Talk</button>
     <button id="tabStats">Stats</button>
@@ -183,7 +214,7 @@
         <summary>Where do I get a token?</summary>
         <li>Log in at wanikani.com</li>
         <li>Click your avatar → <b>API Tokens</b> (or Settings → API Tokens)</li>
-        <li>Use the default read-only token, or generate one (no write permissions needed)</li>
+        <li>Use the default read-only token, or generate one (no write permissions needed). To send results from the Reviews tab, tick <b>reviews:create</b> on it.</li>
         <li>Copy it and paste it above</li>
       </details>
     </section>
@@ -246,6 +277,65 @@
         <button class="btn" id="btnAgain">Same settings ↻</button>
         <button class="btn primary" id="btnNew">New session</button>
       </div>
+    </section>
+  </main>
+
+  <!-- ============ REVIEWS VIEW ============ -->
+  <main id="viewReviews" class="hidden">
+    <section id="rvStartCard" class="card">
+      <h2>Reviews</h2>
+      <p id="rvAvail">Checking WaniKani…</p>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn primary" id="btnRvStart" disabled>Start reviews ▸</button>
+        <button class="btn small" id="btnRvCheck">↻</button>
+      </div>
+      <label style="margin-top:14px; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvHands"> hands-free: listen for each answer automatically
+      </label>
+      <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvSay"> say the reading after I answer
+      </label>
+      <label style="margin:6px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="chkRvSend"> send results to WaniKani
+      </label>
+      <div id="rvOutbox" class="warn hidden" style="margin:12px 0 0;"></div>
+      <div id="rvErr" class="err hidden"></div>
+      <details>
+        <summary>How voice answers work</summary>
+        <li>Say the English meaning, or the Japanese reading, when the bar asks for it. You can also type (romaji turns into kana).</li>
+        <li>Say "I don't know" (or わかりません) to see the answer.</li>
+        <li>After a wrong answer, say "next" to count it, or "again" if it misheard you. Nothing counts as wrong until then.</li>
+        <li>Vowel length is forgiven (speech-to-text often hears がっこう as がっこ). A near miss, like じ for し, asks you to say it again.</li>
+        <li>Sending results needs a token with the <b>reviews:create</b> permission (WaniKani → Settings → API Tokens). Unsent results wait here and resend.</li>
+        <li>Speech-to-text runs on KBU, so voice answers need that PC on.</li>
+      </details>
+    </section>
+
+    <section id="rvCard" class="card hidden">
+      <div class="rvTop">
+        <span id="rvProgress"></span>
+        <button class="btn small" id="btnRvWrap" title="finish the items already started, then stop">Wrap up</button>
+      </div>
+      <div id="rvItem" class="rvItem"></div>
+      <div id="rvPrompt" class="rvPrompt"></div>
+      <div class="rvAnswer">
+        <input type="text" id="rvInput" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn hidden" id="rvMic" title="answer by voice (space)">🎤</button>
+      </div>
+      <div id="rvLevel" class="hidden"><div id="rvLevelFill"></div></div>
+      <div id="rvKana"></div>
+      <div id="rvStatus"></div>
+      <div id="rvInfo" class="rvInfo hidden"></div>
+      <div class="actionRow" id="rvActions"></div>
+      <div class="kbd"><b>space</b> mic · <b>enter</b> check / next · <b>backspace</b> misheard, again · <b>esc</b> I don't know</div>
+    </section>
+
+    <section id="rvDoneCard" class="card hidden">
+      <h2>Reviews done</h2>
+      <div class="bigScore" id="rvScore"></div>
+      <p id="rvDoneNote" style="text-align:center;"></p>
+      <div class="missList" id="rvMissList"></div>
+      <div class="actionRow"><button class="btn primary" id="btnRvBack">Back</button></div>
     </section>
   </main>
 
@@ -591,6 +681,100 @@ function lintCorpus(corpus){
   });
   return bad;
 }
+
+/* review answer checking, for spoken and typed answers */
+const NUM_WORDS=["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+  "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
+function meaningKey(s){
+  let t=String(s||"").normalize("NFKC").toLowerCase()
+    .replace(/['’]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  t=t.replace(/\b\d+\b/g,n=>NUM_WORDS[+n]||n);
+  return t.replace(/^(to|a|an|the) /,"");
+}
+function levenshtein(a,b){
+  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev=cur;
+  }
+  return prev[b.length];
+}
+// WaniKani's typo allowance for meanings
+const meaningTol=n=>n<=3?0:n<=5?1:n<=7?2:2+Math.floor(n/7);
+// ok | wrong | want-meaning (they gave the reading instead)
+function judgeMeaning(ans,accepted,blacklist,readings){
+  const parts=[ans].concat(String(ans||"").split(/,|\/| or /i)).map(meaningKey).filter(Boolean);
+  const acc=accepted.map(a=>({a,k:meaningKey(a)})), black=new Set(blacklist.map(meaningKey));
+  for(const k of parts){
+    if(black.has(k)) return {v:"wrong"};
+    const hit=acc.find(x=>x.k===k);
+    if(hit) return {v:"ok",m:hit.a};
+  }
+  for(const k of parts){
+    const hit=acc.find(x=>levenshtein(k,x.k)<=meaningTol(x.k.length));
+    if(hit) return {v:"ok",m:hit.a,typo:true};
+  }
+  const rk=new Set((readings||[]).map(lengthKey));
+  if(/[぀-ヿ一-鿿]/.test(ans)||parts.some(k=>/^[a-z ]+$/.test(k)&&rk.has(lengthKey(romajiToHiragana(k.replace(/ /g,""))))))
+    return {v:"want-meaning"};
+  return {v:"wrong"};
+}
+// readings: kana only, katakana folded to hiragana
+const kanaKey=s=>kataToHira(String(s||"").normalize("NFKC")).replace(/[^ぁ-ゖー]/g,"");
+const KANA_VOWEL=(()=>{
+  const m={};
+  for(const [ro,ka] of Object.entries(ROMAJI_MAP)) if(VOWELS.includes(ro[ro.length-1])) m[ka[ka.length-1]]=ro[ro.length-1];
+  delete m["っ"];   // from xtsu; it has no vowel
+  return m;
+})();
+// vowel length dropped: Whisper often hears がっこう as がっこ
+function lengthKey(s){
+  let out="",prev="";
+  for(const ch of kanaKey(s)){
+    const long=ch==="ー"||(prev&&"あいうえお".includes(ch)&&(KANA_VOWEL[ch]===prev||(prev==="o"&&ch==="う")||(prev==="e"&&ch==="い")));
+    if(long) continue;
+    out+=ch; prev=KANA_VOWEL[ch]||"";
+  }
+  return out.replace(/っ+$/,"");     // no reading ends in っ; Whisper adds one to clipped words
+}
+// also dakuten, small kana and っ: close enough to ask again, never to accept
+function looseKey(s){
+  return lengthKey(s).normalize("NFD").replace(/[゙゚]/g,"").normalize("NFC")
+    .replace(/っ/g,"").replace(/[ぁぃぅぇぉゃゅょゎ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+1));
+}
+// ok (len: only vowel length differs) | other (a reading WaniKani isn't after) | near | wrong
+function judgeReading(cands,readings){
+  const acc=readings.filter(x=>x.acc),oth=readings.filter(x=>!x.acc);
+  const find=(list,key)=>{ for(const c of cands) for(const x of list) if(key(c)&&key(c)===key(x.r)) return {c,x}; return null; };
+  let h;
+  if((h=find(acc,kanaKey))) return {v:"ok",r:h.x.r,heard:h.c};
+  if((h=find(acc,lengthKey))) return {v:"ok",r:h.x.r,heard:h.c,len:true};
+  if((h=find(oth,lengthKey))) return {v:"other",r:h.x.r,type:h.x.type,heard:h.c};
+  if((h=find(acc,looseKey))) return {v:"near",r:h.x.r,heard:h.c};
+  return {v:"wrong"};
+}
+// Whisper writes spoken numbers as digits
+function numberReadings(digits){
+  const n=parseInt(String(digits).normalize("NFKC"),10);
+  if(!(n>=0&&n<100000)||!/^\d+$/.test(String(digits).normalize("NFKC"))) return [];
+  if(n===0) return ["ぜろ","れい"];
+  const U=[[""],["いち"],["に"],["さん"],["よん","し"],["ご"],["ろく"],["なな","しち"],["はち"],["きゅう","く"]];
+  const T=[[""],["じゅう"],["にじゅう"],["さんじゅう"],["よんじゅう"],["ごじゅう"],["ろくじゅう"],["ななじゅう"],["はちじゅう"],["きゅうじゅう"]];
+  const H=[[""],["ひゃく"],["にひゃく"],["さんびゃく"],["よんひゃく"],["ごひゃく"],["ろっぴゃく"],["ななひゃく"],["はっぴゃく"],["きゅうひゃく"]];
+  const K=[[""],["せん"],["にせん"],["さんぜん"],["よんせん"],["ごせん"],["ろくせん"],["ななせん"],["はっせん"],["きゅうせん"]];
+  const M=[[""],["いちまん"],["にまん"],["さんまん"],["よんまん"],["ごまん"],["ろくまん"],["ななまん"],["はちまん"],["きゅうまん"]];
+  const d=[Math.floor(n/10000),Math.floor(n/1000)%10,Math.floor(n/100)%10,Math.floor(n/10)%10,n%10];
+  let out=[""];
+  [M,K,H,T,U].forEach((tab,i)=>{ out=out.flatMap(p=>tab[d[i]].map(x=>p+x)); });
+  return out.filter(Boolean);
+}
+// one spoken answer: drop a prompt echo or anything after the first pause
+const firstSeg=t=>String(t||"").split(/[、。,.!?！？\s]+/).find(Boolean)||"";
+const GIVE_UP_EN=/^(i dont know|i do not know|dont know|no idea|not sure|skip( it)?|pass|give up)$/;
+const GIVE_UP_JA=/^(分|わ)か(りません|らない|んない)|^(知|し)(らない|りません)|^(パス|ぱす|スキップ)/;
+const CMD_NEXT=/^(next|continue|ok|okay|go on|move on|got it|fine|yes|tsugi)$/;
+const CMD_RETRY=/^(again|retry|try again|repeat|misheard|mis heard|one more|one more time|no|wait)$/;
 /* __PURE_END__ */
 
 /* ================= APP ================= */
@@ -604,7 +788,8 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
-  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja"},load("wkl_settings",{}));
+  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
+  rvHands:true,rvSay:true,rvSend:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1442,10 +1627,481 @@ async function talkMic(){
   micStop=setTimeout(()=>{ if(micRec) micRec.stop(); },30000);
 }
 
+/* ---------- Reviews (WaniKani SRS, answered by voice) ---------- */
+const WK="https://api.wanikani.com/v2";
+const TYPE_NAME={radical:"Radical",kanji:"Kanji",vocabulary:"Vocabulary",kana_vocabulary:"Vocabulary"};
+// Whisper writes most single words in kanji; a kana prompt flips it to kana
+const RV_JA_PROMPT="ひらがな。";
+let RV=null,rvSeq=0;
+let RV_OUT=load("wkl_rv_outbox",[]);     // finished items WaniKani hasn't taken yet
+let rvOutErr="",rvFlushing=null,rvDropped=[];
+const saveOut=()=>store("wkl_rv_outbox",RV_OUT);
+const rvShow=id=>["rvStartCard","rvCard","rvDoneCard"].forEach(c=>$(c).classList.toggle("hidden",c!==id));
+function rvStatus(text,cls){ const st=$("rvStatus"); st.textContent=text; st.className=cls||""; }
+
+async function rvCheck(){
+  const p=$("rvAvail"),b=$("btnRvStart");
+  b.disabled=true;
+  rvFlush();
+  if(!TOKEN){ p.textContent="Connect your WaniKani account on the Practice tab first."; return; }
+  p.textContent="Checking WaniKani…";
+  try{
+    const s=(await wkFetch(WK+"/summary")).data;
+    const n=((s.reviews[0]||{}).subject_ids||[]).length;
+    if(n){ p.textContent=`${n} review${n===1?"":"s"} available now.`; b.disabled=false; }
+    else p.textContent="No reviews right now."+(s.next_reviews_at?" Next ones "+new Date(s.next_reviews_at).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"})+".":"");
+  }catch(e){ p.textContent="⚠ "+e.message; }
+}
+
+function rvSubject(s,synonyms){
+  const d=s.data,aux=d.auxiliary_meanings||[];
+  // a few radicals have no character, only an image
+  const img=d.characters?null:(d.character_images||[]).find(i=>i.content_type==="image/svg+xml"&&i.metadata&&i.metadata.inline_styles)
+    ||(d.character_images||[]).find(i=>i.content_type==="image/png");
+  return {id:s.id,type:s.object,chars:d.characters,img:img?img.url:null,level:d.level,
+    pm:(d.meanings.find(m=>m.primary)||d.meanings[0]||{}).meaning||"?",
+    meanings:d.meanings.filter(m=>m.accepted_answer).map(m=>m.meaning)
+      .concat(aux.filter(a=>a.type==="whitelist").map(a=>a.meaning),synonyms||[]),
+    black:aux.filter(a=>a.type==="blacklist").map(a=>a.meaning),
+    readings:(d.readings||[]).map(r=>({r:r.reading,acc:r.accepted_answer,type:r.type||"",primary:r.primary}))};
+}
+async function rvLoad(){
+  const p=$("rvAvail");
+  const asg=await wkFetchAll(WK+"/assignments?immediately_available_for_review=true",
+    (n,t)=>{ p.textContent=`loading reviews… ${n}/${t}`; });
+  const ids=asg.map(a=>a.data.subject_id),subs=[],syn={};
+  for(let i=0;i<ids.length;i+=200){
+    const chunk=ids.slice(i,i+200).join(",");
+    subs.push(...await wkFetchAll(WK+"/subjects?ids="+chunk));
+    (await wkFetchAll(WK+"/study_materials?subject_ids="+chunk)).forEach(m=>{ syn[m.data.subject_id]=m.data.meaning_synonyms||[]; });
+  }
+  const byId=new Map(subs.map(s=>[s.id,rvSubject(s,syn[s.id])]));
+  const waiting=new Set(RV_OUT.map(o=>o.asg));
+  const items=asg.filter(a=>byId.has(a.data.subject_id)&&!waiting.has(a.id)).map(a=>{
+    const sub=byId.get(a.data.subject_id);
+    return {asg:a.id,sub,need:sub.readings.some(r=>r.acc)?["meaning","reading"]:["meaning"],
+      done:{},wrong:{meaning:0,reading:0}};
+  });
+  return {items:shuffle(items),byId};
+}
+
+/* mic: one stream for the session; an utterance ends after ~0.8 s of quiet */
+let MIC=null;
+async function micOpen(){
+  if(MIC) return MIC;
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  const ctx=new (window.AudioContext||window.webkitAudioContext)();
+  const an=ctx.createAnalyser(); an.fftSize=1024;
+  ctx.createMediaStreamSource(stream).connect(an);
+  MIC={stream,ctx,an,buf:new Float32Array(an.fftSize),floor:0.01};
+  return MIC;
+}
+function micClose(){
+  if(!MIC) return;
+  MIC.stream.getTracks().forEach(t=>t.stop());
+  MIC.ctx.close().catch(()=>{});
+  MIC=null;
+}
+function micLevel(){
+  MIC.an.getFloatTimeDomainData(MIC.buf);
+  let s=0; for(const v of MIC.buf) s+=v*v;
+  return Math.sqrt(s/MIC.buf.length);
+}
+// The recording, or null if nobody spoke or alive() went false.
+function micUtterance(alive){
+  return new Promise(resolve=>{
+    if(!MIC){ resolve(null); return; }
+    MIC.ctx.resume().catch(()=>{});
+    const chunks=[],rec=new MediaRecorder(MIC.stream),fill=$("rvLevelFill");
+    let t=0,speech=0,quiet=0,heard=false,keep=false;
+    rec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.onstop=()=>resolve(keep&&chunks.length?new Blob(chunks,{type:chunks[0].type||"audio/webm"}):null);
+    const tick=setInterval(()=>{
+      t+=50;
+      const lv=MIC?micLevel():0;
+      // room noise: drops to quieter levels at once, creeps up slowly, kept across answers
+      if(MIC) MIC.floor=Math.min(0.05,lv<MIC.floor?lv:MIC.floor*1.01+0.00005);
+      const thr=Math.max(0.015,(MIC?MIC.floor:0)*3);
+      fill.style.width=Math.min(100,40*lv/thr)+"%";
+      if(lv>thr){ speech+=50; quiet=0; if(speech>=150) heard=true; } else quiet+=50;
+      let stop=!alive()||!MIC;
+      if(!stop&&RV&&RV.micStop){ keep=true; stop=true; }
+      else if(!stop&&heard&&(quiet>=800||t>=9000)){ keep=true; stop=true; }
+      else if(!stop&&!heard&&t>=10000) stop=true;
+      if(!stop) return;
+      clearInterval(tick); fill.style.width="0%";
+      if(RV) RV.micStop=false;
+      try{ rec.stop(); }catch(e){ resolve(null); }
+    },50);
+    rec.start();
+  });
+}
+async function sttTranscribe(blob,lang,prompt){
+  const fd=new FormData();
+  fd.append("file",blob,"answer.webm");
+  fd.append("language",lang);
+  if(prompt) fd.append("prompt",prompt);
+  const r=await fetch(STT_BASE+"/v1/audio/transcriptions",{method:"POST",body:fd});
+  if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach speech-to-text on KBU (${r.status})`:"speech-to-text error "+r.status);
+  return ((await r.json()).text||"").trim();
+}
+// VOICEVOX's text analysis gives a reading for kanji Whisper wrote
+async function vvKana(text){
+  try{
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),3000);
+    const r=await fetch(vvBase()+"/audio_query?speaker=3&text="+encodeURIComponent(text),{method:"POST",signal:ac.signal});
+    clearTimeout(tm);
+    return r.ok?kataToHira(((await r.json()).kana||"").replace(/[_'\/、？?]/g,"")):"";
+  }catch(e){ return ""; }
+}
+// play and wait, so the mic doesn't hear it
+function rvSay(text){
+  return new Promise(res=>{
+    const tm=setTimeout(res,5000),done=()=>{ clearTimeout(tm); res(); };
+    stopAudio();
+    if(S.engine==="voicevox"){
+      const my=vvSeq;
+      vvFetchAudio(text,false).then(url=>{ if(my!==vvSeq) done(); else vvPlay(url,done); }).catch(e=>{ vvError(e); done(); });
+    }else if("speechSynthesis" in window){
+      const u=new SpeechSynthesisUtterance(text);
+      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
+      u.onend=done; u.onerror=done;
+      speechSynthesis.speak(u);
+    }else done();
+  });
+}
+
+async function rvStart(){
+  const err=$("rvErr"),b=$("btnRvStart");
+  err.classList.add("hidden");
+  unlockAudio();
+  b.disabled=true;
+  let voiceOk=false;
+  if(canRecord){
+    try{ await micOpen(); voiceOk=true; }
+    catch(e){ err.textContent="⚠ mic blocked ("+(e.message||e.name)+") — you can still type answers."; err.classList.remove("hidden"); }
+  }
+  try{
+    const {items,byId}=await rvLoad();
+    if(!items.length){ micClose(); rvCheck(); return; }
+    RV={backlog:items,active:[],byId,voice:voiceOk,cur:null,phase:"idle",answers:0,right:0,finished:[],wrapping:false};
+    rvFill();
+    $("btnRvWrap").disabled=false; $("btnRvWrap").textContent="Wrap up";
+    rvShow("rvCard");
+    rvNext();
+  }catch(e){
+    micClose();
+    err.textContent="⚠ "+(e.message||"couldn't load reviews"); err.classList.remove("hidden");
+    b.disabled=false;
+  }
+}
+// WaniKani keeps ~10 items in play and finishes both questions of one before replacing it
+function rvFill(){ while(!RV.wrapping&&RV.active.length<10&&RV.backlog.length) RV.active.push(RV.backlog.shift()); }
+function rvNext(){
+  rvSeq++;
+  if(!RV.active.length){ rvFinish(); return; }
+  const last=RV.cur&&RV.cur.item;
+  const pool=RV.active.length>1?RV.active.filter(i=>i!==last):RV.active;
+  const item=pool[Math.floor(Math.random()*pool.length)];
+  const left=item.need.filter(q=>!item.done[q]);
+  RV.cur={item,q:left[Math.floor(Math.random()*left.length)],near:false,gaveUp:false,empties:0};
+  rvRender();
+}
+function rvRender(){
+  const {item,q}=RV.cur,s=item.sub;
+  const left=RV.active.length+RV.backlog.length;
+  $("rvProgress").textContent=`${RV.answers?Math.round(100*RV.right/RV.answers):100}% · ${RV.finished.length} done · ${left} left`;
+  const el=$("rvItem");
+  el.className="rvItem "+s.type;
+  el.innerHTML=s.chars?esc(s.chars):(s.img?`<img src="${esc(s.img)}" alt="">`:"?");
+  const pr=$("rvPrompt");
+  pr.className="rvPrompt "+q;
+  pr.innerHTML=`${TYPE_NAME[s.type]} <b>${q==="meaning"?"Meaning":"Reading"}</b>`;
+  const inp=$("rvInput");
+  inp.value=""; inp.className=""; inp.disabled=false;
+  inp.lang=q==="reading"?"ja":"en";
+  inp.placeholder=q==="reading"?"答え (romaji works)":"Your answer";
+  $("rvKana").textContent="";
+  $("rvInfo").classList.add("hidden");
+  $("rvActions").innerHTML="";
+  $("rvMic").classList.toggle("hidden",!RV.voice);
+  rvStatus(RV.voice?"":"Type your answer.","");
+  RV.phase="question";
+  if(RV.voice&&S.rvHands) rvListen();
+  else setTimeout(()=>inp.focus(),50);
+}
+function rvMicUI(on){
+  $("rvMic").classList.toggle("on",on);
+  $("rvLevel").classList.toggle("hidden",!on);
+}
+// A listener owns the mic while its seq is current; a newer one supersedes it.
+const rvListening=()=>!!RV&&RV.listenSeq===rvSeq;
+function rvListenEnd(my){ if(my===rvSeq){ RV.listenSeq=0; rvMicUI(false); } }
+async function rvListen(){
+  if(!RV||!RV.voice||!MIC||RV.phase!=="question") return;
+  const my=++rvSeq,q=RV.cur.q;
+  RV.listenSeq=my; rvMicUI(true);
+  // keep a "say it again" hint on screen while listening for the retry
+  if($("rvStatus").className!=="again") rvStatus(q==="reading"?"Listening — say the reading":"Listening — say the meaning","");
+  const blob=await micUtterance(()=>my===rvSeq&&RV&&RV.phase==="question");
+  if(my!==rvSeq||!RV||RV.phase!=="question") return;
+  rvListenEnd(my);
+  if(!blob){ if(S.rvHands) rvListen(); else rvStatus("Didn't hear anything.",""); return; }
+  rvStatus("…","");
+  let text="";
+  try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:""); }
+  catch(e){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; }
+  if(my!==rvSeq||!RV||RV.phase!=="question") return;
+  text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
+  if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
+  if(!text){
+    RV.cur.empties++;
+    rvStatus("Didn't catch that — say it again.","again");
+    if(S.rvHands&&RV.cur.empties<3) setTimeout(rvListen,300);
+    return;
+  }
+  rvAnswer(text,true,blob);
+}
+function rvMicToggle(){
+  if(!RV||!RV.voice) return;
+  unlockAudio();
+  if(rvListening()) RV.micStop=true;
+  else if(RV.phase==="question") rvListen();
+  else if(RV.phase==="wrong"||RV.phase==="confirm") rvListenCommand();
+}
+async function readingCands(text,s,spoken){
+  const t=spoken?firstSeg(text):text.trim(),out=[t,normalizeReading(t)];
+  if(/[0-9０-９]/.test(t)) out.push(...numberReadings(t));
+  if(/[一-鿿々0-9０-９]/.test(t)){
+    // its own kanji alone says nothing about which reading was spoken
+    if(s.type==="kanji"&&t===s.chars) return {own:true,cands:out};
+    for(const x of RV.byId.values()) if(x.chars===t) out.push(...x.readings.map(r=>r.r));
+    if(DATA) for(const w of DATA.subjects) if(w.c===t) out.push(...w.r);
+    out.push(await vvKana(t));
+  }
+  return {own:false,cands:out.filter(Boolean)};
+}
+async function rvAnswer(text,spoken,blob){
+  if(!RV||RV.phase!=="question") return;
+  const {q}=RV.cur,s=RV.cur.item.sub;
+  const my=++rvSeq;             // stops listening
+  RV.phase="checking";
+  rvMicUI(false);
+  if(spoken) $("rvInput").value=text;
+  if(q==="meaning"?GIVE_UP_EN.test(meaningKey(text)):GIVE_UP_JA.test(text.trim())){ rvWrong("",true); return; }
+  let res;
+  if(q==="meaning") res=judgeMeaning(text,s.meanings,s.black,s.readings.map(r=>r.r));
+  else{
+    let c=await readingCands(text,s,spoken);
+    // Whisper wrote the kanji itself: transcribe again choosing among its own readings, in kana
+    if(c.own&&blob){
+      rvStatus("…","");
+      try{
+        const again=sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"));
+        if(again){ text=again; $("rvInput").value=again; c=await readingCands(again,s,true); }
+      }catch(e){}
+    }
+    if(my!==rvSeq||!RV) return;
+    if(c.own){ rvConfirm(text.trim()); return; }
+    res=judgeReading(c.cands,s.readings);
+  }
+  if(res.v==="ok"){ rvRight(res); return; }
+  if(res.v==="want-meaning") return rvAgain("That sounds like the reading — WaniKani wants the meaning.");
+  if(res.v==="other") return rvAgain(`${res.heard} is right, but WaniKani wants the ${res.type==="onyomi"?"on'yomi":res.type==="kunyomi"?"kun'yomi":"other"} reading.`);
+  if(res.v==="near"&&!RV.cur.near){ RV.cur.near=true; return rvAgain(`Heard ${res.heard} — close. Say it again.`); }
+  rvWrong(spoken?firstSeg(text)||text:"",false,spoken);
+}
+function rvAgain(msg){
+  RV.phase="question";
+  const inp=$("rvInput");
+  inp.className=""; void inp.offsetWidth; inp.className="again";
+  rvStatus(msg,"again");
+  if(RV.voice&&S.rvHands) setTimeout(rvListen,600);
+}
+function rvRight(res){
+  const {item,q}=RV.cur,s=item.sub;
+  RV.phase="right"; RV.answers++; RV.right++;
+  item.done[q]=true;
+  const inp=$("rvInput"); inp.className="ok"; inp.disabled=true;
+  const heard=q==="reading"&&res.heard&&kanaKey(res.heard)!==kanaKey(res.r)?` (heard ${res.heard})`:"";
+  rvStatus("✓ "+(q==="meaning"?(res.m||s.pm):res.r)+heard,"good");
+  if(item.need.every(x=>item.done[x])) rvComplete(item);
+  const say=!S.rvSay?"":q==="reading"?res.r:s.type==="kana_vocabulary"?s.chars:"";
+  const go=()=>{ if(RV&&RV.phase==="right"&&RV.cur.item===item&&RV.cur.q===q) rvNext(); };
+  if(say) rvSay(say).then(()=>setTimeout(go,250)); else setTimeout(go,800);
+}
+function rvInfoHTML(s){
+  const rd=s.readings.filter(r=>r.acc).map(r=>r.r).join("、");
+  const other=s.readings.filter(r=>!r.acc).map(r=>r.r).join("、");
+  return `<div><b>Meaning</b>${esc(s.meanings.join(", "))}</div>`+
+    (rd?`<div><b>Reading</b>${esc(rd)}${other?` <span class="note">(also ${esc(other)})</span>`:""}</div>`:"")+
+    `<div class="note">${TYPE_NAME[s.type]} · level ${s.level}</div>`;
+}
+function rvWrong(heard,gaveUp,spoken){
+  const s=RV.cur.item.sub;
+  RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
+  const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
+  rvStatus(gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite","bad");
+  const info=$("rvInfo"); info.innerHTML=rvInfoHTML(s); info.classList.remove("hidden");
+  $("rvActions").innerHTML=(gaveUp?"":`<button class="btn" id="btnRvRetry">Misheard, again (⌫)</button>`)+
+    `<button class="btn primary" id="btnRvNext">Next ▸ (enter)</button>`;
+  $("btnRvNext").onclick=rvCommitWrong;
+  if(!gaveUp) $("btnRvRetry").onclick=rvRetry;
+  if(RV.voice&&S.rvHands) rvListenCommand();
+}
+// only now does the miss count; it comes back later in the session
+function rvCommitWrong(){
+  if(!RV||RV.phase!=="wrong") return;
+  RV.cur.item.wrong[RV.cur.q]++; RV.answers++;
+  rvNext();
+}
+function rvRetry(){
+  if(!RV||RV.phase!=="wrong"||RV.cur.gaveUp) return;
+  rvSeq++;
+  RV.cur.near=false; RV.cur.empties=0;
+  rvRender();
+}
+// Whisper can't tell 三 the さん from 三 the みっ; ask rather than guess
+function rvConfirm(heard){
+  const s=RV.cur.item.sub;
+  const want=(s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)).r;
+  RV.phase="confirm"; RV.cur.want=want; RV.cur.heard=heard;
+  rvStatus(`Heard ${heard}, which fits more than one reading. Did you say ${want}?`,"again");
+  $("rvActions").innerHTML=`<button class="btn" id="btnRvNo">No (n)</button><button class="btn primary" id="btnRvYes">Yes (y)</button>`;
+  $("btnRvYes").onclick=()=>rvConfirmed(true);
+  $("btnRvNo").onclick=()=>rvConfirmed(false);
+  if(RV.voice&&S.rvHands) rvListenCommand();
+}
+function rvConfirmed(yes){
+  if(!RV||RV.phase!=="confirm") return;
+  rvSeq++;
+  $("rvActions").innerHTML="";
+  if(yes) rvRight({v:"ok",r:RV.cur.want});
+  else rvWrong(RV.cur.heard,false,true);
+}
+// "next" / "again" after a miss, "yes" / "no" on a confirm
+async function rvListenCommand(){
+  if(!RV||!RV.voice||!MIC||(RV.phase!=="wrong"&&RV.phase!=="confirm")) return;
+  const my=++rvSeq,phase=RV.phase;
+  RV.listenSeq=my; rvMicUI(true);
+  const blob=await micUtterance(()=>my===rvSeq&&RV&&RV.phase===phase);
+  if(my!==rvSeq||!RV||RV.phase!==phase) return;
+  rvListenEnd(my);
+  if(!blob){ rvListenCommand(); return; }
+  let k="";
+  try{ k=meaningKey(await sttTranscribe(blob,"en","")); }catch(e){ return; }
+  if(my!==rvSeq||!RV||RV.phase!==phase) return;
+  if(phase==="confirm"&&/^(yes|yeah|yep|yup|correct|right|i did|hai)$/.test(k)) rvConfirmed(true);
+  else if(phase==="confirm"&&/^(no|nope|wrong|i didnt|iie)$/.test(k)) rvConfirmed(false);
+  else if(phase==="wrong"&&CMD_NEXT.test(k)) rvCommitWrong();
+  else if(phase==="wrong"&&CMD_RETRY.test(k)&&!RV.cur.gaveUp) rvRetry();
+  else{
+    if(k) $("rvKana").textContent=`heard “${k}” · say ${phase==="confirm"?"“yes” or “no”":RV.cur.gaveUp?"“next”":"“next” or “again”"}`;
+    rvListenCommand();
+  }
+}
+function rvComplete(item){
+  RV.active=RV.active.filter(i=>i!==item);
+  RV.finished.push(item);
+  rvFill();
+  if(!S.rvSend) return;
+  RV_OUT.push({asg:item.asg,c:item.sub.chars||item.sub.pm,im:item.wrong.meaning,ir:item.wrong.reading,at:new Date().toISOString()});
+  saveOut();
+  rvFlush();
+}
+// one send loop at a time; .finally so an empty outbox can't leave it stuck "busy"
+function rvFlush(){
+  if(!rvFlushing) rvFlushing=rvSend().finally(()=>{ rvFlushing=null; rvOutboxUI(); });
+  return rvFlushing;
+}
+async function rvSend(){
+  rvOutErr="";
+  while(RV_OUT.length&&TOKEN){
+    const o=RV_OUT[0];
+    let r;
+    try{
+      r=await fetch(WK+"/reviews",{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Wanikani-Revision":"20170710","Content-Type":"application/json"},
+        body:JSON.stringify({review:{assignment_id:o.asg,incorrect_meaning_answers:o.im,incorrect_reading_answers:o.ir,created_at:o.at}})});
+    }catch(e){ rvOutErr="Can't reach WaniKani right now."; return; }
+    // 422: already reviewed elsewhere, or no longer due
+    if(r.ok||r.status===422){ if(!r.ok) rvDropped.push(o.c); RV_OUT.shift(); saveOut(); continue; }
+    rvOutErr=r.status===401||r.status===403?"perm":r.status===429?"WaniKani is rate limiting; try again in a minute.":"WaniKani error "+r.status+".";
+    return;
+  }
+}
+function rvOutboxUI(){
+  const box=$("rvOutbox");
+  if(!RV_OUT.length&&!rvDropped.length){ box.classList.add("hidden"); return; }
+  let h="";
+  if(RV_OUT.length){
+    h=`${RV_OUT.length} finished review${RV_OUT.length===1?"":"s"} not sent to WaniKani yet. `;
+    if(rvOutErr==="perm") h+=`This token can't submit reviews. Make one with <b>reviews:create</b> (WaniKani → Settings → API Tokens) and paste it:
+      <div class="row" style="margin-top:8px;"><input type="password" id="rvToken" placeholder="token with reviews:create" style="flex:1;">
+      <button class="btn small" id="btnRvToken">Save &amp; send</button></div>`;
+    else h+=esc(rvOutErr)+` <button class="btn small" id="btnRvResend">Send now</button>`;
+  }
+  if(rvDropped.length) h+=`<div class="note">WaniKani didn't take ${esc(rvDropped.join("、"))} (already reviewed, or no longer due).</div>`;
+  // a resend finishing mid-typing re-renders this; keep what's being pasted
+  const typed=$("rvToken")?$("rvToken").value:"";
+  box.innerHTML=h; box.classList.remove("hidden");
+  if(typed&&$("rvToken")) $("rvToken").value=typed;
+  const rs=$("btnRvResend"); if(rs) rs.onclick=()=>rvFlush();
+  const tk=$("btnRvToken");
+  if(tk) tk.onclick=()=>{
+    const v=$("rvToken").value.trim();
+    if(!v) return;
+    TOKEN=v; store("wkl_token",TOKEN);
+    rvFlush();
+  };
+}
+async function rvFinish(){
+  rvSeq++;
+  const R=RV; RV=null;
+  micClose(); stopAudio();
+  const pct=R.answers?Math.round(100*R.right/R.answers):100;
+  $("rvScore").textContent=`${R.finished.length} item${R.finished.length===1?"":"s"} · ${pct}%`;
+  const ml=$("rvMissList"),missed=R.finished.filter(i=>i.wrong.meaning||i.wrong.reading);
+  ml.innerHTML=missed.length?"<h2>Missed</h2>":"";
+  missed.forEach(i=>{
+    const s=i.sub,rd=(s.readings.find(r=>r.acc&&r.primary)||{}).r||"";
+    const d=document.createElement("div");
+    d.className="missItem rvMiss";
+    d.innerHTML=`<span class="jp">${esc(s.chars||s.pm)}</span><span class="mean">${esc(s.pm)}${rd?" · "+esc(rd):""}</span>`;
+    if(rd||s.type==="kana_vocabulary"){
+      const b=document.createElement("button");
+      b.className="btn small"; b.textContent="🔊"; b.onclick=()=>speak(rd||s.chars);
+      d.appendChild(b);
+    }
+    ml.appendChild(d);
+  });
+  const note=$("rvDoneNote");
+  rvShow("rvDoneCard");
+  if(!S.rvSend){ note.textContent="Practice only — nothing was sent to WaniKani."; return; }
+  note.textContent="Sending to WaniKani…";
+  await rvFlush();
+  note.textContent=RV_OUT.length?`${RV_OUT.length} not sent yet — they'll resend from the Reviews tab.`:"All results sent to WaniKani.";
+}
+// leaving the tab releases the mic; coming back picks up where it was
+function rvPause(){
+  rvSeq++;
+  if(RV) RV.listenSeq=0;
+  rvMicUI(false);
+  micClose();
+}
+async function rvResume(){
+  if(!RV){ rvShow("rvStartCard"); rvCheck(); return; }
+  if(RV.voice){ try{ await micOpen(); }catch(e){ RV.voice=false; } }
+  if(RV.phase==="question") rvRender();
+  else if((RV.phase==="wrong"||RV.phase==="confirm")&&RV.voice&&S.rvHands) rvListenCommand();
+}
+
 /* ---------- tabs & wiring ---------- */
-const views={tabPractice:"viewPractice",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabPractice:"viewPractice",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
+    const wasReviews=!$("viewReviews").classList.contains("hidden");
+    if(wasReviews&&t!=="tabReviews") rvPause();
+    if(t==="tabReviews"&&!wasReviews) rvResume();
     Object.entries(views).forEach(([tab,view])=>{
       $(tab).classList.toggle("active",tab===t);
       $(view).classList.toggle("hidden",tab!==t);
@@ -1594,6 +2250,47 @@ document.addEventListener("keydown",e=>{
     if(e.key==="1"){ $("btnGot")&&$("btnGot").click(); }
     if(e.key==="2"){ $("btnMissed")&&$("btnMissed").click(); }
   }
+});
+
+/* reviews tab */
+$("btnRvStart").onclick=rvStart;
+$("btnRvCheck").onclick=rvCheck;
+$("btnRvBack").onclick=()=>{ rvShow("rvStartCard"); rvCheck(); };
+$("btnRvWrap").onclick=()=>{
+  if(!RV) return;
+  RV.wrapping=true; RV.backlog=[];
+  $("btnRvWrap").disabled=true; $("btnRvWrap").textContent="Wrapping up";
+};
+$("rvMic").onclick=rvMicToggle;
+[["chkRvHands","rvHands"],["chkRvSay","rvSay"],["chkRvSend","rvSend"]].forEach(([id,key])=>{
+  $(id).checked=!!S[key];
+  $(id).onchange=e=>{ S[key]=e.target.checked; saveS(); };
+});
+$("rvInput").addEventListener("input",()=>{
+  if(!RV||RV.phase!=="question") return;
+  // typing takes over from the mic
+  if(rvListening()){ rvSeq++; rvMicUI(false); rvStatus("Press enter to check.",""); }
+  const v=$("rvInput").value;
+  $("rvKana").textContent=RV.cur.q==="reading"&&/[a-z]/i.test(v)?normalizeReading(v):"";
+});
+document.addEventListener("keydown",e=>{
+  if(!RV||$("viewReviews").classList.contains("hidden")||$("rvCard").classList.contains("hidden")) return;
+  const inInput=e.target&&e.target.id==="rvInput";
+  if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)&&!inInput) return;
+  const ph=RV.phase;
+  if(e.key==="Enter"&&!e.isComposing){
+    e.preventDefault();
+    const v=$("rvInput").value.trim();
+    if(ph==="question"){ if(v) rvAnswer(v,false); else rvMicToggle(); }
+    else if(ph==="right") rvNext();
+    else if(ph==="wrong") rvCommitWrong();
+    return;
+  }
+  if(e.key==="Escape"&&ph==="question"){ e.preventDefault(); rvSeq++; rvMicUI(false); rvWrong("",true); return; }
+  if(inInput) return;
+  if(e.key===" "&&ph==="question"){ e.preventDefault(); rvMicToggle(); return; }
+  if((e.key==="Backspace"||e.key==="r")&&ph==="wrong"){ e.preventDefault(); rvRetry(); return; }
+  if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); }
 });
 
 /* speak tab */
