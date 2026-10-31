@@ -355,7 +355,8 @@
         <summary>How voice answers work</summary>
         <li>Say the English meaning, or the Japanese reading, when the bar asks for it. You can also type (romaji turns into kana).</li>
         <li>Say "I don't know" (or わかりません) to see the answer.</li>
-        <li>After a wrong answer, say "next" to count it, or "again" if it misheard you. Nothing counts as wrong until then. Press <b>p</b> or 🔊 to hear the reading.</li>
+        <li>After a wrong answer, say "next" to count it, or "again" if it misheard you. Nothing counts as wrong until then. Press <b>p</b> or 🔊 to hear the reading, and <b>m</b> or ▶ to hear what the mic recorded: if that sounds right, it was the speech-to-text.</li>
+        <li>Short readings starting with r (りょう, りゅう) are hard for speech-to-text on their own. Say them twice (りょう、りょう) or as 読みはりょう.</li>
         <li>With "let me check the results" on, nothing goes to WaniKani until you've looked over the list at the end. You can mark a miss as correct there, or untick an item to leave it due.</li>
         <li>Vowel length is forgiven (speech-to-text often hears がっこう as がっこ). A near miss, like じ for し, asks you to say it again.</li>
         <li>Sending results needs a token with the <b>reviews:create</b> permission (WaniKani → Settings → API Tokens). Unsent results wait here and resend.</li>
@@ -382,7 +383,7 @@
       <div id="rvStatus"></div>
       <div id="rvInfo" class="rvInfo hidden"></div>
       <div class="actionRow" id="rvActions"></div>
-      <div class="kbd"><b>space</b> mic · <b>enter</b> check / next · <b>backspace</b> misheard, again · <b>p</b> hear it · <b>esc</b> I don't know</div>
+      <div class="kbd"><b>space</b> mic · <b>enter</b> check / next · <b>backspace</b> misheard, again · <b>p</b> hear it · <b>m</b> my answer · <b>esc</b> I don't know</div>
     </section>
 
     <section id="rvDoneCard" class="card hidden">
@@ -800,16 +801,28 @@ function looseKey(s){
   return lengthKey(s).normalize("NFD").replace(/[゙゚]/g,"").normalize("NFC")
     .replace(/っ/g,"").replace(/[ぁぃぅぇぉゃゅょゎ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+1));
 }
-// ok (len: only vowel length differs) | other (a reading WaniKani isn't after) | near | wrong
+// Whisper drops the r of a short ら-row word: りょう comes back as よう or よっ
+function rDrop(s){
+  return kanaKey(s).replace(/^り([ゃゅょ])/,(m,y)=>String.fromCharCode(y.charCodeAt(0)+1))
+    .replace(/^[らりるれろ]/,c=>"あいうえお"["らりるれろ".indexOf(c)]);
+}
+// ok (len: only vowel length differs) | other (a reading WaniKani isn't after) | near (rdrop: the r went missing) | wrong
 function judgeReading(cands,readings){
   const acc=readings.filter(x=>x.acc),oth=readings.filter(x=>!x.acc);
-  const find=(list,key)=>{ for(const c of cands) for(const x of list) if(key(c)&&key(c)===key(x.r)) return {c,x}; return null; };
+  const find=(list,key,ans=key)=>{ for(const c of cands) for(const x of list) if(key(c)&&key(c)===ans(x.r)) return {c,x}; return null; };
   let h;
   if((h=find(acc,kanaKey))) return {v:"ok",r:h.x.r,heard:h.c};
   if((h=find(acc,lengthKey))) return {v:"ok",r:h.x.r,heard:h.c,len:true};
   if((h=find(oth,lengthKey))) return {v:"other",r:h.x.r,type:h.x.type,heard:h.c};
   if((h=find(acc,looseKey))) return {v:"near",r:h.x.r,heard:h.c};
+  if((h=find(acc.filter(x=>rDrop(x.r)!==kanaKey(x.r)),looseKey,r=>looseKey(rDrop(r))))) return {v:"near",r:h.x.r,heard:h.c,rdrop:true};
   return {v:"wrong"};
+}
+// the parts of a spoken reading answer: "りょう、りょう" or "読みはりょう" or "りょうです"
+function answerSegs(t){
+  return String(t||"").split(/[、。,.!?！？\s]+/)
+    .map(x=>x.replace(/^(読み|よみ)(は|わ|終わ)/,"").replace(/(です|だ)$/,""))
+    .filter(Boolean);
 }
 // Whisper writes spoken numbers as digits
 function numberReadings(digits){
@@ -1863,6 +1876,7 @@ function rvNext(){
   const pool=RV.active.length>1?RV.active.filter(i=>i!==last):RV.active;
   const item=pool[Math.floor(Math.random()*pool.length)];
   const left=item.need.filter(q=>!item.done[q]);
+  if(RV.cur&&RV.cur.clip) URL.revokeObjectURL(RV.cur.clip);
   RV.cur={item,q:left[Math.floor(Math.random()*left.length)],near:false,gaveUp:false,empties:0};
   rvRender();
 }
@@ -1923,10 +1937,14 @@ async function rvListen(){
   if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
   if(!text){
     RV.cur.empties++;
-    rvStatus("Didn't catch that — say it again.","again");
-    if(S.rvHands&&RV.cur.empties<3) setTimeout(rvListen,300);
+    // three blanks in a row: stop, rather than listen to the room forever
+    if(S.rvHands&&RV.cur.empties<3){ rvStatus("Didn't catch that — say it again.","again"); setTimeout(rvListen,300); }
+    else rvStatus("Didn't catch that. Press space or 🎤 to try again, or type it.","again");
     return;
   }
+  // keep the clip so a miss can be played back: was it me or the speech-to-text?
+  if(RV.cur.clip) URL.revokeObjectURL(RV.cur.clip);
+  RV.cur.clip=URL.createObjectURL(blob);
   rvAnswer(text,true,blob);
 }
 function rvMicToggle(){
@@ -1936,17 +1954,21 @@ function rvMicToggle(){
   else if(RV.phase==="question") rvListen();
   else if(RV.phase==="wrong"||RV.phase==="confirm") rvListenCommand();
 }
+// every part of a spoken answer is a candidate, so "りょう、りょう" works
 async function readingCands(text,s,spoken){
-  const t=spoken?firstSeg(text):text.trim(),out=[t,normalizeReading(t)];
-  if(/[0-9０-９]/.test(t)) out.push(...numberReadings(t));
-  if(/[一-鿿々0-9０-９]/.test(t)){
+  const segs=spoken?answerSegs(text):[text.trim()],out=[];
+  let own=0;
+  for(const t of segs){
+    out.push(t,normalizeReading(t));
+    if(/[0-9０-９]/.test(t)) out.push(...numberReadings(t));
+    if(!/[一-鿿々0-9０-９]/.test(t)) continue;
     // its own kanji alone says nothing about which reading was spoken
-    if(s.type==="kanji"&&t===s.chars) return {own:true,cands:out};
+    if(s.type==="kanji"&&t===s.chars){ own++; continue; }
     for(const x of RV.byId.values()) if(x.chars===t) out.push(...x.readings.map(r=>r.r));
     if(DATA) for(const w of DATA.subjects) if(w.c===t) out.push(...w.r);
     out.push(await vvKana(t));
   }
-  return {own:false,cands:out.filter(Boolean)};
+  return {own:own>0&&own===segs.length,cands:out.filter(Boolean)};
 }
 async function rvAnswer(text,spoken,blob){
   if(!RV||RV.phase!=="question") return;
@@ -1971,11 +1993,31 @@ async function rvAnswer(text,spoken,blob){
     if(my!==rvSeq||!RV) return;
     if(c.own){ rvConfirm(text.trim()); return; }
     res=judgeReading(c.cands,s.readings);
+    // typed: a missing r is just wrong; spoken: the r may be all Whisper missed
+    if(res.rdrop&&!spoken) res={v:"wrong"};
+    // transcribe again choosing among its own readings; only reached when the
+    // answer already sounded like one of them minus the r
+    if(res.rdrop&&blob){
+      rvStatus("…","");
+      try{
+        const again=sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。"));
+        const r2=again?judgeReading((await readingCands(again,s,true)).cands,s.readings):null;
+        if(r2&&r2.v==="ok"){ res=r2; $("rvInput").value=again; }
+      }catch(e){}
+      if(my!==rvSeq||!RV) return;
+    }
   }
   if(res.v==="ok"){ rvRight(res); return; }
   if(res.v==="want-meaning") return rvAgain("That sounds like the reading — WaniKani wants the meaning.");
   if(res.v==="other") return rvAgain(`${res.heard} is right, but WaniKani wants the ${res.type==="onyomi"?"on'yomi":res.type==="kunyomi"?"kun'yomi":"other"} reading.`);
-  if(res.v==="near"&&!RV.cur.near){ RV.cur.near=true; return rvAgain(`Heard ${res.heard} — close. Say it again.`); }
+  // still no r on the second try: ask, with the clip there to listen to
+  if(res.v==="near"&&res.rdrop&&RV.cur.near) return rvConfirm(res.heard,`Heard ${res.heard} again; speech-to-text may be missing the r. Press ▶ to hear yourself. Did you say ${res.r}?`);
+  if(res.v==="near"&&!RV.cur.near){
+    RV.cur.near=true;
+    return rvAgain(res.rdrop
+      ?`Heard ${res.heard}. Speech-to-text often drops the r in short words: say it twice, like ${res.r}、${res.r}.`
+      :`Heard ${res.heard} — close. Say it again.`);
+  }
   rvWrong(spoken?firstSeg(text)||text:"",false,spoken);
 }
 function rvAgain(msg){
@@ -1996,6 +2038,14 @@ function rvRight(res){
   const say=!S.rvSay?"":q==="reading"?res.r:s.type==="kana_vocabulary"?s.chars:"";
   const go=()=>{ if(RV&&RV.phase==="right"&&RV.cur.item===item&&RV.cur.q===q) rvNext(); };
   if(say) rvSay(say).then(()=>setTimeout(go,250)); else setTimeout(go,800);
+}
+// play back what the mic recorded for this answer, mic off meanwhile
+function rvPlayClip(){
+  if(!RV||!RV.cur.clip) return;
+  const ph=RV.phase;
+  rvSeq++; RV.listenSeq=0; rvMicUI(false);
+  stopAudio();
+  vvPlay(RV.cur.clip,()=>{ if(RV&&RV.phase===ph&&RV.voice&&S.rvHands) rvListenCommand(); });
 }
 // what to say for an item: its main reading, or the word itself for kana vocab
 const rvSayText=s=>s.type==="kana_vocabulary"?s.chars:((s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)||{}).r||"");
@@ -2020,9 +2070,11 @@ function rvWrong(heard,gaveUp,spoken){
   const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
   rvStatus(gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite","bad");
   const info=$("rvInfo");
-  info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+rvInfoHTML(s);
+  info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+
+    (spoken&&RV.cur.clip?`<button class="btn small say" id="btnRvClip" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+rvInfoHTML(s);
   info.classList.remove("hidden");
   if($("btnRvSay")) $("btnRvSay").onclick=rvPronounce;
+  if($("btnRvClip")) $("btnRvClip").onclick=rvPlayClip;
   $("rvActions").innerHTML=(gaveUp?"":`<button class="btn" id="btnRvRetry">Misheard, again (⌫)</button>`)+
     `<button class="btn primary" id="btnRvNext">Next ▸ (enter)</button>`;
   $("btnRvNext").onclick=rvCommitWrong;
@@ -2043,12 +2095,14 @@ function rvRetry(){
   rvRender();
 }
 // Whisper can't tell 三 the さん from 三 the みっ; ask rather than guess
-function rvConfirm(heard){
+function rvConfirm(heard,msg){
   const s=RV.cur.item.sub;
   const want=(s.readings.find(r=>r.acc&&r.primary)||s.readings.find(r=>r.acc)).r;
   RV.phase="confirm"; RV.cur.want=want; RV.cur.heard=heard;
-  rvStatus(`Heard ${heard}, which fits more than one reading. Did you say ${want}?`,"again");
-  $("rvActions").innerHTML=`<button class="btn" id="btnRvNo">No (n)</button><button class="btn primary" id="btnRvYes">Yes (y)</button>`;
+  rvStatus(msg||`Heard ${heard}, which fits more than one reading. Did you say ${want}?`,"again");
+  $("rvActions").innerHTML=(RV.cur.clip?`<button class="btn" id="btnRvClipC" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+
+    `<button class="btn" id="btnRvNo">No (n)</button><button class="btn primary" id="btnRvYes">Yes (y)</button>`;
+  if($("btnRvClipC")) $("btnRvClipC").onclick=rvPlayClip;
   $("btnRvYes").onclick=()=>rvConfirmed(true);
   $("btnRvNo").onclick=()=>rvConfirmed(false);
   if(RV.voice&&S.rvHands) rvListenCommand();
@@ -2421,6 +2475,7 @@ document.addEventListener("keydown",e=>{
   if((e.key==="Backspace"||e.key==="r")&&ph==="wrong"){ e.preventDefault(); rvRetry(); return; }
   if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); return; }
   if(e.key==="p"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPronounce(); }
+  if(e.key==="m"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPlayClip(); }
 });
 
 /* speak tab */
