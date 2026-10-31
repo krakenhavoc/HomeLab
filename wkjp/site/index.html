@@ -449,6 +449,7 @@
         <div class="pcOpts">
           <label><input type="checkbox" id="chkPcSave"> Save my recordings on the wkjp server, for tuning Whisper</label>
           <label><input type="checkbox" id="chkMicClean"> Browser noise suppression (Reviews uses it too)</label>
+          <label><input type="checkbox" id="chkMicAGC"> Automatic gain: keeps your voice at a steady level (Reviews too)</label>
         </div>
         <div class="row" style="margin-top:12px;">
           <button class="btn primary" id="btnPcStart">Start</button>
@@ -956,7 +957,7 @@ let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,conte
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
-  pcSave:true,pcCount:10,micClean:true,rvSave:true},load("wkl_settings",{}));
+  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -1858,8 +1859,11 @@ async function rvLoad(){
 let MIC=null;
 async function micOpen(){
   if(MIC) return MIC;
+  // noise suppression and echo cancellation go together; automatic gain is its
+  // own switch. With it off, a G733 voice came in ~10 dB quieter (-25 to -38
+  // dBFS) and the quiet takes were the misheard ones.
   const c=S.micClean!==false;
-  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:c,noiseSuppression:c,autoGainControl:c}});
+  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:c,noiseSuppression:c,autoGainControl:S.micAGC!==false}});
   const ctx=new (window.AudioContext||window.webkitAudioContext)();
   const an=ctx.createAnalyser(); an.fftSize=1024;
   ctx.createMediaStreamSource(stream).connect(an);
@@ -2291,7 +2295,7 @@ function rvRecVerdict(v){
 function rvRecMeta(rv){
   const R=rv&&rv.rec;
   if(!R||!R.save||!R.n&&!rv.diag.length) return;
-  const body=JSON.stringify({kind:"reviews",session:R.id,started:R.started,ua:navigator.userAgent,micClean:S.micClean!==false,
+  const body=JSON.stringify({kind:"reviews",session:R.id,started:R.started,ua:navigator.userAgent,micClean:S.micClean!==false,micAGC:S.micAGC!==false,
     takes:R.takes,cycles:rv.diag},null,1);
   R.q=R.q.then(()=>fetch(`rec/${R.id}/session.json`,{method:"PUT",body,headers:{"Content-Type":"application/json"}})).catch(()=>{});
 }
@@ -2802,7 +2806,7 @@ function pcSave(t,blob){
 }
 function pcSaveMeta(){
   if(!PC||!PC.save) return;
-  const P=PC,body=JSON.stringify({session:P.id,started:P.started,ua:navigator.userAgent,micClean:S.micClean!==false,
+  const P=PC,body=JSON.stringify({session:P.id,started:P.started,ua:navigator.userAgent,micClean:S.micClean!==false,micAGC:S.micAGC!==false,
     stt:{language:"ja",prompt:RV_JA_PROMPT,format:"verbose_json"},voicevox:PC_REF_VOICE,
     words:P.words,takes:P.takes.map(({url,...t})=>t),voicevoxHeard:P.refs},null,1);
   P.q=P.q.then(async()=>{
@@ -3059,6 +3063,8 @@ $("chkPcSave").checked=!!S.pcSave;
 $("chkPcSave").onchange=e=>{ S.pcSave=e.target.checked; saveS(); };
 $("chkMicClean").checked=S.micClean!==false;
 $("chkMicClean").onchange=e=>{ S.micClean=e.target.checked; saveS(); micClose(); };
+$("chkMicAGC").checked=S.micAGC!==false;
+$("chkMicAGC").onchange=e=>{ S.micAGC=e.target.checked; saveS(); micClose(); };
 $("pcTable").onclick=e=>{ const b=e.target.closest("[data-i]"); if(b&&PC) pcPlay(PC.takes[+b.dataset.i].url); };
 document.addEventListener("keydown",e=>{
   if(!PC||PC.phase==="done"||$("viewSpeak").classList.contains("hidden")) return;
