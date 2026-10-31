@@ -922,6 +922,13 @@ function digitSound(t){
   const d=String(t||"").normalize("NFKC");
   return /^\d+$/.test(d)&&NUM_WORDS[+d]?romajiToHiragana(NUM_WORDS[+d]):"";
 }
+// Whisper's stock fill-ins, learned from subtitles, when it can't make out the
+// speech: お待ちしております for a mumbled ぶんか, "Thank you." for a cough
+const STT_STOCK_JA=/^(ご視聴|ご清聴|チャンネル登録|最後までご視聴|お待ちしております|おやすみなさい|お疲れ様でした|次回もお楽しみに|字幕|ありがとうございました|ありがとうございます)/;
+const STT_STOCK_EN=/^(thank you( (so much|very much|for watching))?|thanks for watching|you|bye( bye)?|see you next time|subtitles? by.*)$/;
+function sttStock(t,lang){
+  return lang==="en"?STT_STOCK_EN.test(meaningKey(t)):STT_STOCK_JA.test(String(t||"").replace(/[\s。、！？!?.,「」]/g,""));
+}
 // one spoken answer: drop a prompt echo or anything after the first pause
 const firstSeg=t=>String(t||"").split(/[、。,.!?！？\s]+/).find(Boolean)||"";
 const GIVE_UP_EN=/^(i dont know|i do not know|dont know|no idea|not sure|skip( it)?|pass|give up)$/;
@@ -2024,11 +2031,15 @@ async function rvListen(){
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
   text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
   if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
+  // a stock fill-in means Whisper couldn't make it out: ask again, don't mark it
+  let stock="";
+  if(text&&sttStock(text,q==="reading"?"ja":"en")&&!rvIsAnswer(text,RV.cur.item.sub,q)){ stock=q==="reading"?firstSeg(text)||text:text; text=""; }
   if(!text){
     RV.cur.empties++;
+    const why=stock?`Couldn't make that out (Whisper filled in “${stock}”)`:"Didn't catch that";
     // three blanks in a row: stop, rather than listen to the room forever
-    if(S.rvHands&&RV.cur.empties<3){ rvStatus("Didn't catch that — say it again.","again"); setTimeout(rvListen,300); }
-    else rvStatus("Didn't catch that. Press space or 🎤 to try again, or type it.","again");
+    if(S.rvHands&&RV.cur.empties<3){ rvStatus(why+" — say it again.","again"); setTimeout(rvListen,300); }
+    else rvStatus(why+". Press space or 🎤 to try again, or type it.","again");
     return;
   }
   // keep the clip so a miss can be played back: was it me or the speech-to-text?
@@ -2043,6 +2054,9 @@ function rvMicToggle(){
   else if(RV.phase==="question") rvListen();
   else if(RV.phase==="wrong"||RV.phase==="confirm") rvListenCommand();
 }
+// the stock phrase could be the actual answer (a kana vocab item, a meaning)
+const rvIsAnswer=(t,s,q)=>q==="meaning"?s.meanings.some(m=>meaningKey(m)===meaningKey(t))
+  :t.trim()===s.chars||s.readings.some(r=>kanaKey(r.r)===kanaKey(t));
 // every part of a spoken answer is a candidate, so "りょう、りょう" works
 async function readingCands(text,s,spoken){
   const segs=spoken?answerSegs(text):[text.trim()],out=[];
@@ -2523,6 +2537,19 @@ function pcRender(){
   pcListen();
 }
 const pcWordTakes=()=>PC.takes.filter(t=>t.i===PC.i);
+// How far the voice stands above the background, from the take itself.
+// gated: 0.3 s or more of exact digital silence, which only a gate produces.
+async function micStats(blob){
+  try{
+    const ctx=new OfflineAudioContext(1,16000,16000);
+    const d=(await ctx.decodeAudioData(await blob.arrayBuffer())).getChannelData(0),HOP=160,lv=[];
+    for(let i=0;i+HOP<=d.length;i+=HOP){ let s=0; for(let j=i;j<i+HOP;j++) s+=d[j]*d[j]; lv.push(10*Math.log10(s/HOP+1e-12)); }
+    const live=lv.filter(v=>v>-100);
+    if(live.length<20) return null;
+    const srt=live.slice().sort((a,b)=>a-b);
+    return {snr:Math.round(srt[Math.floor(srt.length*.98)]-srt[Math.floor(srt.length*.2)]),gated:lv.length-live.length>=30};
+  }catch(e){ return null; }
+}
 async function pcListen(){
   if(!PC||PC.phase==="done") return;
   const my=++pcSeq,w=PC.words[PC.i];
@@ -2537,10 +2564,13 @@ async function pcListen(){
   let d;
   try{ d=await sttDetail(blob); }
   catch(e){ if(my===pcSeq&&PC){ PC.phase="result"; pcStatus("⚠ "+e.message,"bad"); pcActions(); } return; }
-  const heard=sttClean(d.text),v=await pcJudge(heard,w);
+  const heard=sttClean(d.text);
+  const stock=heard&&sttStock(heard,"ja")&&heard.trim()!==w.c&&kanaKey(heard)!==kanaKey(w.r)?firstSeg(heard)||heard:"";
+  const v=stock?{v:"none"}:await pcJudge(heard,w),mic=await micStats(blob);
   if(my!==pcSeq||!PC) return;
   const n=pcWordTakes().length+1;
   const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,g:pcGrade(v,w),len:pcShort(v,w),rdrop:!!v.rdrop,ja:d.ja,top:d.top,
+    stock,snr:mic?mic.snr:null,gated:mic?mic.gated:null,
     mime:blob.type,bytes:blob.size,at:new Date().toISOString(),file:`${String(PC.i+1).padStart(2,"0")}-${n}.${recExt(blob.type)}`,
     url:URL.createObjectURL(blob)};
   PC.takes.push(t);
@@ -2556,14 +2586,18 @@ async function pcResult(t,my){
   const w=PC.words[PC.i];
   PC.phase="result";
   const raw=firstSeg(t.heard)||t.heard;
-  const msg=t.g==="ok"?`✓ Whisper heard ${w.r}`+(raw&&kanaKey(raw)!==kanaKey(w.r)?` (it wrote “${raw}”)`:""):t.v==="none"?"✗ Whisper didn't catch anything"
+  const msg=t.g==="ok"?`✓ Whisper heard ${w.r}`+(raw&&kanaKey(raw)!==kanaKey(w.r)?` (it wrote “${raw}”)`:"")
+    :t.stock?`✗ Whisper couldn't make it out and filled in a stock phrase (“${t.stock}”)`
+    :t.v==="none"?"✗ Whisper didn't catch anything"
     :t.len?`≈ Heard ${firstSeg(t.heard)}: a long vowel came out short`
     :t.rdrop?`≈ Heard ${firstSeg(t.heard)}: the r went missing`
     :t.g==="near"?`≈ Close: heard ${firstSeg(t.heard)}`:`✗ Heard ${pcHeardText(t.heard)}`;
   pcStatus(msg,t.g==="ok"?"good":t.g==="near"?"again":"bad");
   pcActions();
   const box=$("pcHeard");
-  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div><div class="pcLine"><b>VOICEVOX</b><span class="note">checking…</span></div>`;
+  const micLine=t.snr==null?"":`<div class="pcLine"><b>Mic</b><span>voice ${t.snr} dB above the background`+
+    (t.gated?`. Silent until you speak, so something (browser or headset) is gating the mic`:"")+`</span></div>`;
+  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div>${micLine}<div class="pcLine"><b>VOICEVOX</b><span class="note">checking…</span></div>`;
   box.classList.remove("hidden");
   if(t.g==="ok") setTimeout(()=>{ if(PC&&PC.phase==="result"&&PC.takes.at(-1)===t) pcNext(); },1600);
   const ref=await pcRef(w);
@@ -2574,7 +2608,7 @@ async function pcResult(t,my){
   const why=t.g==="ok"?"":ref.err?"":ref.g!=="ok"?"Whisper gets VOICEVOX's version wrong too, so this word is hard for Whisper, not just you."
     :ref.ja-t.ja>=20?"Whisper hears VOICEVOX right and it sounds more Japanese than your take. Listen to both, then try again."
     :"Whisper hears VOICEVOX right but not yours. Listen to both, then try again.";
-  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div><div class="pcLine"><b>VOICEVOX</b>${refLine}</div>`+
+  box.innerHTML=`<div class="pcLine"><b>You</b>${pcLangHTML(t.ja,t.top)}</div>${micLine}<div class="pcLine"><b>VOICEVOX</b>${refLine}</div>`+
     (why?`<div class="pcWhy">${esc(why)}</div>`:"");
   pcSaveMeta();
   if(t.g!=="ok"&&S.rvSayWrong&&!ref.err) pcPlayRef();

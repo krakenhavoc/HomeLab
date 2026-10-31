@@ -24,6 +24,7 @@ often) with silence around it, through the app settings. Verdicts:
     you       no setting got it while VOICEVOX passes: listen to the take
 """
 import json
+import re
 import sys
 import unicodedata
 import urllib.parse
@@ -161,9 +162,17 @@ def judge(text, reading, chars):
     return "miss", k or t
 
 
+# Whisper's fill-ins when it can't make out the speech (same list as the app)
+STOCK = re.compile(
+    "^(ご視聴|ご清聴|チャンネル登録|最後までご視聴|お待ちしております|おやすみなさい"
+    "|お疲れ様でした|次回もお楽しみに|字幕|ありがとうございました|ありがとうございます)"
+)
+
+
 def mark(verdict, text):
     shown = first_part(text) or "—"
-    return {"ok": "✓", "len": "≈", "miss": "✗"}[verdict] + shown
+    stock = " (stock)" if STOCK.match(re.sub(r"[\s。、！？!?.,「」]", "", text)) else ""
+    return {"ok": "✓", "len": "≈", "miss": "✗"}[verdict] + shown + stock
 
 
 def main():
@@ -235,6 +244,8 @@ def main():
                     f"{name} {mark(v, text)}" + (f" {ja}%" if name == "app" else "")
                 )
             best.append(got)
+            if t.get("snr") is not None:
+                row.append(f"mic {t['snr']}dB" + (" gated" if t.get("gated") else ""))
             print(f"  take {t['take']}  " + "  ".join(row))
         ref_fail = sum(r[0] == "miss" for r in refs)
         hit = lambda name: any(g[name] in ("ok", "len") for g in best)
