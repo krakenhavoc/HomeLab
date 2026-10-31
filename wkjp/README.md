@@ -144,6 +144,10 @@ is reachable only through the private gateway.
     A G733 headset through Brave measured 21–34 dB with the gate on every
     take. VOICEVOX measures about 66 dB.
   - **Stock phrases** are labelled as such, not as what you said.
+  - **"Automatic gain"** is its own switch, on by default, apart from noise
+    suppression. With both off, a G733 voice came in about 10 dB quieter
+    (-25 to -38 dBFS peaks), and the quiet takes were the misheard ones.
+    Saved sessions record `micAGC`.
   - **"Browser noise suppression":** switches the browser's
     noise/echo/gain processing for the check and Reviews alike.
 - Check takes are PUT to `/rec/<session>/NN-T.webm`, with a `session.json`
