@@ -2412,7 +2412,8 @@ async function rvResume(){
 // it also says how Japanese the clip sounded. VOICEVOX saying the word goes
 // through it too: if Whisper misses that as well, the word is the problem.
 let PC=null,pcSeq=0;
-const LANG_NAME={ja:"Japanese",en:"English",ko:"Korean",zh:"Chinese",es:"Spanish",de:"German",fr:"French",ru:"Russian"};
+const LANG_NAME={ja:"Japanese",en:"English",ko:"Korean",zh:"Chinese",es:"Spanish",de:"German",fr:"French",ru:"Russian",
+  id:"Indonesian",ms:"Malay",pt:"Portuguese",it:"Italian",nl:"Dutch",vi:"Vietnamese",th:"Thai",tl:"Tagalog"};
 const recExt=t=>/mp4|m4a|aac/.test(t||"")?"mp4":/ogg/.test(t||"")?"ogg":"webm";
 const PC_PAIRS=[["料","りょう"],["変","へん"],["天","てん"],["旅行","りょこう"],["病院","びょういん"],["美容院","びよういん"],
   ["切手","きって"],["来て","きて"],["おばあさん","おばあさん"],["おばさん","おばさん"]];
