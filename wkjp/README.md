@@ -58,6 +58,16 @@ is reachable only through the private gateway.
     answer, Whisper isn't waited on past 15 s.
   - If Whisper hears nothing or a stock phrase, ReazonSpeech's text is
     judged instead.
+  - **Paused Whisper:** if ReazonSpeech has an answer, Whisper gets 6 s,
+    with "Checking with Whisper on KBU…" shown after 2 s. After that, the
+    answer is judged on ReazonSpeech alone, and a miss says so.
+  - **Second listens** (dropped r, English slip, own kanji) also give up
+    after 6 s instead of retrying.
+  - **No silent drops:** while an answer is being checked, the mic button,
+    space and Enter say "Still checking your last answer…" instead of
+    starting a new listen that would throw it away. On 2026-11-01 KBU's
+    guard froze Whisper for 2 minutes mid-session. Readings went to "…" for
+    15 s, and a press of space discarded them without a word.
   - Meanings and Talk stay on Whisper; ReazonSpeech is Japanese only.
   - The pronunciation check runs both on every take and on the VOICEVOX
     control, and shows each one's result.
