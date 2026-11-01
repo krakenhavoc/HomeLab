@@ -2094,6 +2094,9 @@ async function rvListen(){
     else rvStatus(near?"Your voice stayed just under the mic's threshold (the mark on the meter). Try a little louder.":"Didn't hear anything.",near?"again":"");
     return;
   }
+  // from here until a verdict, this answer is being checked: the mic button
+  // and space mustn't start a new listen and throw it away
+  RV.checking=my; RV.cur.whisperDown=false;
   rvStatus("…","");
   // Readings go to ReazonSpeech first (~0.1 s, on the VM). If it heard an
   // accepted reading, that's the answer; if not, Whisper gets its turn.
@@ -2111,12 +2114,21 @@ async function rvListen(){
     if(my!==rvSeq||!RV||RV.phase!=="question") return;
   }
   let text="";
-  // with ReazonSpeech's answer in hand, don't sit out a paused Whisper
+  // With ReazonSpeech's answer in hand, give Whisper ~6 s, then judge without
+  // it: KBU's GPU guard can pause Whisper for minutes.
+  const slow=alt?setTimeout(()=>{ if(my===rvSeq&&RV&&RV.phase==="question")
+    rvStatus("Checking with Whisper on KBU… (it may be paused while its GPU cools)","again"); },2000):0;
   try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:"",
-    alt?{timeout:15000}:rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
-  catch(e){ if(!alt){ if(my===rvSeq) rvStatus("⚠ "+e.message+" — type your answer.","bad"); return; } }
+    alt?{timeout:6000}:rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
+  catch(e){
+    clearTimeout(slow);
+    if(!alt){ if(my===rvSeq&&RV){ RV.checking=0; rvStatus("⚠ "+e.message+" — type your answer.","bad"); } return; }
+    if(RV) RV.cur.whisperDown=true;
+  }
+  clearTimeout(slow);
+  if(RV&&RV.checking===my) RV.checking=0;
   if(my!==rvSeq||!RV||RV.phase!=="question") return;
-  rvRecTake(blob,{whisper:text,rz:alt,speechMs:stats.speechMs,peakRatio:stats.peakRatio});
+  rvRecTake(blob,{whisper:text,rz:alt,whisperDown:RV.cur.whisperDown||undefined,speechMs:stats.speechMs,peakRatio:stats.peakRatio});
   text=q==="reading"?sttClean(text):text.replace(/^[\s.]+|[\s.]+$/g,"");
   if(q==="reading"&&kanaKey(text)==="ひらがな") text="";      // prompt echo
   // a stock fill-in means Whisper couldn't make it out: ask again, don't mark it
@@ -2142,6 +2154,8 @@ function rvMicToggle(){
   if(!RV||!RV.voice) return;
   unlockAudio();
   if(rvListening()) RV.micStop=true;
+  // an answer still being checked would be thrown away by a new listen
+  else if(RV.phase==="question"&&RV.checking&&RV.checking===rvSeq) rvStatus("Still checking your last answer…","again");
   else if(RV.phase==="question") rvListen();
   else if(RV.phase==="wrong"||RV.phase==="confirm") rvListenCommand();
 }
@@ -2173,8 +2187,7 @@ async function readingCands(text,s,spoken){
 // Whisper can copy the list in the prompt, so only the first part counts.
 async function rvRelisten(blob,s){
   rvStatus("…","");
-  try{ return firstSeg(sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。",
-    rvSttWait(()=>!!RV&&RV.phase==="checking")))); }
+  try{ return firstSeg(sttClean(await sttTranscribe(blob,"ja",[...new Set(s.readings.map(r=>r.r))].join("、")+"。",{timeout:6000}))); }
   catch(e){ return ""; }
 }
 async function rvAnswer(text,spoken,blob){
@@ -2330,7 +2343,8 @@ function rvWrong(heard,gaveUp,spoken){
   if(spoken&&!gaveUp&&RV.cur.q==="reading") noteVoiceMiss(s,heard);
   RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
   const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
-  rvStatus(gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite","bad");
+  rvStatus((gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite")+
+    (spoken&&!gaveUp&&RV.cur.whisperDown?" (Whisper on KBU was paused, so only ReazonSpeech judged this)":""),"bad");
   const info=$("rvInfo");
   info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+
     (spoken&&RV.cur.clip?`<button class="btn small say" id="btnRvClip" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+rvInfoHTML(s);
