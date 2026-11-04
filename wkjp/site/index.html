@@ -36,11 +36,11 @@
   #vvQuickSpeaker{width:auto; max-width:190px; font-size:.78rem; padding:4px 8px; border-radius:99px; background:var(--card); color:var(--text); border:1px solid var(--line);}
   nav{display:flex; gap:2px; margin-bottom:16px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow-x:auto;}
   nav button{
-    flex:1; display:flex; align-items:baseline; justify-content:center; gap:6px;
+    flex:1; display:flex; align-items:baseline; justify-content:center; gap:4px;
     background:none; color:var(--muted); border:none; white-space:nowrap;
-    padding:8px 8px; border-radius:9px; cursor:pointer; font:inherit; font-size:.84rem; font-weight:700;
+    padding:8px 2px; border-radius:9px; cursor:pointer; font:inherit; font-size:.8rem; font-weight:700;
   }
-  nav .tabJa{font-family:var(--mincho); font-size:1.08rem; font-weight:700; color:var(--text); opacity:.8;}
+  nav .tabJa{font-family:var(--mincho); font-size:1.02rem; font-weight:700; color:var(--text); opacity:.8;}
   nav button:hover{color:var(--text);}
   nav button:hover .tabJa{opacity:1;}
   nav button.active{background:var(--card2); color:var(--text); box-shadow:inset 0 -2px 0 var(--accent);}
@@ -251,6 +251,48 @@
   .holdRow .res{flex:1; color:var(--muted);}
   .holdRow .res .ok{color:var(--green);} .holdRow .res .bad{color:var(--red);}
   .holdRow.off{opacity:.45;}
+  /* lessons: the batch as a row of small item squares, then one item's pages */
+  .lsStrip{display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;}
+  .lsStrip button{min-width:2.4em; height:2.4em; padding:0 6px; border-radius:8px; border:2px solid transparent; cursor:pointer;
+    color:#fff; font-family:var(--mincho); font-weight:700; font-size:1rem; opacity:.55;}
+  .lsStrip button.radical{background:var(--radical);} .lsStrip button.kanji{background:var(--kanji);}
+  .lsStrip button.vocabulary,.lsStrip button.kana_vocabulary{background:var(--vocab);}
+  .lsStrip button.seen{opacity:.85;} .lsStrip button.on{opacity:1; border-color:var(--accent);}
+  .lsStrip img{height:1em; filter:invert(1); vertical-align:middle;}
+  .lsHead{display:flex; align-items:center; gap:12px; padding:12px 14px; background:var(--paper); color:var(--paper-ink); border-radius:0 0 12px 12px;}
+  .lsHead .m{flex:1; font-size:1.25rem; font-weight:700; line-height:1.3;}
+  .lsHead .m small{display:block; font-size:.78rem; font-weight:500; opacity:.7;}
+  .lsHead .btn{background:var(--paper-ink); color:var(--paper); border-color:var(--paper-ink);}
+  #lsPages{margin:14px 0 4px;}
+  .lsBody{font-size:.95rem; line-height:1.7; min-height:8em;}
+  .lsBody h3{font-size:.84rem; color:var(--muted); font-weight:700; margin:14px 0 4px;}
+  .lsBody .big{font-size:1.15rem; font-weight:700;}
+  .lsBody .alt{color:var(--muted);}
+  .lsBody .hint{background:var(--card2); border-left:3px solid var(--accent); border-radius:6px; padding:8px 12px; margin-top:10px; font-size:.9rem;}
+  .lsBody .mine{border-left-color:var(--soft);}
+  .lsParts{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .lsPart{display:flex; align-items:center; gap:10px; background:var(--card2); border-radius:10px; padding:6px 12px 6px 6px;}
+  .lsPart .ch{display:grid; place-items:center; min-width:2.2em; height:2.2em; padding:0 4px; border-radius:7px; color:#fff;
+    font-family:var(--mincho); font-weight:700; font-size:1.3rem;}
+  .lsPart .ch img{height:1em; filter:invert(1);}
+  .lsPart.radical .ch{background:var(--radical);} .lsPart.kanji .ch{background:var(--kanji);}
+  .lsPart small{display:block; color:var(--muted);}
+  .lsPlus{color:var(--muted); font-size:1.2rem;}
+  .lsRd{display:flex; flex-wrap:wrap; gap:4px 18px; align-items:baseline;}
+  .lsRd .r{font-size:1.3rem; font-family:var(--mincho); font-weight:700;}
+  .lsRd .r.off{color:var(--muted); font-weight:400;}
+  .lsSent{padding:8px 0; border-bottom:1px solid var(--line);}
+  .lsSent:last-child{border-bottom:none;}
+  .lsSent .ja{font-size:1.1rem;}
+  .lsSent .en{color:var(--muted); font-size:.88rem;}
+  .lsSent .btn{float:right; margin-left:8px;}
+  /* WaniKani's mnemonic markup: the item colours, and paper/ink for meaning/reading */
+  .mk{border-radius:4px; padding:0 4px; font-weight:700; white-space:nowrap;}
+  .mk.radical{background:var(--radical); color:#fff;} .mk.kanji{background:var(--kanji); color:#fff;}
+  .mk.vocabulary{background:var(--vocab); color:#fff;}
+  .mk.meaning{background:var(--paper); color:var(--paper-ink);} .mk.reading{background:var(--ink); color:var(--paper);}
+  .mk.ja{background:none; padding:0; font-weight:inherit;}
+  #lsMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:8px; color:var(--amber);}
 
   @media (max-width:480px){ nav button{font-size:.72rem; padding:6px 2px;} }
   @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important; transition:none !important;} }
@@ -270,6 +312,7 @@
 
   <nav>
     <button id="tabPractice" class="active" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span>Practice</button>
+    <button id="tabLessons" title="学習 (がくしゅう)"><span class="tabJa" lang="ja">学習</span>Lessons</button>
     <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span>Reviews</button>
     <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span>Speak</button>
     <button id="tabTalk" title="会話 (かいわ)"><span class="tabJa" lang="ja">会話</span>Talk</button>
@@ -296,7 +339,7 @@
         <summary>Where do I get a token?</summary>
         <li>Log in at wanikani.com</li>
         <li>Click your avatar → <b>API Tokens</b> (or Settings → API Tokens)</li>
-        <li>Use the default read-only token, or generate one (no write permissions needed). To send results from the Reviews tab, tick <b>reviews:create</b> on it.</li>
+        <li>Use the default read-only token, or generate one (no write permissions needed). To send results from the Reviews tab, tick <b>reviews:create</b> on it; to do lessons here, also tick <b>assignments:start</b>.</li>
         <li>Copy it and paste it above</li>
       </details>
     </section>
@@ -358,6 +401,56 @@
       <div class="actionRow">
         <button class="btn" id="btnAgain">Same settings ↻</button>
         <button class="btn primary" id="btnNew">New session</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ LESSONS VIEW ============ -->
+  <main id="viewLessons" class="hidden">
+    <div id="lsOutbox" class="warn hidden"></div>
+    <section id="lsStartCard" class="card">
+      <h2>Lessons</h2>
+      <p id="lsAvail">Checking WaniKani…</p>
+      <label for="lsBatch">Items per lesson</label>
+      <select id="lsBatch" style="width:auto;"></select>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn primary" id="btnLsStart" disabled>Start lessons ▸</button>
+        <button class="btn small" id="btnLsCheck">↻</button>
+      </div>
+      <div id="lsErr" class="err hidden"></div>
+      <details>
+        <summary>How lessons work</summary>
+        <li>New items come in WaniKani's order: lowest level first, radicals, then kanji, then vocabulary.</li>
+        <li>Each item has pages for its parts, meaning, reading and example sentences. Use → / enter and ← to move through them, and <b>p</b> or 🔊 to hear it.</li>
+        <li>After the last item comes a quiz, answered by voice or typing like Reviews. A miss just comes back later; nothing counts against you.</li>
+        <li>Each item you pass is started on WaniKani (Apprentice 1, first review in about 4 hours). That needs a token with <b>assignments:start</b> (WaniKani → Settings → API Tokens).</li>
+      </details>
+    </section>
+
+    <section id="lsTeachCard" class="card hidden">
+      <div class="lsStrip" id="lsStrip"></div>
+      <div id="lsItem" class="rvItem"></div>
+      <div id="lsHead" class="lsHead"></div>
+      <div class="seg" id="lsPages"></div>
+      <div id="lsBody" class="lsBody"></div>
+      <div id="lsMsg"></div>
+      <div class="actionRow">
+        <button class="btn" id="btnLsPrev">◂ Back</button>
+        <button class="btn primary" id="btnLsNext">Next ▸</button>
+      </div>
+      <div class="kbd"><b>→</b>/<b>enter</b> next · <b>←</b> back · <b>p</b> hear it</div>
+    </section>
+
+    <!-- the Reviews quiz card moves here for the lesson quiz -->
+    <div id="lsQuizSlot"></div>
+
+    <section id="lsDoneCard" class="card hidden">
+      <h2>Lesson done</h2>
+      <p id="lsDoneNote" style="text-align:center;"></p>
+      <div class="missList" id="lsDoneList"></div>
+      <div class="actionRow">
+        <button class="btn" id="btnLsBack">Back</button>
+        <button class="btn primary" id="btnLsMore">Next lesson ▸</button>
       </div>
     </section>
   </main>
@@ -1043,6 +1136,7 @@ function unlockAudio(){
 }
 function vvPlay(url,onended){
   vvPlayer.onended=onended||null;
+  vvPlayer.onerror=null;          // lessons set one for WaniKani's audio, after this call
   vvPlayer.src=url;
   vvAudio=vvPlayer;
   const p=vvPlayer.play();
@@ -1814,6 +1908,8 @@ async function rvCheck(){
   b.disabled=true;
   rvFlush(); rvHoldUI();
   if(!TOKEN){ p.textContent="Connect your WaniKani account on the Practice tab first."; return; }
+  // the quiz card is on loan to the Lessons tab
+  if(RV&&RV.lesson){ p.textContent="A lesson quiz is in progress on the Lessons tab. Finish it first."; return; }
   p.textContent="Checking WaniKani…";
   try{
     const s=(await wkFetch(WK+"/summary")).data;
@@ -1847,13 +1943,12 @@ async function rvLoad(){
   }
   const byId=new Map(subs.map(s=>[s.id,rvSubject(s,syn[s.id])]));
   const waiting=new Set(RV_OUT.concat(RV_HOLD).map(o=>o.asg));
-  const items=asg.filter(a=>byId.has(a.data.subject_id)&&!waiting.has(a.id)).map(a=>{
-    const sub=byId.get(a.data.subject_id);
-    return {asg:a.id,sub,need:sub.readings.some(r=>r.acc)?["meaning","reading"]:["meaning"],
-      done:{},wrong:{meaning:0,reading:0}};
-  });
+  const items=asg.filter(a=>byId.has(a.data.subject_id)&&!waiting.has(a.id)).map(a=>rvItemOf(a.id,byId.get(a.data.subject_id)));
   return {items:shuffle(items),byId};
 }
+// one quiz item: both questions unless it has no reading to ask (radicals, kana vocab)
+const rvItemOf=(asg,sub)=>({asg,sub,need:sub.readings.some(r=>r.acc)?["meaning","reading"]:["meaning"],
+  done:{},wrong:{meaning:0,reading:0}});
 
 /* mic: one stream for the session; an utterance ends after ~0.8 s of quiet */
 let MIC=null;
@@ -2000,7 +2095,9 @@ function rvSay(text){
 
 async function rvStart(){
   const err=$("rvErr"),b=$("btnRvStart");
+  if(RV&&RV.lesson) return;
   err.classList.add("hidden");
+  $("btnRvWrap").classList.remove("hidden");
   unlockAudio();
   b.disabled=true;
   let voiceOk=false;
@@ -2037,18 +2134,21 @@ function rvNext(){
   rvRender();
 }
 const cellFit=n=>n<=3?1:n===4?.85:n===5?.72:n===6?.62:n<=8?.5:.42;
-function rvRender(){
-  const {item,q}=RV.cur,s=item.sub;
-  const left=RV.active.length+RV.backlog.length,done=RV.finished.length;
-  $("rvLeft").textContent=`${left} to go`;
-  $("rvAcc").textContent=RV.answers?`${Math.round(100*RV.right/RV.answers)}% correct`:"";
-  $("rvTrackFill").style.width=(100*done/Math.max(1,done+left))+"%";
-  // one practice-sheet square per character; long words shrink to fit
-  const el=$("rvItem"),chars=s.chars?[...s.chars]:[];
+// one practice-sheet square per character; long words shrink to fit
+function drawItem(el,s){
+  const chars=s.chars?[...s.chars]:[];
   el.className="rvItem "+s.type;
   el.style.setProperty("--fit",cellFit(chars.length));
   el.innerHTML=chars.length?chars.map(c=>`<span class="cell">${esc(c)}</span>`).join("")
     :`<span class="cell">${s.img?`<img src="${esc(s.img)}" alt="${esc(s.pm)}">`:"?"}</span>`;
+}
+function rvRender(){
+  const {item,q}=RV.cur,s=item.sub;
+  const left=RV.active.length+RV.backlog.length,done=RV.finished.length;
+  $("rvLeft").textContent=(RV.lesson?"Lesson quiz: ":"")+`${left} to go`;
+  $("rvAcc").textContent=RV.answers?`${Math.round(100*RV.right/RV.answers)}% correct`:"";
+  $("rvTrackFill").style.width=(100*done/Math.max(1,done+left))+"%";
+  drawItem($("rvItem"),s);
   const pr=$("rvPrompt");
   pr.className="rvPrompt "+q;
   pr.innerHTML=q==="meaning"
@@ -2308,7 +2408,7 @@ function rvRecVerdict(v){
 function rvRecMeta(rv){
   const R=rv&&rv.rec;
   if(!R||!R.save||!R.n&&!rv.diag.length) return;
-  const body=JSON.stringify({kind:"reviews",session:R.id,started:R.started,ua:navigator.userAgent,micClean:S.micClean!==false,micAGC:S.micAGC!==false,
+  const body=JSON.stringify({kind:"reviews",lesson:!!rv.lesson||undefined,session:R.id,started:R.started,ua:navigator.userAgent,micClean:S.micClean!==false,micAGC:S.micAGC!==false,
     takes:R.takes,cycles:rv.diag},null,1);
   R.q=R.q.then(()=>fetch(`rec/${R.id}/session.json`,{method:"PUT",body,headers:{"Content-Type":"application/json"}})).catch(()=>{});
 }
@@ -2417,6 +2517,8 @@ function rvComplete(item){
   RV.active=RV.active.filter(i=>i!==item);
   RV.finished.push(item);
   rvFill();
+  // a lesson item isn't a review: passing the quiz starts it on WaniKani
+  if(RV.lesson){ lsQueueStart(item); return; }
   if(!S.rvSend) return;
   const o={asg:item.asg,c:item.sub.chars||item.sub.pm,im:item.wrong.meaning,ir:item.wrong.reading,at:new Date().toISOString()};
   if(S.rvConfirm){ RV_HOLD.push(Object.assign(o,{pm:item.sub.pm,on:true})); saveHold(); return; }
@@ -2513,6 +2615,7 @@ async function rvFinish(){
   const R=RV; RV=null;
   rvRecMeta(R);
   micClose(); stopAudio();
+  if(R.lesson){ lsQuizDone(R); return; }
   const pct=R.answers?Math.round(100*R.right/R.answers):100;
   $("rvScore").textContent=pct+"%";
   $("rvScoreNote").textContent=`${R.finished.length} item${R.finished.length===1?"":"s"} reviewed`;
@@ -2554,6 +2657,293 @@ async function rvResume(){
   if(RV.voice){ try{ await micOpen(); }catch(e){ RV.voice=false; } }
   if(RV.phase==="question") rvRender();
   else if((RV.phase==="wrong"||RV.phase==="confirm")&&RV.voice&&S.rvHands) rvListenCommand();
+}
+
+/* ---------- Lessons (WaniKani's new items, taught then quizzed) ---------- */
+// Teaching is this tab's own cards; the quiz borrows the Reviews card and engine
+// (RV with lesson:true). Passing an item's quiz PUTs /assignments/<id>/start:
+// lesson quiz results aren't reviews, and WaniKani says not to send them as such.
+let LS=null,LS_USER=null;
+let LS_OUT=load("wkl_ls_outbox",[]);     // passed items WaniKani hasn't started yet
+let lsOutErr="",lsFlushing=null,lsDropped=[];
+const saveLsOut=()=>store("wkl_ls_outbox",LS_OUT);
+const lsShow=id=>["lsStartCard","lsTeachCard","lsDoneCard"].forEach(c=>$(c).classList.toggle("hidden",c!==id));
+const LS_TYPE_ORDER={radical:0,kanji:1,vocabulary:2,kana_vocabulary:2};
+const lsBatchSize=()=>S.lsBatch||(LS_USER&&LS_USER.preferences&&LS_USER.preferences.lessons_batch_size)||5;
+function lsMsg(t){ $("lsMsg").textContent=t||""; }
+function lsBatchUI(){
+  const sel=$("lsBatch"),wk=LS_USER&&LS_USER.preferences&&LS_USER.preferences.lessons_batch_size;
+  sel.innerHTML=`<option value="">${wk?`WaniKani setting (${wk})`:"WaniKani setting"}</option>`+
+    [3,4,5,6,7,8,9,10].map(n=>`<option value="${n}">${n}</option>`).join("");
+  sel.value=S.lsBatch?String(S.lsBatch):"";
+}
+async function lsCheck(){
+  const p=$("lsAvail"),b=$("btnLsStart");
+  b.disabled=true;
+  lsFlush();
+  if(!TOKEN){ p.textContent="Connect your WaniKani account on the Practice tab first."; return; }
+  p.textContent="Checking WaniKani…";
+  try{
+    const [sum,user]=await Promise.all([wkFetch(WK+"/summary"),LS_USER?null:wkFetch(WK+"/user")]);
+    if(user){ LS_USER=user.data; lsBatchUI(); }
+    const queued=new Set(LS_OUT.map(o=>o.sid));
+    const n=((sum.data.lessons[0]||{}).subject_ids||[]).filter(id=>!queued.has(id)).length;
+    p.textContent=n?`${n} new item${n===1?"":"s"} to learn.`:"No new lessons right now. More unlock as you pass the items before them.";
+    b.disabled=!n;
+  }catch(e){ p.textContent="⚠ "+e.message; }
+}
+// the next batch in WaniKani's order: level, then radicals, kanji, vocabulary, then lesson_position
+async function lsLoad(n){
+  const p=$("lsAvail");
+  if(!LS_USER){ LS_USER=(await wkFetch(WK+"/user")).data; lsBatchUI(); }
+  const max=Math.max(1,Math.min(LS_USER.level,(LS_USER.subscription||{}).max_level_granted||3));
+  const asg=await wkFetchAll(WK+"/assignments?immediately_available_for_lessons=true&hidden=false&levels="+
+    Array.from({length:max},(_,i)=>i+1).join(","),(a,t)=>{ p.textContent=`loading lessons… ${a}/${t}`; });
+  const queued=new Set(LS_OUT.map(o=>o.asg)),open=asg.filter(a=>!queued.has(a.id)),subs=[];
+  for(let i=0;i<open.length;i+=200)
+    subs.push(...await wkFetchAll(WK+"/subjects?ids="+open.slice(i,i+200).map(a=>a.data.subject_id).join(",")));
+  const byId=new Map(subs.map(s=>[s.id,s]));
+  const list=open.filter(a=>byId.has(a.data.subject_id)).map(a=>({a,s:byId.get(a.data.subject_id)}))
+    .sort((x,y)=>x.s.data.level-y.s.data.level||LS_TYPE_ORDER[x.s.object]-LS_TYPE_ORDER[y.s.object]
+      ||x.s.data.lesson_position-y.s.data.lesson_position);
+  const pick=list.slice(0,n);
+  if(!pick.length) return {total:0,batch:[],comps:[]};
+  // what each item is built from, and the learner's own notes and synonyms
+  const compIds=[...new Set(pick.flatMap(x=>x.s.data.component_subject_ids||[]))];
+  const comps=compIds.length?await wkFetchAll(WK+"/subjects?ids="+compIds.join(",")):[];
+  const sm={};
+  (await wkFetchAll(WK+"/study_materials?subject_ids="+pick.map(x=>x.s.id).join(","))).forEach(m=>{ sm[m.data.subject_id]=m.data; });
+  const compSub=new Map(comps.map(c=>[c.id,rvSubject(c)]));
+  return {total:list.length,comps:[...compSub.values()],batch:pick.map(({a,s})=>{
+    const m=sm[s.id]||{},parts=(s.data.component_subject_ids||[]).map(id=>compSub.get(id)).filter(Boolean);
+    return {asg:a.id,d:s.data,sm:m,parts,sub:rvSubject(s,m.meaning_synonyms),pages:lsPages(s.object,parts.length)};
+  })};
+}
+function lsPages(type,nParts){
+  const p=[];
+  if(nParts&&type!=="radical") p.push({k:"parts",label:type==="kanji"?"Radicals":"Kanji"});
+  p.push({k:"meaning",label:"Meaning"});
+  if(type==="kanji"||type==="vocabulary") p.push({k:"reading",label:"Reading"});
+  if(type==="vocabulary"||type==="kana_vocabulary") p.push({k:"context",label:"Context"});
+  return p;
+}
+async function lsStart(){
+  const err=$("lsErr"),b=$("btnLsStart");
+  err.classList.add("hidden");
+  unlockAudio();
+  b.disabled=true;
+  try{
+    const r=await lsLoad(lsBatchSize());
+    if(!r.batch.length){ lsShow("lsStartCard"); lsCheck(); return; }
+    LS={...r,i:0,page:0};
+    LS.batch[0].seen=true;
+    lsMsg("");
+    lsShow("lsTeachCard");
+    lsRender(); lsAuto();
+  }catch(e){
+    err.textContent="⚠ "+(e.message||"couldn't load lessons"); err.classList.remove("hidden");
+    lsShow("lsStartCard");
+    b.disabled=false;
+  }
+}
+// WaniKani's mnemonic markup, on escaped text: <radical>, <kanji>, <vocabulary>, <meaning>, <reading>, <ja>
+const wkMarkup=t=>esc(t||"").replace(/&lt;(\/?)(radical|kanji|vocabulary|meaning|reading|ja)&gt;/g,
+  (m,close,tag)=>close?"</span>":`<span class="mk ${tag}"${tag==="ja"?' lang="ja"':""}>`).replace(/\r?\n/g,"<br>");
+// WaniKani's recorded audio for a reading: one voice actor throughout, in a format this browser plays
+function wkAudio(d,reading){
+  const a=(d.pronunciation_audios||[]).filter(x=>(!reading||(x.metadata||{}).pronunciation===reading)&&vvPlayer.canPlayType(x.content_type));
+  a.sort((x,y)=>((x.metadata||{}).voice_actor_id||0)-((y.metadata||{}).voice_actor_id||0)
+    ||(x.content_type==="audio/mpeg"?0:1)-(y.content_type==="audio/mpeg"?0:1));
+  return a.length?a[0].url:null;
+}
+// play WaniKani's recording if there is one, the app's own voice if not (or if it fails)
+function lsSay(text,url){
+  if(!text) return;
+  stopAudio();
+  if(!url){ speak(text); return; }
+  vvPlay(url);
+  vvPlayer.onerror=()=>{ vvPlayer.onerror=null; speak(text); };
+}
+function lsPlay(reading){
+  const it=LS&&LS.batch[LS.i];
+  if(!it||it.sub.type==="radical") return;
+  const r=reading||rvSayText(it.sub);
+  lsSay(r,it.sub.type==="kanji"?null:wkAudio(it.d,it.sub.type==="kana_vocabulary"?null:r));
+}
+// WaniKani's "autoplay audio in lessons": on the reading page, or meaning for kana vocab
+function lsAuto(){
+  const it=LS.batch[LS.i],pg=it.pages[LS.page].k;
+  if(!(LS_USER&&LS_USER.preferences&&LS_USER.preferences.lessons_autoplay_audio)) return;
+  if(it.sub.type==="vocabulary"&&pg==="reading"||it.sub.type==="kana_vocabulary"&&pg==="meaning") lsPlay();
+}
+const lsChip=s=>s.chars?esc(s.chars):s.img?`<img src="${esc(s.img)}" alt="${esc(s.pm)}">`:"?";
+function lsRender(){
+  const it=LS.batch[LS.i],s=it.sub,d=it.d,pg=it.pages[LS.page];
+  $("lsStrip").innerHTML=LS.batch.map((b,i)=>`<button class="${b.sub.type}${i===LS.i?" on":""}${b.seen?" seen":""}" data-i="${i}"
+    title="${esc(b.sub.pm)}" aria-label="${esc((b.sub.chars||"")+" "+b.sub.pm)}">${lsChip(b.sub)}</button>`).join("");
+  drawItem($("lsItem"),s);
+  const pos=(d.parts_of_speech||[]).join(", ");
+  $("lsHead").innerHTML=`<div class="m">${esc(s.pm)}<small>${TYPE_NAME[s.type]}, level ${s.level}${pos?", "+esc(pos):""}</small></div>`+
+    (s.type!=="radical"?`<button class="btn small" id="btnLsSay" title="hear it (p)">🔊</button>`:"");
+  if($("btnLsSay")) $("btnLsSay").onclick=()=>lsPlay();
+  $("lsPages").innerHTML=it.pages.map((p,i)=>`<button data-p="${i}" class="${i===LS.page?"on":""}">${p.label}</button>`).join("");
+  $("lsBody").innerHTML=lsPageHTML(it,pg.k);
+  $("lsBody").querySelectorAll("[data-say]").forEach(b=>{ b.onclick=()=>b.dataset.wk?lsPlay(b.dataset.say):lsSay(b.dataset.say); });
+  const last=LS.i===LS.batch.length-1&&LS.page===it.pages.length-1;
+  $("btnLsPrev").disabled=LS.i===0&&LS.page===0;
+  $("btnLsNext").textContent=last?"Start quiz ▸":"Next ▸";
+}
+function lsPageHTML(it,k){
+  const s=it.sub,d=it.d,m=it.sm;
+  const note=(t,label)=>t?`<div class="hint mine"><b>${label}</b> ${esc(t)}</div>`:"";
+  const hint=t=>t?`<div class="hint"><b>Hint</b> ${wkMarkup(t)}</div>`:"";
+  if(k==="parts"){
+    const lead=s.type==="kanji"?"The radicals this kanji is built from:":"The kanji in this word:";
+    return `<p>${lead}</p><div class="lsParts">`+it.parts.map(c=>{
+      const rd=(c.readings.find(r=>r.primary)||{}).r;
+      return `<div class="lsPart ${c.type}"><span class="ch" lang="ja">${lsChip(c)}</span><span>${esc(c.pm)}${rd?`<small lang="ja">${esc(rd)}</small>`:""}</span></div>`;
+    }).join(`<span class="lsPlus">+</span>`)+`</div>`;
+  }
+  if(k==="meaning"){
+    const alt=d.meanings.filter(x=>!x.primary&&x.accepted_answer).map(x=>x.meaning);
+    const syn=(m.meaning_synonyms||[]);
+    return `<div class="big">${esc(s.pm)}</div>`+
+      (alt.length?`<div class="alt">Also accepted: ${esc(alt.join(", "))}</div>`:"")+
+      (syn.length?`<div class="alt">Your synonyms: ${esc(syn.join(", "))}</div>`:"")+
+      `<h3>Mnemonic</h3><div>${wkMarkup(d.meaning_mnemonic)}</div>`+hint(d.meaning_hint)+note(m.meaning_note,"Your note");
+  }
+  if(k==="reading"){
+    let rows;
+    if(s.type==="kanji"){
+      const by={onyomi:"On'yomi",kunyomi:"Kun'yomi",nanori:"Nanori"};
+      rows=Object.keys(by).map(t=>{
+        const rs=(d.readings||[]).filter(r=>r.type===t);
+        return rs.length?`<div><h3>${by[t]}</h3><div class="lsRd">${rs.map(r=>
+          `<span class="r${r.accepted_answer?"":" off"}" lang="ja">${esc(r.reading)}</span>`).join("")}</div></div>`:"";
+      }).join("");
+      rows+=`<div class="alt" style="font-size:.84rem;">WaniKani asks for the reading in full colour; the grey ones are good to know.</div>`;
+    }else{
+      rows=`<div class="lsRd">`+(d.readings||[]).filter(r=>r.accepted_answer).map(r=>
+        `<span class="r" lang="ja">${esc(r.reading)}</span><button class="btn small" data-say="${esc(r.reading)}" data-wk="1" title="hear it">🔊</button>`).join("")+`</div>`;
+    }
+    return rows+`<h3>Mnemonic</h3><div>${wkMarkup(d.reading_mnemonic)}</div>`+hint(d.reading_hint)+note(m.reading_note,"Your note");
+  }
+  // context: WaniKani's example sentences, the word picked out in each
+  const sent=d.context_sentences||[];
+  if(!sent.length) return `<p>No example sentences for this one.</p>`;
+  const mark=t=>s.chars?esc(t).split(esc(s.chars)).join(`<span class="mk vocabulary">${esc(s.chars)}</span>`):esc(t);
+  return sent.map(x=>`<div class="lsSent"><button class="btn small" data-say="${esc(x.ja)}" title="hear it">🔊</button>
+    <div class="ja" lang="ja">${mark(x.ja)}</div><div class="en">${esc(x.en)}</div></div>`).join("");
+}
+function lsStep(dir){
+  if(!LS) return;
+  const it=LS.batch[LS.i];
+  if(dir>0){
+    if(LS.page<it.pages.length-1) LS.page++;
+    else if(LS.i<LS.batch.length-1){ LS.i++; LS.page=0; }
+    else{ lsQuiz(); return; }
+  }else{
+    if(LS.page>0) LS.page--;
+    else if(LS.i>0){ LS.i--; LS.page=LS.batch[LS.i].pages.length-1; }
+    else return;
+  }
+  stopAudio();
+  LS.batch[LS.i].seen=true;
+  lsRender(); lsAuto();
+}
+async function lsQuiz(){
+  if(RV&&!RV.lesson){ lsMsg("Your reviews are still open on the Reviews tab. Finish or wrap them up, then start the quiz."); return; }
+  if(RV) return;
+  lsMsg(""); stopAudio(); unlockAudio();
+  let voiceOk=false;
+  if(canRecord){
+    try{ await micOpen(); voiceOk=true; }
+    catch(e){ lsMsg("⚠ mic blocked ("+(e.message||e.name)+"). You can still type answers."); }
+  }
+  const byId=new Map(LS.comps.map(c=>[c.id,c]));
+  LS.batch.forEach(it=>byId.set(it.sub.id,it.sub));
+  RV={lesson:true,backlog:shuffle(LS.batch.map(it=>rvItemOf(it.asg,it.sub))),active:[],byId,voice:voiceOk,cur:null,phase:"idle",
+    answers:0,right:0,finished:[],wrapping:false,diag:[],rec:rvRecNew()};
+  rvFill();
+  $("btnRvWrap").classList.add("hidden");
+  $("lsQuizSlot").appendChild($("rvCard"));
+  $("lsTeachCard").classList.add("hidden");
+  $("rvCard").classList.remove("hidden");
+  rvNext();
+}
+function lsQueueStart(item){
+  LS_OUT.push({asg:item.asg,sid:item.sub.id,c:item.sub.chars||item.sub.pm,at:new Date().toISOString()});
+  saveLsOut();
+  lsFlush();
+}
+// the quiz is over: give the card back to Reviews and say what was started
+async function lsQuizDone(R){
+  const card=$("rvCard");
+  card.classList.add("hidden");
+  $("viewReviews").insertBefore(card,$("rvDoneCard"));
+  $("btnRvWrap").classList.remove("hidden");
+  const note=$("lsDoneNote"),list=$("lsDoneList");
+  list.innerHTML=LS?LS.batch.map(it=>{
+    const s=it.sub,rd=(s.readings.find(r=>r.acc&&r.primary)||{}).r||"";
+    return `<div class="missItem"><span class="jp" lang="ja">${lsChip(s)}</span><span class="mean">${esc(s.pm)}${rd?", "+esc(rd):""}</span></div>`;
+  }).join(""):"";
+  const left=LS?LS.total-LS.batch.length:0;
+  $("btnLsMore").classList.toggle("hidden",left<=0);
+  lsShow("lsDoneCard");
+  note.textContent="Starting them on WaniKani…";
+  await lsFlush();
+  const n=R.finished.length;
+  note.textContent=LS_OUT.length?`${LS_OUT.length} not started on WaniKani yet. See the note above; they'll resend.`
+    :`${n} item${n===1?"":"s"} started on WaniKani. The first review comes in about 4 hours.`+
+      (left>0?` ${left} more to learn.`:"");
+}
+function lsFlush(){
+  if(!lsFlushing) lsFlushing=lsSend().finally(()=>{ lsFlushing=null; lsOutboxUI(); });
+  return lsFlushing;
+}
+async function lsSend(){
+  lsOutErr="";
+  while(LS_OUT.length&&TOKEN){
+    const o=LS_OUT[0];
+    let r;
+    try{
+      r=await fetch(WK+"/assignments/"+o.asg+"/start",{method:"PUT",headers:{Authorization:"Bearer "+TOKEN,"Wanikani-Revision":"20170710","Content-Type":"application/json"},
+        body:JSON.stringify({assignment:{started_at:o.at}})});
+    }catch(e){ lsOutErr="Can't reach WaniKani right now."; return; }
+    // 422/409: already started elsewhere, or not available for lessons any more
+    if(r.ok||r.status===422||r.status===409){ if(!r.ok) lsDropped.push(o.c); LS_OUT.shift(); saveLsOut(); continue; }
+    lsOutErr=r.status===401||r.status===403?"perm":r.status===429?"WaniKani is rate limiting; try again in a minute.":"WaniKani error "+r.status+".";
+    return;
+  }
+}
+function lsOutboxUI(){
+  const box=$("lsOutbox");
+  if(!LS_OUT.length&&!lsDropped.length){ box.classList.add("hidden"); return; }
+  let h="";
+  if(LS_OUT.length){
+    h=`${LS_OUT.length} learned item${LS_OUT.length===1?"":"s"} not started on WaniKani yet. `;
+    if(lsOutErr==="perm") h+=`This token can't start lessons. Make one with <b>assignments:start</b> (and <b>reviews:create</b> for Reviews) under WaniKani → Settings → API Tokens, and paste it:
+      <div class="row" style="margin-top:8px;"><input type="password" id="lsToken" placeholder="token with assignments:start" style="flex:1;">
+      <button class="btn small" id="btnLsToken">Save &amp; send</button></div>`;
+    else h+=esc(lsOutErr)+` <button class="btn small" id="btnLsResend">Send now</button>`;
+  }
+  if(lsDropped.length) h+=`<div class="note">WaniKani didn't start ${esc(lsDropped.join("、"))} (already started, or not available any more).</div>`;
+  const typed=$("lsToken")?$("lsToken").value:"";
+  box.innerHTML=h; box.classList.remove("hidden");
+  if(typed&&$("lsToken")) $("lsToken").value=typed;
+  const rs=$("btnLsResend"); if(rs) rs.onclick=()=>lsFlush();
+  const tk=$("btnLsToken");
+  if(tk) tk.onclick=()=>{
+    const v=$("lsToken").value.trim();
+    if(!v) return;
+    TOKEN=v; store("wkl_token",TOKEN);
+    lsFlush(); rvFlush();
+  };
+}
+// coming to the tab: carry on with a lesson in progress, otherwise see what's waiting
+function lsEnter(){
+  if(RV&&RV.lesson){ rvResume(); return; }
+  if($("lsTeachCard").classList.contains("hidden")&&$("lsDoneCard").classList.contains("hidden")){ lsShow("lsStartCard"); lsCheck(); }
 }
 
 /* ---------- Pronunciation check (Speak tab) ---------- */
@@ -2860,14 +3250,22 @@ function pcReset(){
 function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 
 /* ---------- tabs & wiring ---------- */
-const views={tabPractice:"viewPractice",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
-    const wasReviews=!$("viewReviews").classList.contains("hidden");
-    if(wasReviews&&t!=="tabReviews") rvPause();
+    const was=Object.values(views).find(v=>!$(v).classList.contains("hidden")),to=views[t];
+    // the quiz lives on Reviews, or on Lessons during a lesson quiz
+    const rvHome=RV&&RV.lesson?"viewLessons":"viewReviews";
+    if(was===rvHome&&to!==rvHome) rvPause();
+    if(was==="viewLessons"&&to!=="viewLessons") stopAudio();
     if(t!=="tabSpeak") pcPause();
     if(t==="tabSpeak"&&!PC) pcSrcNote();
-    if(t==="tabReviews"&&!wasReviews) rvResume();
+    if(to==="viewReviews"&&was!=="viewReviews"){
+      // with the card on loan to a lesson quiz, only the start card (which says so)
+      if(RV&&RV.lesson){ $("rvStartCard").classList.remove("hidden"); $("rvDoneCard").classList.add("hidden"); rvCheck(); }
+      else rvResume();
+    }
+    if(to==="viewLessons"&&was!=="viewLessons") lsEnter();
     Object.entries(views).forEach(([tab,view])=>{
       $(tab).classList.toggle("active",tab===t);
       $(view).classList.toggle("hidden",tab!==t);
@@ -3042,7 +3440,7 @@ $("rvInput").addEventListener("input",()=>{
   $("rvKana").textContent=RV.cur.q==="reading"&&/[a-z]/i.test(v)?normalizeReading(v):"";
 });
 document.addEventListener("keydown",e=>{
-  if(!RV||$("viewReviews").classList.contains("hidden")||$("rvCard").classList.contains("hidden")) return;
+  if(!RV||$(RV.lesson?"viewLessons":"viewReviews").classList.contains("hidden")||$("rvCard").classList.contains("hidden")) return;
   const inInput=e.target&&e.target.id==="rvInput";
   if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)&&!inInput) return;
   const ph=RV.phase;
@@ -3061,6 +3459,35 @@ document.addEventListener("keydown",e=>{
   if(ph==="confirm"&&(e.key==="y"||e.key==="n")){ e.preventDefault(); rvConfirmed(e.key==="y"); return; }
   if(e.key==="p"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPronounce(); }
   if(e.key==="m"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPlayClip(); }
+});
+
+/* lessons tab */
+lsBatchUI();
+$("lsBatch").onchange=e=>{ S.lsBatch=+e.target.value||null; saveS(); };
+$("btnLsStart").onclick=lsStart;
+$("btnLsCheck").onclick=lsCheck;
+$("btnLsPrev").onclick=()=>lsStep(-1);
+$("btnLsNext").onclick=()=>lsStep(1);
+$("btnLsBack").onclick=()=>{ LS=null; lsShow("lsStartCard"); lsCheck(); };
+$("btnLsMore").onclick=()=>{ LS=null; lsStart(); };
+$("lsStrip").onclick=e=>{
+  const b=e.target.closest("[data-i]");
+  if(!b||!LS) return;
+  stopAudio(); LS.i=+b.dataset.i; LS.page=0; LS.batch[LS.i].seen=true; lsRender(); lsAuto();
+};
+$("lsPages").onclick=e=>{
+  const b=e.target.closest("[data-p]");
+  if(!b||!LS) return;
+  stopAudio(); LS.page=+b.dataset.p; lsRender(); lsAuto();
+};
+document.addEventListener("keydown",e=>{
+  if(!LS||$("viewLessons").classList.contains("hidden")||$("lsTeachCard").classList.contains("hidden")) return;
+  if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  // enter on a focused button is that button's click
+  if(e.key==="Enter"&&e.target&&e.target.tagName==="BUTTON") return;
+  if(e.key==="ArrowRight"||e.key==="Enter"){ e.preventDefault(); lsStep(1); }
+  else if(e.key==="ArrowLeft"||e.key==="Backspace"){ e.preventDefault(); lsStep(-1); }
+  else if(e.key==="p"){ e.preventDefault(); lsPlay(); }
 });
 
 /* pronunciation check */
