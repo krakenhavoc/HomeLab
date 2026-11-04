@@ -239,7 +239,7 @@
   .pcTake{background:var(--card2); border:1px solid var(--line); color:var(--text); border-radius:7px; padding:2px 8px; cursor:pointer; font:inherit; font-size:.82rem;}
   .pcTake.ok{border-color:var(--green);} .pcTake.near{border-color:var(--amber);} .pcTake.bad{border-color:var(--red);}
   .pcRow .ref{font-size:.78rem; color:var(--muted); text-align:right;}
-  .rvInfo{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.92rem;}
+  .rvInfo{display:flow-root; margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.92rem;}
   .rvInfo div{margin:2px 0;} .rvInfo b{color:var(--muted); font-weight:700; margin-right:6px;}
   .rvInfo .say{float:right; margin-left:8px;}
   .rvMiss .jp{min-width:70px;}
@@ -264,7 +264,7 @@
   .lsHead .m small{display:block; font-size:.78rem; font-weight:500; opacity:.7;}
   .lsHead .btn{background:var(--paper-ink); color:var(--paper); border-color:var(--paper-ink);}
   #lsPages{margin:14px 0 4px;}
-  .lsBody{font-size:.95rem; line-height:1.7; min-height:8em;}
+  .lsBody{display:flow-root; font-size:.95rem; line-height:1.7; min-height:8em;}
   .lsBody h3{font-size:.84rem; color:var(--muted); font-weight:700; margin:14px 0 4px;}
   .lsBody .big{font-size:1.15rem; font-weight:700;}
   .lsBody .alt{color:var(--muted);}
@@ -292,6 +292,28 @@
   .mk.vocabulary{background:var(--vocab); color:#fff;}
   .mk.meaning{background:var(--paper); color:var(--paper-ink);} .mk.reading{background:var(--ink); color:var(--paper);}
   .mk.ja{background:none; padding:0; font-weight:inherit;}
+  /* an item's picture: a photo or an emoji, floated beside its meaning */
+  .pic{float:right; width:min(42%,230px); margin:2px 0 10px 14px; background:var(--card2); border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .pic.small{width:min(36%,140px); margin-top:0;}
+  .pic img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:var(--bg);}
+  .pic .emo{display:grid; place-items:center; aspect-ratio:4/3; font-size:4.4rem; line-height:1;}
+  .pic.small .emo{font-size:2.8rem;}
+  .pic figcaption{display:flex; justify-content:space-between; align-items:center; gap:6px; padding:3px 8px; font-size:.72rem; color:var(--muted);}
+  .pic figcaption a{color:var(--muted);}
+  .picBtn{background:none; border:none; color:var(--soft); font:inherit; font-size:.76rem; cursor:pointer; padding:2px 0; text-decoration:underline;}
+  .picAdd{float:right; margin:0 0 6px 10px;}
+  #picDlg{margin:auto; width:min(640px,94vw); max-height:88vh; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+  #picDlg::backdrop{background:rgba(8,10,20,.7);}
+  #picDlg h2{font-size:1rem; margin-bottom:10px;}
+  .picGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; margin:12px 0;}
+  .picGrid button{padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden; background:var(--bg); cursor:pointer; aspect-ratio:4/3;}
+  .picGrid button:hover,.picGrid button:focus-visible{border-color:var(--accent);}
+  .picGrid img{width:100%; height:100%; object-fit:cover; display:block;}
+  .picEmo{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px;}
+  .picEmo button{font-size:1.8rem; line-height:1; padding:6px 8px; background:var(--bg); border:2px solid var(--line); border-radius:8px; cursor:pointer;}
+  .picEmo button:hover,.picEmo button:focus-visible{border-color:var(--accent);}
+  #picStatus{font-size:.84rem; color:var(--muted); min-height:1.3em;}
+  #picStatus.bad{color:var(--red);}
   #lsMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:8px; color:var(--amber);}
 
   @media (max-width:480px){ nav button{font-size:.72rem; padding:6px 2px;} }
@@ -704,6 +726,23 @@
     </section>
   </main>
 </div>
+
+<!-- choosing an item's picture: Wikipedia/Commons photos, emoji, or none -->
+<dialog id="picDlg" aria-labelledby="picTitle">
+  <h2 id="picTitle"></h2>
+  <form id="picSearch" class="row">
+    <input type="text" id="picQuery" aria-label="search for pictures" style="flex:1;">
+    <button class="btn small" type="submit">Search</button>
+  </form>
+  <div id="picStatus"></div>
+  <div class="picGrid" id="picGrid"></div>
+  <div class="picEmo" id="picEmo"></div>
+  <div class="row" style="justify-content:flex-end;">
+    <button class="btn small" id="btnPicNone">No picture</button>
+    <button class="btn small" id="btnPicAuto">Automatic</button>
+    <button class="btn small" id="btnPicClose">Cancel</button>
+  </div>
+</dialog>
 
 <script>
 "use strict";
@@ -2108,6 +2147,7 @@ async function rvStart(){
   try{
     const {items,byId}=await rvLoad();
     if(!items.length){ micClose(); rvCheck(); return; }
+    picPrepare(items.map(i=>i.sub));
     RV={backlog:items,active:[],byId,voice:voiceOk,cur:null,phase:"idle",answers:0,right:0,finished:[],wrapping:false,
       diag:[],rec:rvRecNew()};
     rvFill();
@@ -2447,7 +2487,7 @@ function rvWrong(heard,gaveUp,spoken){
     (spoken&&!gaveUp&&RV.cur.whisperDown?" (Whisper on KBU was paused, so only ReazonSpeech judged this)":""),"bad");
   const info=$("rvInfo");
   info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+
-    (spoken&&RV.cur.clip?`<button class="btn small say" id="btnRvClip" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+rvInfoHTML(s);
+    (spoken&&RV.cur.clip?`<button class="btn small say" id="btnRvClip" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+picHTML(s,true)+rvInfoHTML(s);
   info.classList.remove("hidden");
   if($("btnRvSay")) $("btnRvSay").onclick=rvPronounce;
   if($("btnRvClip")) $("btnRvClip").onclick=rvPlayClip;
@@ -2659,6 +2699,150 @@ async function rvResume(){
   else if((RV.phase==="wrong"||RV.phase==="confirm")&&RV.voice&&S.rvHands) rvListenCommand();
 }
 
+/* ---------- Pictures for items ---------- */
+// An item's picture, first match wins:
+//   1. the learner's own choice, kept on the wkjp VM (/pics/picks.json) so it
+//      follows them between devices: a photo, an emoji, or "none";
+//   2. the lead image of the word's Japanese Wikipedia article (kanji and
+//      vocabulary; kana words too often land on a song or a film);
+//   3. an emoji whose CLDR name or keyword is the word or its meaning
+//      (emoji.json, built by tools/build-emoji.py).
+// Radicals have none: their meanings are WaniKani's own names.
+const PIC_URL="pics/picks.json",WP_JA="https://ja.wikipedia.org/w/api.php",WM_COMMONS="https://commons.wikimedia.org/w/api.php";
+const WM_HDR={"Api-User-Agent":"wkjp/1 (personal WaniKani study app)"};
+let PICKS=null,picsLoading=null;           // {subject id: {t:"img",u,f}|{t:"emoji",e}|{t:"none"}}
+let PIC_AUTO=load("wkl_pic_auto",{});      // word -> {u,f} or 0 (looked up, nothing usable)
+let EMOJI=null,emojiLoading=null;
+function picsLoad(){
+  if(!picsLoading) picsLoading=fetch(PIC_URL,{cache:"no-store"}).then(r=>r.ok?r.json():{}).then(d=>{ PICKS=d.picks||{}; })
+    .catch(()=>{ PICKS={}; picsLoading=null; });
+  return picsLoading;
+}
+function emojiLoad(){
+  if(!emojiLoading) emojiLoading=fetch("emoji.json").then(r=>r.ok?r.json():null).then(d=>{ EMOJI=d; }).catch(()=>{ emojiLoading=null; });
+  return emojiLoading;
+}
+const picWord=s=>s.type==="kanji"||s.type==="vocabulary"?s.chars:"";
+// one request per 50 words; a word is only ever looked up once per browser
+async function picAutoFetch(words){
+  const need=[...new Set(words)].filter(w=>w&&!Object.hasOwn(PIC_AUTO,w));
+  for(let i=0;i<need.length;i+=50){
+    const chunk=need.slice(i,i+50);
+    const q=new URLSearchParams({action:"query",format:"json",formatversion:"2",origin:"*",redirects:"1",
+      prop:"pageimages|pageprops",ppprop:"disambiguation",piprop:"thumbnail|name",pithumbsize:"400",titles:chunk.join("|")});
+    let j;
+    try{ const r=await fetch(WP_JA+"?"+q,{headers:WM_HDR}); if(!r.ok) return; j=await r.json(); }catch(e){ return; }
+    const qy=j.query||{},back={};
+    chunk.forEach(w=>{ back[w]=w; PIC_AUTO[w]=0; });
+    // titles come back normalized and redirected (犬 → イヌ): map them home
+    [...(qy.normalized||[]),...(qy.redirects||[])].forEach(x=>{ back[x.to]=back[x.from]||x.from; });
+    (qy.pages||[]).forEach(p=>{
+      const w=back[p.title];
+      if(!w||!p.thumbnail||p.pageprops&&Object.hasOwn(p.pageprops,"disambiguation")) return;
+      PIC_AUTO[w]={u:p.thumbnail.source,f:p.pageimage||""};
+    });
+  }
+  store("wkl_pic_auto",PIC_AUTO);
+}
+// emoji for an item, best first: exact names, keywords in their names, other keywords
+function emojiFor(s){
+  if(!EMOJI||s.type==="radical") return [];
+  const terms=[s.chars||"",...s.meanings.map(m=>m.toLowerCase().replace(/^(to|a|an|the) /,"").trim())].filter(Boolean);
+  const out=[],add=e=>{ if(typeof e==="string"&&!out.includes(e)) out.push(e); };
+  const kw=t=>Object.hasOwn(EMOJI.k,t)?EMOJI.k[t]:null;
+  terms.forEach(t=>{ if(Object.hasOwn(EMOJI.n,t)) add(EMOJI.n[t]); });
+  terms.forEach(t=>{ const v=kw(t); if(v) v.slice(1,1+v[0]).forEach(add); });
+  terms.forEach(t=>{ const v=kw(t); if(v) v.slice(1+v[0]).forEach(add); });
+  return out;
+}
+// get what the items on screen will need; callers don't wait on Wikipedia
+function picPrepare(subs){
+  return Promise.all([picsLoad(),emojiLoad(),picAutoFetch(subs.map(picWord))]);
+}
+function picOf(s){
+  if(s.type==="radical") return null;
+  const p=PICKS&&Object.hasOwn(PICKS,s.id)?PICKS[s.id]:null;
+  if(p) return p.t==="none"?null:p;
+  const w=picWord(s),a=w&&Object.hasOwn(PIC_AUTO,w)?PIC_AUTO[w]:null;
+  if(a) return {t:"img",u:a.u,f:a.f,auto:true};
+  const e=emojiFor(s)[0];
+  return e?{t:"emoji",e,auto:true}:null;
+}
+// the file's page credits its author and licence (ja.wikipedia shows Commons files too)
+const picCredit=f=>f?`<a href="https://ja.wikipedia.org/wiki/File:${encodeURIComponent(f)}" target="_blank" rel="noopener" title="author and licence">Wikimedia</a>`:"";
+function picHTML(s,small){
+  if(s.type==="radical") return "";
+  const p=picOf(s);
+  if(!p) return `<button class="picBtn picAdd${small?" small":""}" data-pic-change="${s.id}">Add a picture</button>`;
+  const body=p.t==="emoji"?`<div class="emo" role="img" aria-label="${esc(s.pm)}">${esc(p.e)}</div>`
+    :`<img src="${esc(p.u)}" alt="${esc(s.pm)}" loading="lazy" referrerpolicy="no-referrer">`;
+  return `<figure class="pic${small?" small":""}" data-pic="${s.id}">${body}<figcaption>${p.t==="img"?picCredit(p.f):"<span></span>"}`+
+    `<button class="picBtn" data-pic-change="${s.id}">Change</button></figcaption></figure>`;
+}
+// redraw every picture of this item that's on screen
+function picRedraw(s){
+  document.querySelectorAll(`[data-pic="${s.id}"],.picAdd[data-pic-change="${s.id}"]`).forEach(el=>{
+    const t=document.createElement("template");
+    t.innerHTML=picHTML(s,el.classList.contains("small"));
+    el.replaceWith(...t.content.childNodes);
+  });
+}
+// Save one choice (null: back to automatic). Merged into the server's copy so
+// another device's choices survive; if that can't be read, nothing is written.
+async function picSave(id,pick){
+  const r=await fetch(PIC_URL,{cache:"no-store"});
+  if(!r.ok&&r.status!==404) throw new Error(`couldn't read the saved pictures (${r.status})`);
+  const doc=r.ok?await r.json():{};
+  doc.v=1; doc.picks=doc.picks||{};
+  if(pick) doc.picks[id]={...pick,at:new Date().toISOString()}; else delete doc.picks[id];
+  const w=await fetch(PIC_URL,{method:"PUT",body:JSON.stringify(doc),headers:{"Content-Type":"application/json"}});
+  if(!w.ok) throw new Error(`couldn't save the picture (${w.status})`);
+  PICKS=doc.picks;
+}
+/* the chooser */
+let PIC_FOR=null,picSeq=0;
+const picSubject=id=>(LS&&(LS.batch.find(b=>b.sub.id===id)||{}).sub)||(RV&&RV.byId.get(id))||null;
+function picStatus(t,bad){ const st=$("picStatus"); st.textContent=t||""; st.className=bad?"bad":""; }
+async function picOpen(s){
+  PIC_FOR=s;
+  $("picTitle").textContent=`Picture for ${s.chars||""} (${s.pm})`;
+  $("picQuery").value=s.pm;
+  await emojiLoad();
+  const em=emojiFor(s).slice(0,10);
+  $("picEmo").innerHTML=em.map(e=>`<button data-emoji="${esc(e)}" aria-label="use ${esc(e)}">${esc(e)}</button>`).join("");
+  $("picDlg").showModal();
+  picSearch(s.chars,s.pm);
+}
+async function picSearch(ja,en){
+  const my=++picSeq,grid=$("picGrid");
+  grid.innerHTML=""; picStatus("Searching Wikipedia and Wikimedia Commons…");
+  const got=[],seen=new Set(),add=(u,f)=>{ if(u&&!seen.has(u)){ seen.add(u); got.push({u,f}); } };
+  const get=async(base,params)=>{
+    try{ const r=await fetch(base+"?"+new URLSearchParams({action:"query",format:"json",formatversion:"2",origin:"*",...params}),{headers:WM_HDR});
+      return r.ok?((await r.json()).query||{}).pages||[]:[]; }catch(e){ return []; }
+  };
+  const auto=PIC_FOR&&picWord(PIC_FOR)&&PIC_AUTO[picWord(PIC_FOR)];
+  if(auto) add(auto.u,auto.f);
+  const [wp,cm]=await Promise.all([
+    ja?get(WP_JA,{generator:"search",gsrsearch:ja,gsrlimit:"10",prop:"pageimages",piprop:"thumbnail|name",pithumbsize:"400"}):[],
+    en?get(WM_COMMONS,{generator:"search",gsrnamespace:"6",gsrsearch:en+" filetype:bitmap",gsrlimit:"16",prop:"imageinfo",iiprop:"url",iiurlwidth:"400"}):[]]);
+  if(my!==picSeq) return;
+  wp.sort((a,b)=>(a.index||0)-(b.index||0)).forEach(p=>{ if(p.thumbnail) add(p.thumbnail.source,p.pageimage); });
+  cm.sort((a,b)=>(a.index||0)-(b.index||0)).forEach(p=>{ const ii=(p.imageinfo||[])[0]; if(ii&&ii.thumburl) add(ii.thumburl,p.title.replace(/^File:/,"")); });
+  grid.innerHTML=got.map((g,i)=>`<button data-i="${i}" title="${esc(g.f)}"><img src="${esc(g.u)}" alt="${esc(g.f)}" loading="lazy" referrerpolicy="no-referrer"></button>`).join("");
+  grid._got=got;
+  picStatus(got.length?"Pick one, or an emoji below.":"No pictures found. Try other words, or pick an emoji.");
+}
+async function picChoose(pick){
+  const s=PIC_FOR;
+  if(!s) return;
+  picStatus("Saving…");
+  try{ await picSave(s.id,pick); }
+  catch(e){ picStatus("⚠ "+e.message,true); return; }
+  $("picDlg").close();
+  picRedraw(s);
+}
+
 /* ---------- Lessons (WaniKani's new items, taught then quizzed) ---------- */
 // Teaching is this tab's own cards; the quiz borrows the Reviews card and engine
 // (RV with lesson:true). Passing an item's quiz PUTs /assignments/<id>/start:
@@ -2737,6 +2921,10 @@ async function lsStart(){
     if(!r.batch.length){ lsShow("lsStartCard"); lsCheck(); return; }
     LS={...r,i:0,page:0};
     LS.batch[0].seen=true;
+    // pictures: wait a moment so the first page doesn't swap an emoji for a photo, then redraw
+    const my=LS,pics=picPrepare(LS.batch.map(b=>b.sub)).then(()=>true);
+    if(!await Promise.race([pics,new Promise(res=>setTimeout(()=>res(false),1500))]))
+      pics.then(()=>{ if(LS===my&&!$("lsTeachCard").classList.contains("hidden")) lsRender(); });
     lsMsg("");
     lsShow("lsTeachCard");
     lsRender(); lsAuto();
@@ -2807,7 +2995,7 @@ function lsPageHTML(it,k){
   if(k==="meaning"){
     const alt=d.meanings.filter(x=>!x.primary&&x.accepted_answer).map(x=>x.meaning);
     const syn=(m.meaning_synonyms||[]);
-    return `<div class="big">${esc(s.pm)}</div>`+
+    return picHTML(s)+`<div class="big">${esc(s.pm)}</div>`+
       (alt.length?`<div class="alt">Also accepted: ${esc(alt.join(", "))}</div>`:"")+
       (syn.length?`<div class="alt">Your synonyms: ${esc(syn.join(", "))}</div>`:"")+
       `<h3>Mnemonic</h3><div>${wkMarkup(d.meaning_mnemonic)}</div>`+hint(d.meaning_hint)+note(m.meaning_note,"Your note");
@@ -3440,7 +3628,7 @@ $("rvInput").addEventListener("input",()=>{
   $("rvKana").textContent=RV.cur.q==="reading"&&/[a-z]/i.test(v)?normalizeReading(v):"";
 });
 document.addEventListener("keydown",e=>{
-  if(!RV||$(RV.lesson?"viewLessons":"viewReviews").classList.contains("hidden")||$("rvCard").classList.contains("hidden")) return;
+  if(!RV||$("picDlg").open||$(RV.lesson?"viewLessons":"viewReviews").classList.contains("hidden")||$("rvCard").classList.contains("hidden")) return;
   const inInput=e.target&&e.target.id==="rvInput";
   if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)&&!inInput) return;
   const ph=RV.phase;
@@ -3460,6 +3648,27 @@ document.addEventListener("keydown",e=>{
   if(e.key==="p"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPronounce(); }
   if(e.key==="m"&&(ph==="wrong"||ph==="confirm")){ e.preventDefault(); rvPlayClip(); }
 });
+
+/* pictures */
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-pic-change]");
+  if(!b) return;
+  const s=picSubject(+b.dataset.picChange);
+  if(s) picOpen(s);
+});
+$("picGrid").onclick=e=>{
+  const b=e.target.closest("[data-i]"),g=b&&$("picGrid")._got[+b.dataset.i];
+  if(g) picChoose({t:"img",u:g.u,f:g.f});
+};
+$("picEmo").onclick=e=>{ const b=e.target.closest("[data-emoji]"); if(b) picChoose({t:"emoji",e:b.dataset.emoji}); };
+$("btnPicNone").onclick=()=>picChoose({t:"none"});
+$("btnPicAuto").onclick=()=>picChoose(null);
+$("btnPicClose").onclick=()=>$("picDlg").close();
+$("picSearch").onsubmit=e=>{
+  e.preventDefault();
+  const q=$("picQuery").value.trim();
+  if(q) picSearch(/[぀-ヿ一-鿿]/.test(q)?q:"",q);
+};
 
 /* lessons tab */
 lsBatchUI();
@@ -3481,7 +3690,7 @@ $("lsPages").onclick=e=>{
   stopAudio(); LS.page=+b.dataset.p; lsRender(); lsAuto();
 };
 document.addEventListener("keydown",e=>{
-  if(!LS||$("viewLessons").classList.contains("hidden")||$("lsTeachCard").classList.contains("hidden")) return;
+  if(!LS||$("picDlg").open||$("viewLessons").classList.contains("hidden")||$("lsTeachCard").classList.contains("hidden")) return;
   if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
   // enter on a focused button is that button's click
   if(e.key==="Enter"&&e.target&&e.target.tagName==="BUTTON") return;

@@ -17,6 +17,8 @@ services:
       # Pronunciation check recordings (nginx /rec/). Outside the synced
       # tree so rsync --delete leaves them alone.
       - /opt/wkjp/rec:/srv/rec
+      # Picture choices for items (nginx /pics/picks.json), kept the same way.
+      - /opt/wkjp/pics:/srv/pics
     depends_on:
       - voicevox
 

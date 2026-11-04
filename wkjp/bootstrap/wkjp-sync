@@ -11,6 +11,7 @@ set -euo pipefail
 REPO_DIR=/opt/wkjp/repo
 LIVE_DIR=/opt/wkjp/live
 REC_DIR=/opt/wkjp/rec
+PICS_DIR=/opt/wkjp/pics
 SRC_DIR="${REPO_DIR}/wkjp"
 
 log() { echo "[wkjp-sync] $*"; }
@@ -61,6 +62,11 @@ mkdir -p "${REC_DIR}"
 chown 101:101 "${REC_DIR}"
 chmod 0750 "${REC_DIR}"
 find "${REC_DIR}" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +90 -exec rm -rf {} +
+
+# Picture choices for items: nginx writes picks.json here. Never pruned.
+mkdir -p "${PICS_DIR}"
+chown 101:101 "${PICS_DIR}"
+chmod 0750 "${PICS_DIR}"
 
 cd "${LIVE_DIR}"
 # Bounded: a hung registry must not block the sync.
