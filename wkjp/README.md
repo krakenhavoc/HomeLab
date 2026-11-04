@@ -13,6 +13,7 @@ is reachable only through the private gateway.
 | ReazonSpeech for reading answers | `wkjp/asr/` (built on the VM) |
 | Reconcile loop | `wkjp/bootstrap/` |
 | Pronunciation check report | `wkjp/tools/rec-report.py` |
+| Emoji for item pictures | `wkjp/tools/build-emoji.py` → `wkjp/site/emoji.json` |
 | TLS and private routing | `gateway/caddy/Caddyfile` |
 | Portal entry | `gateway/homepage/services.yaml` |
 
@@ -155,6 +156,29 @@ is reachable only through the private gateway.
     `assignments:start` on the token; until then the items wait in
     localStorage (`wkl_ls_outbox`) with a box to paste a token that can.
     A 409/422 (already started elsewhere) is dropped with a note.
+- Kanji and vocabulary get a picture, on the lesson's Meaning page and with
+  the answer after a miss in Reviews. Radicals don't: their meanings are
+  WaniKani's own names. The first of these wins:
+  - **The learner's choice**, from "Change" on the picture: a photo, an
+    emoji, "No picture", or "Automatic" to go back. Choices live in
+    `/opt/wkjp/pics/picks.json` on the VM (nginx `/pics/picks.json`, GET and
+    PUT only, 1 MB cap), keyed by subject id, so they follow the learner
+    between devices. A save reads the file, changes one entry and writes it
+    back, and writes nothing if it can't read it first. Not pruned; not
+    backed up beyond the VM.
+  - **Japanese Wikipedia:** the lead image of the article titled with the
+    word (redirects followed, disambiguation pages skipped), 50 words per
+    request, cached per browser in `wkl_pic_auto`. Kana-only words are left
+    out because they too often land on a song or a film.
+  - **An emoji** whose CLDR name or keyword is the word or its meaning
+    (`site/emoji.json`, built by `tools/build-emoji.py` from a pinned CLDR
+    release). English matches must start or end the emoji's name, so "big"
+    doesn't find 😃 "grinning face with big eyes".
+  - The chooser searches Japanese Wikipedia for the word and Wikimedia
+    Commons for the meaning, or for whatever is typed. Each photo links to
+    its file page for the author and licence.
+- nginx gzips JSON, CSS, JS and SVG (and HTML, always): `index.html` and
+  `emoji.json` are a few hundred KB each.
 - The Speak tab's pronunciation check plays words one at a time:
   - **Word order:** words you type first, then readings your reviews
     misheard (`wkl_voice_misses`, the last 30), then random learned
