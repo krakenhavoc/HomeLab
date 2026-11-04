@@ -72,6 +72,16 @@ is reachable only through the private gateway.
   unlearned WaniKani words to draw new words from. The model treats the
   percentage as a rough target. "Send automatically when I stop the mic" sends
   the transcription as soon as Whisper returns it.
+- Settings → "Grammar focus" (off, JLPT N5, N4 or N3) and "Grammar I'm
+  working on" (a list such as `〜たい、〜てから`, e.g. from Bunpro) steer Talk:
+  - Replies stay at that level and work a listed point into most replies,
+    sometimes asking a question that invites the learner to use one. A
+    `grammar` field in the reply schema names the point used, shown as
+    `文法: 〜たい` under the reply.
+  - The sentence check is told the focus: it names the grammar point behind
+    a mistake, and says so when a listed point was used correctly.
+  - Off (the default) keeps the old "keep grammar simple" prompt, and no
+    `文法` tag shows.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
   to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
   192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).

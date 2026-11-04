@@ -155,6 +155,7 @@
   .msg.me{align-self:flex-end; background:var(--card2); border:1px solid var(--line);}
   .msg.ai{align-self:flex-start; background:#222a49; border:1px solid #39457a;}
   .msg .en{font-size:.82rem; color:var(--muted); margin-top:4px;}
+  .msg .gp{display:inline-block; font-size:.75rem; color:var(--accent); border:1px solid #6b5220; border-radius:6px; padding:0 6px; margin-top:4px;}
   .msg .tools{display:flex; gap:6px; margin-top:6px;}
   .msg .tools .by{margin-left:auto; align-self:center; font-size:.7rem; color:var(--muted);}
   .msg .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:2px 8px; cursor:pointer; font-size:.75rem;}
@@ -788,6 +789,16 @@
       <label for="talkNewRange" style="margin-top:14px;">New words in Talk <span id="talkNewVal"></span></label>
       <input type="range" id="talkNewRange" min="0" max="50" step="5" style="width:100%;">
       <p class="note">Roughly how much of each reply uses words you haven't learned yet, picked from your upcoming WaniKani vocab when one fits. Hover or tap an underlined word for its reading. 0% keeps to known words only.</p>
+      <label for="talkGrammar" style="margin-top:14px;">Grammar focus</label>
+      <select id="talkGrammar">
+        <option value="">Off: simple grammar</option>
+        <option value="N5">JLPT N5</option>
+        <option value="N4">JLPT N4</option>
+        <option value="N3">JLPT N3</option>
+      </select>
+      <label for="talkGrammarList">Grammar I'm working on <span class="note" style="margin:0;">(optional)</span></label>
+      <input type="text" id="talkGrammarList" lang="ja" placeholder="〜たい、〜てから、〜てもいいですか" autocomplete="off">
+      <p class="note">Replies stay at this JLPT level and use the points you list, about one per reply, sometimes asking a question that invites you to use one. Each reply notes the point it used, and the sentence check names grammar mistakes. Your Bunpro lessons are a good source.</p>
       <label style="margin:10px 0 0; display:flex; align-items:center; gap:8px; cursor:pointer;">
         <input type="checkbox" id="chkTalkAutoSend"> send automatically when I stop the mic
       </label>
@@ -1161,7 +1172,7 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
-  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
+  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkGrammar:"",talkGrammarList:"",talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
   pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
@@ -1754,7 +1765,7 @@ const LLM_DEFAULT=location.protocol==="file:"?"http://localhost:11434":location.
 const llmBase=()=>((S.llmUrl||LLM_DEFAULT).trim()||LLM_DEFAULT).replace(/\/+$/,"");
 const str={type:"string"};
 // every object closed (additionalProperties:false): Claude's structured outputs require it
-const REPLY_SCHEMA={type:"object",additionalProperties:false,required:["reply","english"],properties:{reply:str,english:str}};
+const REPLY_SCHEMA={type:"object",additionalProperties:false,required:["reply","english","grammar"],properties:{reply:str,english:str,grammar:str}};
 // errors first so the model looks before it corrects
 const CHECK_SCHEMA={type:"object",additionalProperties:false,required:["errors","correction","note"],
   properties:{errors:{type:"array",items:str},correction:str,note:str}};
@@ -1777,6 +1788,17 @@ function upcomingWords(known,n){
   return (DATA?DATA.subjects:[]).filter(s=>s.c&&!known.has(s.c))
     .sort((a,b)=>a.l-b.l).slice(0,n).map(s=>s.c);
 }
+// the grammar points the learner listed, split on Japanese or Latin separators
+const grammarList=()=>(S.talkGrammarList||"").split(/[、,，;；\n]+/).map(x=>x.trim()).filter(Boolean).slice(0,30);
+function grammarLines(){
+  const lv=S.talkGrammar,list=grammarList();
+  if(!lv&&!list.length) return ["Keep grammar simple."];
+  return [
+    lv?`The learner is studying JLPT ${lv} grammar. Use ${lv} grammar naturally, and nothing above ${lv} unless the reply can't do without it.`:"Keep grammar simple.",
+    list.length?`Grammar points they are practising: ${list.join("、")}. Work one of these into most replies, varying which, and now and then ask a question that invites the learner to answer with one.`:"",
+    "grammar: the grammar point your reply uses from that list"+(lv?` (or another ${lv} point worth noticing)`:"")+", written like the list (e.g. 〜たい); empty if none."
+  ].filter(Boolean);
+}
 function talkSystem(){
   // newest first: the model knows basic words anyway, and the old order cut off
   // a higher-level learner's recent vocab at 800
@@ -1787,12 +1809,13 @@ function talkSystem(){
   return [
     `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
     "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
-    "Keep grammar simple. Plain text only, no markdown, no readings in parentheses.",
+    ...grammarLines(),
+    "Plain text only, no markdown, no readings in parentheses.",
     pct
       ?`Build replies mostly from the learner's known words below, but make about ${pct}% of your words new ones they haven't learned. Take new words from "New words" when one fits naturally; otherwise use a common everyday word. Write new words normally, kanji included: the app shows their reading. Any other kanji word they don't know: write it in hiragana.`
       :"Use only the learner's known words below. Write any kanji word they don't know in hiragana.",
     "If the learner writes English or romaji, just carry on the conversation in Japanese.",
-    "english: an English translation of your reply.",
+    "english: an English translation of your reply, and nothing else: corrections of the learner's Japanese are handled separately.",
     words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words.",
     fresh.length?"New words: "+fresh.join("、"):""
   ].filter(Boolean).join("\n");
@@ -1802,6 +1825,7 @@ function checkSystem(ja){
     "You check sentences written by a Japanese learner. You do not chat.",
     "Go through the sentence piece by piece: each particle (は が を に で へ と), verb form, conjugation, word choice and politeness.",
     "Common learner mistakes: を with 行く/来る/帰る (needs に or へ), に for where an action happens (needs で), wrong verb tense.",
+    ...(S.talkGrammar||grammarList().length?[`They are studying ${S.talkGrammar?"JLPT "+S.talkGrammar+" grammar":"grammar"}${grammarList().length?", especially "+grammarList().join("、"):""}. When a mistake is about a grammar point, name it (e.g. 〜てから) in the note; if they used one of their listed points correctly, say so in the note.`]:[]),
     "errors: each mistake found, in English. Empty list if none.",
     "correction: the corrected sentence only. Empty if there are no errors.",
     "note: one short English line about the main fix; empty if none."
@@ -1879,7 +1903,8 @@ function talkReply(r,by){
   // the model sometimes appends the translation to the reply itself
   r.reply=r.reply.replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
   const spk=S.engine==="voicevox"?pickVvSpeaker():null;
-  const d=talkAdd("msg ai",`<div class="ja">${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
+  const gp=(S.talkGrammar||grammarList().length)&&r.grammar?r.grammar.trim():"";
+  const d=talkAdd("msg ai",`<div class="ja">${esc(r.reply)}</div>${gp?`<div class="gp" lang="ja">文法: ${esc(gp)}</div>`:""}<div class="en hidden">${esc(r.english)}</div>
     <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button><span class="by">${esc(by||"")}</span></div>`);
   d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false,spk);
   d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true,spk);
@@ -4079,6 +4104,10 @@ const tn=$("talkNewRange");
 tn.value=S.talkNewPct;
 $("talkNewVal").textContent=S.talkNewPct+"%";
 tn.oninput=e=>{ S.talkNewPct=+e.target.value; $("talkNewVal").textContent=S.talkNewPct+"%"; saveS(); };
+$("talkGrammar").value=["N5","N4","N3"].includes(S.talkGrammar)?S.talkGrammar:"";
+$("talkGrammar").onchange=e=>{ S.talkGrammar=e.target.value; saveS(); };
+$("talkGrammarList").value=S.talkGrammarList||"";
+$("talkGrammarList").onchange=e=>{ S.talkGrammarList=e.target.value.trim(); saveS(); };
 $("chkTalkAutoSend").checked=S.talkAutoSend;
 $("chkTalkAutoSend").onchange=e=>{ S.talkAutoSend=e.target.checked; saveS(); };
 $("sttLang").value=S.sttLang;
