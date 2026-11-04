@@ -142,7 +142,7 @@
   .talkHead label{margin:0; display:flex; align-items:center; gap:6px; cursor:pointer;}
   #talkLog{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:4px 4px 12px 0;}
   #talkLog:empty::before{
-    content:"Chat in Japanese with a local model. It sticks to words you've learned and corrects your mistakes. Type Japanese, romaji or English, or use the mic.";
+    content:"Chat in Japanese with Claude, or your local model. It sticks to words you've learned and corrects your mistakes. Type Japanese, romaji or English, or use the mic.";
     margin:auto; max-width:420px; text-align:center; color:var(--muted); font-size:.9rem;}
   .composer{display:flex; gap:8px; align-items:flex-end; border-top:1px solid var(--line); padding-top:12px;}
   .composer textarea{flex:1; resize:none; min-height:44px; max-height:140px; overflow-y:auto; line-height:1.5;}
@@ -153,6 +153,7 @@
   .msg.ai{align-self:flex-start; background:#222a49; border:1px solid #39457a;}
   .msg .en{font-size:.82rem; color:var(--muted); margin-top:4px;}
   .msg .tools{display:flex; gap:6px; margin-top:6px;}
+  .msg .tools .by{margin-left:auto; align-self:center; font-size:.7rem; color:var(--muted);}
   .msg .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:8px; padding:2px 8px; cursor:pointer; font-size:.75rem;}
   .fix{align-self:flex-end; max-width:85%; background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
@@ -703,6 +704,20 @@
     </section>
     <section class="card">
       <h2>Conversation partner</h2>
+      <label for="talkEngine">Talk with</label>
+      <select id="talkEngine">
+        <option value="claude">Claude (Anthropic API, through the wkjp server)</option>
+        <option value="ollama">Ollama on base-station</option>
+      </select>
+      <div id="claudeOpts">
+        <label for="claudeModel">Claude model</label>
+        <select id="claudeModel">
+          <option value="claude-sonnet-5-5">Sonnet 5.5</option>
+          <option value="claude-opus-5-5">Opus 5.5: strongest, about twice Sonnet's price</option>
+          <option value="claude-haiku-5-5">Haiku 5.5: cheapest, about a twentieth of Sonnet's price</option>
+        </select>
+        <p class="note">Each reply shows which model wrote it. Word glosses always use Haiku 5.5. If Claude can't answer, Ollama does.</p>
+      </div>
       <label for="llmUrl">Ollama URL</label>
       <input type="text" id="llmUrl" placeholder="https://wkjp.labxp.io/llm">
       <label for="llmModel">Model</label>
@@ -722,7 +737,7 @@
         <option value="ja">Japanese only (most accurate for Japanese)</option>
         <option value="auto">Auto-detect (if I speak English or mix)</option>
       </select>
-      <p class="note">Runs on base-station's GPU, so Talk only works while that PC is on.</p>
+      <p class="note">Claude needs the API key on the wkjp server; Ollama needs base-station on. The mic uses Whisper on KBU.</p>
     </section>
   </main>
 </div>
@@ -1087,7 +1102,7 @@ function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
 let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
-  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
+  llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
   pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
@@ -1675,16 +1690,17 @@ function renderStats(){
   });
 }
 
-/* ---------- Talk (Ollama) ---------- */
+/* ---------- Talk (Claude, or Ollama on base-station) ---------- */
 const LLM_DEFAULT=location.protocol==="file:"?"http://localhost:11434":location.origin+"/llm";
 const llmBase=()=>((S.llmUrl||LLM_DEFAULT).trim()||LLM_DEFAULT).replace(/\/+$/,"");
 const str={type:"string"};
-const REPLY_SCHEMA={type:"object",required:["reply","english"],properties:{reply:str,english:str}};
+// every object closed (additionalProperties:false): Claude's structured outputs require it
+const REPLY_SCHEMA={type:"object",additionalProperties:false,required:["reply","english"],properties:{reply:str,english:str}};
 // errors first so the model looks before it corrects
-const CHECK_SCHEMA={type:"object",required:["errors","correction","note"],
+const CHECK_SCHEMA={type:"object",additionalProperties:false,required:["errors","correction","note"],
   properties:{errors:{type:"array",items:str},correction:str,note:str}};
-const GLOSS_SCHEMA={type:"object",required:["words"],properties:{words:{type:"array",
-  items:{type:"object",required:["ja","reading","en"],properties:{ja:str,reading:str,en:str}}}}};
+const GLOSS_SCHEMA={type:"object",additionalProperties:false,required:["words"],properties:{words:{type:"array",
+  items:{type:"object",additionalProperties:false,required:["ja","reading","en"],properties:{ja:str,reading:str,en:str}}}}};
 const GLOSS_SYSTEM=[
   "List the words of the Japanese text, in order, for a learner's hover dictionary.",
   "ja: the word exactly as written. Keep a verb or adjective together with its endings (しました, 楽しかった, 行きたい). Particles are their own items. Skip punctuation.",
@@ -1745,6 +1761,50 @@ async function llmChat(messages,schema,temp){
   if(!r.ok) throw new Error(r.status===502||r.status===504?`can't reach Ollama on base-station (${r.status})`:"Ollama error "+r.status);
   return JSON.parse((await r.json()).message.content);
 }
+// Claude, through the wkjp server: nginx's /claude/ adds the API key, which
+// never reaches the browser, and answers 503 when there isn't one.
+const CLAUDE_BASE=location.protocol==="file:"?"":location.origin+"/claude";
+const CLAUDE_MODELS={"claude-sonnet-5-5":"Claude Sonnet 5.5","claude-opus-5-5":"Claude Opus 5.5","claude-haiku-5-5":"Claude Haiku 5.5"};
+const CLAUDE_GLOSS="claude-haiku-5-5";       // the hover dictionary is a simple job
+async function claudeChat(model,system,messages,schema,effort){
+  // turns must start with the learner's
+  const msgs=messages.slice();
+  while(msgs.length&&msgs[0].role!=="user") msgs.shift();
+  // Top-level cache_control caches through the last block: the long known-words
+  // prompt and the conversation so far are read back at a tenth of the price.
+  const body={model,max_tokens:4000,system,messages:msgs,cache_control:{type:"ephemeral"},
+    output_config:{effort,format:{type:"json_schema",schema}}};
+  const hdr={"Content-Type":"application/json","anthropic-version":"2026-10-21"};
+  // if Sonnet or Opus declines, the API retries on a fallback model in the same call
+  if(model!=="claude-haiku-5-5"){ body.fallbacks="default"; hdr["anthropic-beta"]="server-side-fallback-2026-07-01"; }
+  const r=await fetch(CLAUDE_BASE+"/v1/messages",{method:"POST",headers:hdr,body:JSON.stringify(body)});
+  if(!r.ok){
+    let m="";
+    try{ m=(await r.json()).error.message||""; }catch(e){}
+    throw new Error(r.status===503?"no Anthropic API key on the wkjp server":`error ${r.status}${m?": "+m:""}`);
+  }
+  const j=await r.json();
+  if(j.stop_reason==="refusal") throw new Error("declined to answer");
+  if(j.stop_reason==="max_tokens") throw new Error("answer was cut off");
+  const t=(j.content||[]).find(b=>b.type==="text");
+  if(!t) throw new Error("no answer");
+  return {out:JSON.parse(t.text),model:j.model||model};
+}
+// Talk's model calls: Claude unless Settings says Ollama, and Ollama whenever
+// Claude can't answer. kind: reply, check or gloss. Returns {out, by}.
+async function talkLLM(kind,system,messages,schema,temp){
+  let why="";
+  if(S.talkEngine!=="ollama"&&CLAUDE_BASE){
+    try{
+      const r=await claudeChat(kind==="gloss"?CLAUDE_GLOSS:S.claudeModel,system,messages,schema,kind==="check"?"medium":"low");
+      return {out:r.out,by:CLAUDE_MODELS[r.model]||r.model};
+    }catch(e){ why=e.message; }
+  }
+  try{
+    const out=await llmChat([{role:"system",content:system}].concat(messages),schema,temp);
+    return {out,by:S.llmModel+(why?` (Claude: ${why})`:"")};
+  }catch(e){ throw new Error(why?`Claude: ${why}; Ollama: ${e.message}`:e.message); }
+}
 const talkScroll=()=>{ const l=$("talkLog"); l.scrollTop=l.scrollHeight; };
 function talkAdd(cls,html){
   const d=document.createElement("div");
@@ -1753,19 +1813,19 @@ function talkAdd(cls,html){
   talkScroll();
   return d;
 }
-function talkReply(r){
+function talkReply(r,by){
   // the model sometimes appends the translation to the reply itself
   r.reply=r.reply.replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
   const spk=S.engine==="voicevox"?pickVvSpeaker():null;
   const d=talkAdd("msg ai",`<div class="ja">${esc(r.reply)}</div><div class="en hidden">${esc(r.english)}</div>
-    <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button></div>`);
+    <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button><span class="by">${esc(by||"")}</span></div>`);
   d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false,spk);
   d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true,spk);
   d.querySelector("[data-a=en]").onclick=()=>{ d.querySelector(".en").classList.toggle("hidden"); talkScroll(); };
   if(S.talkSpeak) speakText(r.reply,false,spk);
   prefetchSpeech(r.reply,spk);
-  llmChat([{role:"system",content:GLOSS_SYSTEM},{role:"user",content:r.reply}],GLOSS_SCHEMA,0)
-    .then(g=>glossWrap(d.querySelector(".ja"),r.reply,g.words)).catch(()=>{});
+  talkLLM("gloss",GLOSS_SYSTEM,[{role:"user",content:r.reply}],GLOSS_SCHEMA,0)
+    .then(g=>glossWrap(d.querySelector(".ja"),r.reply,g.out.words)).catch(()=>{});
 }
 // Wrap each glossed word in a span. The model's split doesn't always match
 // the text exactly, so anything it can't place stays plain.
@@ -1834,7 +1894,7 @@ async function talkSend(){
   const wait=talkAdd("msg ai","…");
   // check runs alongside the reply; its note slots in under the learner's line
   const ja=isJa(text);
-  llmChat([{role:"system",content:checkSystem(ja)},{role:"user",content:text}],CHECK_SCHEMA,0).then(c=>{
+  talkLLM("check",checkSystem(ja),[{role:"user",content:text}],CHECK_SCHEMA,0).then(({out:c})=>{
     if(!c.correction||c.correction.trim()===text) return;
     const d=document.createElement("div");
     d.className="fix";
@@ -1843,9 +1903,9 @@ async function talkSend(){
     talkScroll();
   }).catch(()=>{});
   try{
-    const out=await llmChat([{role:"system",content:talkSystem()}].concat(TALK.slice(-20)),REPLY_SCHEMA,0.7);
+    const {out,by}=await talkLLM("reply",talkSystem(),TALK.slice(-20),REPLY_SCHEMA,0.7);
     wait.remove();
-    talkReply(out);
+    talkReply(out,by);
     TALK.push({role:"assistant",content:out.reply});
   }catch(e){
     wait.remove();
@@ -3769,6 +3829,11 @@ $("llmUrl").value=S.llmUrl||LLM_DEFAULT;
 $("llmUrl").onchange=e=>{ S.llmUrl=e.target.value.trim(); saveS(); llmConnect(); };
 $("llmModel").innerHTML=`<option>${esc(S.llmModel)}</option>`;
 $("llmModel").onchange=e=>{ S.llmModel=e.target.value; saveS(); };
+$("talkEngine").value=S.talkEngine==="ollama"?"ollama":"claude";
+$("claudeModel").value=CLAUDE_MODELS[S.claudeModel]?S.claudeModel:"claude-sonnet-5-5";
+$("claudeOpts").classList.toggle("hidden",S.talkEngine==="ollama");
+$("talkEngine").onchange=e=>{ S.talkEngine=e.target.value; saveS(); $("claudeOpts").classList.toggle("hidden",S.talkEngine==="ollama"); };
+$("claudeModel").onchange=e=>{ S.claudeModel=e.target.value; saveS(); };
 const tn=$("talkNewRange");
 tn.value=S.talkNewPct;
 $("talkNewVal").textContent=S.talkNewPct+"%";
