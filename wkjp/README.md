@@ -121,7 +121,7 @@ is reachable only through the private gateway.
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
-- Each tab carries its Japanese word (練習, 復習, 話す, 会話, 統計, 設定),
+- Each tab carries its Japanese word (練習, 学習, 復習, 話す, 会話, 統計, 設定),
   beside the English on wide screens and above it below 700px, with the
   reading in the tooltip.
 - After a wrong answer the item's reading is spoken (setting, plus 🔊 / `p`).
@@ -135,6 +135,26 @@ is reachable only through the private gateway.
   wait in localStorage (`wkl_rv_outbox`) until a token that can write is
   pasted on the Reviews tab. "Send results to WaniKani" off makes it
   practice only.
+- The Lessons tab teaches the items WaniKani has unlocked
+  (`immediately_available_for_lessons`, up to the subscription's level):
+  - **Order and size:** WaniKani's, by level, then radicals, kanji and
+    vocabulary, then `lesson_position`. The batch is the account's
+    `lessons_batch_size` unless "Items per lesson" overrides it.
+  - **Pages:** parts (radicals of a kanji, kanji of a word), meaning, reading
+    and context, with WaniKani's mnemonics and hints (its `<kanji>`-style
+    markup turned into the item colours, everything else escaped), the
+    learner's own notes and synonyms, and the example sentences.
+  - **Audio:** vocabulary plays WaniKani's own recordings, one voice actor
+    throughout; kanji readings, sentences and any failed recording use the
+    app's voice. `lessons_autoplay_audio` plays it on arrival.
+  - **Quiz:** the Reviews card and engine, moved onto the Lessons tab, with
+    voice or typing and misses coming back. It won't start while a review
+    session is open, and Reviews won't start during it.
+  - **Starting:** each item passed is `PUT /v2/assignments/<id>/start`, as
+    WaniKani asks for lesson quizzes instead of reviews. That needs
+    `assignments:start` on the token; until then the items wait in
+    localStorage (`wkl_ls_outbox`) with a box to paste a token that can.
+    A 409/422 (already started elsewhere) is dropped with a note.
 - The Speak tab's pronunciation check plays words one at a time:
   - **Word order:** words you type first, then readings your reviews
     misheard (`wkl_voice_misses`, the last 30), then random learned
