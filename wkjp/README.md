@@ -38,8 +38,10 @@ is reachable only through the private gateway.
     always use Haiku 5.5.
   - **Requests:** structured outputs (the same JSON schemas Ollama gets, all
     objects closed), effort `low` for replies and glosses and `medium` for
-    the sentence check, and top-level `cache_control`, so the known-words
-    prompt and the chat so far are read from cache. Sonnet and Opus calls
+    the sentence check, and two cache points: one on the system prompt (the
+    known-words list), so a new chat or dictionary word reuses it, and
+    top-level `cache_control`, so the chat so far is read from cache too.
+    Sonnet and Opus calls
     opt into server-side fallback (`fallbacks: "default"`).
   - **Fallback:** if Claude can't answer (no key, an error, a refusal),
     Ollama does, and the reply's label says why.
@@ -152,9 +154,32 @@ is reachable only through the private gateway.
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
-- Each tab carries its Japanese word (練習, 学習, 復習, 話す, 会話, 統計, 設定),
-  beside the English on wide screens and above it below 700px, with the
-  reading in the tooltip.
+- Each tab carries its Japanese word (練習, 学習, 復習, 話す, 会話, 辞書, 統計,
+  設定) above the English, with the reading in the tooltip. Eight tabs don't
+  fit side by side, so the stack is used at every width. Below 480px only the
+  Japanese shows; the English stays for screen readers.
+- The 辞書 Dictionary tab is a Japanese-Japanese dictionary written, as far
+  as it can be, in words the learner already knows:
+  - **Writing:** the Talk model (Settings → Conversation partner; Claude,
+    or Ollama) writes a 国語辞典-style entry: up to 3 senses, short
+    plain-form definitions, an example each, an English gloss behind a
+    toggle. The system prompt lists up to 3,000 learned words, newest first,
+    and is a cache point of its own, so each lookup reads it from cache.
+  - **Checking:** definitions come back as token lists (surface, reading,
+    dictionary form), so the app checks each kanji word against the learned
+    set itself. Kana-only words count as grammar. If under 90% of the
+    definitions' kanji words are known, the model gets one rewrite request
+    naming the unknown ones; the draft shows meanwhile, and the rewrite is
+    used only if it's better.
+  - **Reading:** unknown words get a dotted underline and their reading
+    above; known ones go without ("All readings" shows them). Any kanji word
+    can be tapped, or focused and Enter, to look it up, with ◂ back to the
+    previous entry. Lesson Meaning pages and review answers link to it.
+  - **Cost and cache:** entries are kept in this browser (`wkl_dict`, the
+    newest 400; `wkl_dict_recent` for the chips), so a second look-up is
+    free. Live, a new word took 4–9 s and about one US cent on Sonnet 5.5.
+    Input can be kanji, kana, romaji or English; the model picks the word
+    meant.
 - After a wrong answer the item's reading is spoken (setting, plus 🔊 / `p`).
   The mic stays off while it plays, so it doesn't hear itself.
 - "Let me check the results before they're sent" (on by default) holds

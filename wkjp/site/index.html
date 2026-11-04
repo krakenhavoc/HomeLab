@@ -35,21 +35,24 @@
   #dataChip{font-size:.78rem; color:var(--muted); background:var(--card); border:1px solid var(--line); padding:4px 10px; border-radius:99px;}
   #vvQuickSpeaker{width:auto; max-width:190px; font-size:.78rem; padding:4px 8px; border-radius:99px; background:var(--card); color:var(--text); border:1px solid var(--line);}
   nav{display:flex; gap:2px; margin-bottom:16px; padding:4px; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow-x:auto;}
+  /* the word above its English: eight tabs don't fit side by side */
   nav button{
-    flex:1; display:flex; align-items:baseline; justify-content:center; gap:4px;
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; line-height:1.25;
     background:none; color:var(--muted); border:none; white-space:nowrap;
-    padding:8px 2px; border-radius:9px; cursor:pointer; font:inherit; font-size:.8rem; font-weight:700;
+    padding:6px 3px; border-radius:9px; cursor:pointer; font:inherit; font-size:.76rem; font-weight:700;
   }
-  nav .tabJa{font-family:var(--mincho); font-size:1.02rem; font-weight:700; color:var(--text); opacity:.8;}
+  nav .tabJa{font-family:var(--mincho); font-size:1.12rem; font-weight:700; color:var(--text); opacity:.8;}
   nav button:hover{color:var(--text);}
   nav button:hover .tabJa{opacity:1;}
   nav button.active{background:var(--card2); color:var(--text); box-shadow:inset 0 -2px 0 var(--accent);}
   nav button.active .tabJa{color:var(--accent); opacity:1;}
-  /* narrow: the word above its English */
-  @media (max-width:700px){
-    nav button{flex-direction:column; align-items:center; gap:0; line-height:1.25; padding:6px 4px;}
-    nav .tabJa{font-size:1.12rem;}
+  /* phones: the Japanese alone (English stays for screen readers and in the tooltip) */
+  @media (max-width:480px){
+    nav .tabEn{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+    nav button{padding:8px 2px;}
+    nav .tabJa{font-size:1.04rem;}
   }
+  @media (max-width:360px){ nav button{padding:8px 1px;} nav .tabJa{font-size:.92rem;} }
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
   .card h2{font-size:1.02rem; margin-bottom:10px;}
   .card p{font-size:.9rem; color:var(--muted);}
@@ -315,9 +318,41 @@
   .picEmo button:hover,.picEmo button:focus-visible{border-color:var(--accent);}
   #picStatus{font-size:.84rem; color:var(--muted); min-height:1.3em;}
   #picStatus.bad{color:var(--red);}
+  /* dictionary */
+  .dictSearch{display:flex; gap:8px;}
+  .dictSearch input{flex:1; font-size:1.15rem;}
+  .dictRecent{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .dictRecent button{background:var(--bg); border:1px solid var(--line); color:var(--text); border-radius:99px; padding:3px 11px;
+    cursor:pointer; font-family:var(--mincho); font-weight:700; font-size:.95rem;}
+  .dictRecent button:hover{border-color:var(--soft);}
+  .dictHead{display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 14px;}
+  .dictHead .hw{font-family:var(--mincho); font-weight:700; font-size:2.3rem; line-height:1.2;}
+  .dictHead .rd{font-size:1.1rem; color:var(--soft);}
+  .dictHead .pos{font-size:.8rem; color:var(--muted); border:1px solid var(--line); border-radius:6px; padding:0 7px;}
+  .dictHead .grow{flex:1;}
+  .dictCov{font-size:.8rem; color:var(--muted); margin:6px 0 4px;}
+  .dictCov .bar{display:inline-block; vertical-align:middle; width:90px; height:6px; background:var(--bg); border-radius:99px; overflow:hidden; margin-right:6px;}
+  .dictCov .bar span{display:block; height:100%; background:var(--green);}
+  .dictSenses{margin:12px 0 0 1.4em; padding:0;}
+  .dictSenses li{margin:0 0 14px; padding-left:4px;}
+  .dictSenses li::marker{color:var(--accent); font-weight:700;}
+  .dictDef{font-size:1.18rem; line-height:2.1;}
+  .dictEx{margin-top:4px; padding:4px 0 4px 12px; border-left:3px solid var(--line); font-size:1.02rem; line-height:2; color:var(--text);}
+  .dictEx .btn{margin-left:6px; vertical-align:middle;}
+  .dictEn{font-size:.85rem; color:var(--muted); margin-top:2px;}
+  .dictEntry:not(.en) .dictEn{display:none;}
+  .dw{cursor:pointer; border-radius:3px;}
+  .dw:hover,.dw:focus-visible{background:#33407a; outline:none;}
+  .dw.new{border-bottom:1px dotted var(--soft);}
+  .dw.hw{color:var(--accent);}
+  .dw rt{font-size:.55em; color:var(--soft); font-family:var(--sans);}
+  /* known words go without readings unless asked for */
+  .dictEntry:not(.allrd) .dw:not(.new) rt{display:none;}
+  .dictNote{margin-top:10px; font-size:.95rem;}
+  .dictFoot{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; font-size:.75rem; color:var(--muted);}
+  .dictFoot .grow{flex:1;}
   #lsMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:8px; color:var(--amber);}
 
-  @media (max-width:480px){ nav button{font-size:.72rem; padding:6px 2px;} }
   @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important; transition:none !important;} }
 </style>
 </head>
@@ -334,13 +369,14 @@
   <div id="voiceWarn" class="warn hidden"></div>
 
   <nav>
-    <button id="tabPractice" class="active" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span>Practice</button>
-    <button id="tabLessons" title="学習 (がくしゅう)"><span class="tabJa" lang="ja">学習</span>Lessons</button>
-    <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span>Reviews</button>
-    <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span>Speak</button>
-    <button id="tabTalk" title="会話 (かいわ)"><span class="tabJa" lang="ja">会話</span>Talk</button>
-    <button id="tabStats" title="統計 (とうけい)"><span class="tabJa" lang="ja">統計</span>Stats</button>
-    <button id="tabSettings" title="設定 (せってい)"><span class="tabJa" lang="ja">設定</span>Settings</button>
+    <button id="tabPractice" class="active" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span><span class="tabEn">Practice</span></button>
+    <button id="tabLessons" title="学習 (がくしゅう)"><span class="tabJa" lang="ja">学習</span><span class="tabEn">Lessons</span></button>
+    <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span><span class="tabEn">Reviews</span></button>
+    <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span><span class="tabEn">Speak</span></button>
+    <button id="tabTalk" title="会話 (かいわ)"><span class="tabJa" lang="ja">会話</span><span class="tabEn">Talk</span></button>
+    <button id="tabDict" title="辞書 (じしょ)"><span class="tabJa" lang="ja">辞書</span><span class="tabEn">Dictionary</span></button>
+    <button id="tabStats" title="統計 (とうけい)"><span class="tabJa" lang="ja">統計</span><span class="tabEn">Stats</span></button>
+    <button id="tabSettings" title="設定 (せってい)"><span class="tabJa" lang="ja">設定</span><span class="tabEn">Settings</span></button>
   </nav>
 
   <!-- ============ PRACTICE VIEW ============ -->
@@ -476,6 +512,29 @@
         <button class="btn primary" id="btnLsMore">Next lesson ▸</button>
       </div>
     </section>
+  </main>
+
+  <!-- ============ DICTIONARY VIEW ============ -->
+  <main id="viewDict" class="hidden">
+    <section class="card">
+      <h2>辞書 <span style="color:var(--muted); font-weight:500;">Japanese dictionary in words you know</span></h2>
+      <form class="dictSearch" id="dictForm">
+        <input type="text" id="jishoInput" lang="ja" placeholder="言葉 (kanji, kana, romaji or English)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="word to look up">
+        <button class="btn primary" type="submit">調べる</button>
+      </form>
+      <div class="dictRecent" id="dictRecent"></div>
+      <details>
+        <summary>How it works</summary>
+        <li>Definitions are written in simple Japanese, from the WaniKani words you've learned where possible. Words you haven't learned get their reading above them and a dotted underline.</li>
+        <li>Tap any kanji word to look that up too; ◂ goes back.</li>
+        <li>The bar shows how many kanji words in the definitions you already know. If too many are new, the definitions are rewritten once with words you know.</li>
+        <li>Written by the Talk model (Settings → Conversation partner) and saved in this browser, so looking a word up again is free.</li>
+      </details>
+    </section>
+    <section class="card hidden" id="dictCard">
+      <div id="dictBody"></div>
+    </section>
+    <div id="dictErr" class="err hidden"></div>
   </main>
 
   <!-- ============ REVIEWS VIEW ============ -->
@@ -1770,9 +1829,12 @@ async function claudeChat(model,system,messages,schema,effort){
   // turns must start with the learner's
   const msgs=messages.slice();
   while(msgs.length&&msgs[0].role!=="user") msgs.shift();
-  // Top-level cache_control caches through the last block: the long known-words
-  // prompt and the conversation so far are read back at a tenth of the price.
-  const body={model,max_tokens:4000,system,messages:msgs,cache_control:{type:"ephemeral"},
+  // Two cache points: the system prompt (the long known-words list), so a new
+  // chat or another dictionary word reuses it, and top-level cache_control
+  // through the last block, so the conversation so far is reused too. Both
+  // are read back at a tenth of the price; a short prompt simply isn't cached.
+  const body={model,max_tokens:4000,system:[{type:"text",text:system,cache_control:{type:"ephemeral"}}],
+    messages:msgs,cache_control:{type:"ephemeral"},
     output_config:{effort,format:{type:"json_schema",schema}}};
   const hdr={"Content-Type":"application/json","anthropic-version":"2026-10-21"};
   // if Sonnet or Opus declines, the API retries on a fallback model in the same call
@@ -2535,7 +2597,8 @@ function rvInfoHTML(s){
   const other=s.readings.filter(r=>!r.acc).map(r=>r.r).join("、");
   return `<div><b>Meaning</b>${esc(s.meanings.join(", "))}</div>`+
     (rd?`<div><b>Reading</b>${esc(rd)}${other?` <span class="note">(also ${esc(other)})</span>`:""}</div>`:"")+
-    `<div class="note">${TYPE_NAME[s.type]} · level ${s.level}</div>`;
+    `<div class="note">${TYPE_NAME[s.type]} · level ${s.level}`+
+      (s.chars&&s.type!=="radical"?` · <button class="picBtn" data-dict="${esc(s.chars)}">look it up in the 辞書</button>`:"")+`</div>`;
 }
 function rvWrong(heard,gaveUp,spoken){
   rvRecVerdict(gaveUp?"gave up":"wrong");
@@ -2903,6 +2966,171 @@ async function picChoose(pick){
   picRedraw(s);
 }
 
+/* ---------- Dictionary (辞書): definitions in the learner's own words ---------- */
+// The Talk model writes a 国語辞典-style entry from the learner's known words,
+// already split into words, so the app can mark the ones they haven't learned
+// (reading above, dotted underline) and count how much of the definition they
+// can read. Too many unknown words and it gets one rewrite. Entries are kept in
+// this browser (wkl_dict), so looking a word up again costs nothing.
+const DICT_TOK={type:"array",items:{type:"object",additionalProperties:false,required:["ja","reading","base"],properties:{ja:str,reading:str,base:str}}};
+const DICT_SCHEMA={type:"object",additionalProperties:false,required:["headword","reading","pos","senses","note"],properties:{
+  headword:str,reading:str,pos:str,note:str,
+  senses:{type:"array",items:{type:"object",additionalProperties:false,required:["def","ex","en","ex_en"],
+    properties:{def:DICT_TOK,ex:DICT_TOK,en:str,ex_en:str}}}}};
+let DICT_CACHE=load("wkl_dict",{}),DICT_RECENT=load("wkl_dict_recent",[]);
+let DICT=null,dictSeq=0;                 // DICT: {entry, by, q, stack:[earlier entries]}
+const dictKnown=()=>new Set(getPools().words.map(w=>w.c));
+function dictSystem(){
+  // newest first, as in Talk; up to 3000 words (~10K tokens, cached after the first lookup)
+  const words=getPools().words.slice().sort((a,b)=>b.l-a.l).slice(0,3000).map(w=>w.c);
+  return [
+    `You write entries for a Japanese-Japanese learner's dictionary (国語辞典) for a learner at WaniKani level ${wkLevel()}.`,
+    "Write like a children's 国語辞典: short plain-form definitions (〜こと。〜もの。〜様子。), at most 3 senses, the common ones first.",
+    "Build every definition from the learner's known words below plus kana-only grammar words (particles, する, ある, いる, こと, もの, とても...). When a sense truly needs a word they don't know, use it, written normally.",
+    "Never use the headword itself, or a word containing it, in its own definitions.",
+    "ex: one short, natural example sentence for the sense, using the headword; otherwise known words.",
+    "def and ex are token lists: the sentence split into words, in order, covering every character including particles and punctuation, so that joining the ja fields gives the sentence exactly. For each token: ja = the text as written; reading = its hiragana if it contains kanji, else \"\"; base = its dictionary form if it is conjugated (行った → 行く), else \"\".",
+    "en: a short English gloss of the sense. ex_en: English for the example.",
+    "headword: the word in its usual written form. reading: hiragana. pos: part of speech in Japanese (名詞, 動詞, い形容詞, な形容詞, 副詞, ...).",
+    "note: one short line in simple Japanese about how the word is used, or \"\".",
+    "If the lookup is English or romaji, choose the Japanese word the learner most likely means. If it is not a word, give the closest real word.",
+    words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words."
+  ].join("\n");
+}
+// kanji words in the definitions (examples may use the headword), known or not
+function dictCount(entry,known){
+  let n=0,k=0;
+  const miss=new Set();
+  for(const s of entry.senses) for(const t of s.def||[]){
+    if(!hasKanji(t.ja||"")) continue;
+    n++;
+    if(known.has(t.ja)||known.has(t.base)) k++; else miss.add(t.base||t.ja);
+  }
+  return {n,k,miss:[...miss]};
+}
+function dictValid(e){
+  return e&&typeof e.headword==="string"&&e.headword&&Array.isArray(e.senses)&&e.senses.length&&
+    e.senses.every(s=>Array.isArray(s.def)&&Array.isArray(s.ex));
+}
+async function dictFetch(q,onDraft){
+  const known=dictKnown(),sys=dictSystem(),msgs=[{role:"user",content:"Look up: "+q}];
+  let {out,by}=await talkLLM("dict",sys,msgs,DICT_SCHEMA,0.3);
+  if(!dictValid(out)) throw new Error("the dictionary entry came back incomplete");
+  let c=dictCount(out,known),rewritten=false;
+  // too many words they don't know: one rewrite, used only if it reads better.
+  // The draft shows meanwhile.
+  if(c.miss.length&&c.k<0.9*c.n){
+    if(onDraft) onDraft({entry:out,by,rewritten:false,pending:true});
+    try{
+      const r=await talkLLM("dict",sys,msgs.concat({role:"assistant",content:JSON.stringify(out)},
+        {role:"user",content:`These words in the definitions aren't among the learner's known words: ${c.miss.join("、")}. Where a known word or a simpler phrase can say the same thing, use it instead; keep a word only if nothing known can express it. Give the whole entry again.`}),DICT_SCHEMA,0.3);
+      const c2=dictValid(r.out)?dictCount(r.out,known):null;
+      if(c2&&(c2.n?c2.k/c2.n:1)>(c.n?c.k/c.n:1)){ out=r.out; by=r.by; c=c2; rewritten=true; }
+    }catch(e){}
+  }
+  return {entry:out,by,rewritten,at:Date.now()};
+}
+function dictRemember(q,res){
+  const keys=[q,res.entry.headword];
+  keys.forEach(k=>{ DICT_CACHE[k]=res; });
+  // the newest 400 entries
+  const all=Object.entries(DICT_CACHE).sort((a,b)=>b[1].at-a[1].at);
+  if(all.length>400) DICT_CACHE=Object.fromEntries(all.slice(0,400));
+  store("wkl_dict",DICT_CACHE);
+  DICT_RECENT=[res.entry.headword].concat(DICT_RECENT.filter(w=>w!==res.entry.headword)).slice(0,12);
+  store("wkl_dict_recent",DICT_RECENT);
+  dictRecentUI();
+}
+function dictRecentUI(){
+  $("dictRecent").innerHTML=DICT_RECENT.map(w=>`<button data-q="${esc(w)}" lang="ja">${esc(w)}</button>`).join("");
+}
+// a look-up; from inside an entry, the current one goes on the back stack
+async function dictLookup(q,opt={}){
+  q=(q||"").trim();
+  if(!q) return;
+  const my=++dictSeq,err=$("dictErr");
+  err.classList.add("hidden");
+  // English and romaji go to the model as typed: it picks the word meant
+  if(!isJa(q)) q=q.toLowerCase();
+  const stack=opt.push&&DICT?DICT.stack.concat({entry:DICT.entry,by:DICT.by,q:DICT.q,rewritten:DICT.rewritten}):opt.stack||[];
+  let res=!opt.fresh&&Object.hasOwn(DICT_CACHE,q)?DICT_CACHE[q]:null;
+  $("dictCard").classList.remove("hidden");
+  if(!res){
+    $("dictBody").innerHTML=`<p class="dictLoading">${esc(q)} を調べています…</p>`;
+    try{
+      res=await dictFetch(q,d=>{
+        if(my!==dictSeq) return;
+        DICT={...d,q,stack};
+        dictRender();
+      });
+    }
+    catch(e){
+      if(my!==dictSeq) return;
+      err.textContent="⚠ "+(e.message||"couldn't look that up")+" (Settings → Conversation partner)";
+      err.classList.remove("hidden");
+      if(DICT) dictRender(); else $("dictCard").classList.add("hidden");
+      return;
+    }
+    if(my!==dictSeq) return;
+    dictRemember(q,res);
+  }
+  DICT={...res,q,stack};
+  $("jishoInput").value=res.entry.headword;
+  dictRender();
+}
+function dictTokens(toks,known,hw){
+  return (toks||[]).map(t=>{
+    const ja=t.ja||"";
+    if(!hasKanji(ja)) return esc(ja);
+    const k=known.has(ja)||known.has(t.base),h=ja===hw||t.base===hw;
+    return `<span class="dw${k?"":" new"}${h?" hw":""}" tabindex="0" role="link" data-q="${esc(t.base||ja)}"`+
+      ` title="${esc(t.reading||"")}"><ruby>${esc(ja)}<rt>${esc(t.reading||"")}</rt></ruby></span>`;
+  }).join("");
+}
+function dictRender(){
+  if(!DICT) return;
+  const e=DICT.entry,known=dictKnown(),c=dictCount(e,known),pct=c.n?Math.round(100*c.k/c.n):100;
+  const back=DICT.stack.length?DICT.stack[DICT.stack.length-1].entry.headword:"";
+  $("dictBody").innerHTML=`<div class="dictEntry" id="dictEntry">`+
+    (back?`<button class="btn small" id="btnDictBack" title="back">◂ ${esc(back)}</button>`:"")+
+    `<div class="dictHead"><span class="hw" lang="ja">${esc(e.headword)}</span><span class="rd" lang="ja">${esc(e.reading)}</span>`+
+      (e.pos?`<span class="pos" lang="ja">${esc(e.pos)}</span>`:"")+`<span class="grow"></span>`+
+      `<button class="btn small" id="btnDictSay" title="hear it">🔊</button></div>`+
+    `<div class="dictCov"><span class="bar"><span style="width:${pct}%"></span></span>`+
+      (c.n?`${c.k} of ${c.n} kanji words in the definitions are ones you know`:"The definitions use no kanji words")+
+      (DICT.rewritten?" (rewritten once to use more of them)":"")+
+      (DICT.pending?". Rewriting with words you know…":"")+`</div>`+
+    `<ol class="dictSenses">`+e.senses.map((s,i)=>`<li><div class="dictDef" lang="ja">${dictTokens(s.def,known,e.headword)}</div>`+
+      `<div class="dictEn">${esc(s.en||"")}</div>`+
+      ((s.ex||[]).length?`<div class="dictEx" lang="ja">${dictTokens(s.ex,known,e.headword)}<button class="btn small" data-say="${i}" title="hear the example">🔊</button>`+
+        `<div class="dictEn">${esc(s.ex_en||"")}</div></div>`:"")+`</li>`).join("")+`</ol>`+
+    (e.note?`<div class="dictNote" lang="ja">${esc(e.note)}</div>`:"")+
+    `<div class="dictFoot"><button class="btn small" id="btnDictEn">English</button><button class="btn small" id="btnDictRd">All readings</button>`+
+      `<span class="grow"></span><span>${esc(DICT.by||"")}</span><button class="btn small" id="btnDictAgain" title="write this entry again">Rewrite</button></div>`+
+    `</div>`;
+  const ent=$("dictEntry");
+  $("btnDictSay").onclick=()=>speak(e.reading||e.headword);
+  $("btnDictEn").onclick=()=>ent.classList.toggle("en");
+  $("btnDictRd").onclick=()=>ent.classList.toggle("allrd");
+  $("btnDictAgain").onclick=()=>dictLookup(DICT.q,{fresh:true,stack:DICT.stack});
+  if($("btnDictBack")) $("btnDictBack").onclick=()=>{
+    const prev=DICT.stack[DICT.stack.length-1];
+    DICT={...prev,stack:DICT.stack.slice(0,-1)};
+    $("jishoInput").value=DICT.entry.headword;
+    dictRender();
+  };
+  ent.querySelectorAll("[data-say]").forEach(b=>{
+    const s=e.senses[+b.dataset.say];
+    b.onclick=()=>speak((s.ex||[]).map(t=>t.ja).join(""));
+  });
+}
+// from elsewhere in the app: open the tab and look the word up
+function dictOpen(q){
+  $("tabDict").click();
+  $("jishoInput").value=q;
+  dictLookup(q);
+}
+
 /* ---------- Lessons (WaniKani's new items, taught then quizzed) ---------- */
 // Teaching is this tab's own cards; the quiz borrows the Reviews card and engine
 // (RV with lesson:true). Passing an item's quiz PUTs /assignments/<id>/start:
@@ -3058,7 +3286,8 @@ function lsPageHTML(it,k){
     return picHTML(s)+`<div class="big">${esc(s.pm)}</div>`+
       (alt.length?`<div class="alt">Also accepted: ${esc(alt.join(", "))}</div>`:"")+
       (syn.length?`<div class="alt">Your synonyms: ${esc(syn.join(", "))}</div>`:"")+
-      `<h3>Mnemonic</h3><div>${wkMarkup(d.meaning_mnemonic)}</div>`+hint(d.meaning_hint)+note(m.meaning_note,"Your note");
+      `<h3>Mnemonic</h3><div>${wkMarkup(d.meaning_mnemonic)}</div>`+hint(d.meaning_hint)+note(m.meaning_note,"Your note")+
+      (s.chars&&s.type!=="radical"?`<p style="margin-top:10px;"><button class="picBtn" data-dict="${esc(s.chars)}">${esc(s.chars)} in the 辞書</button></p>`:"");
   }
   if(k==="reading"){
     let rows;
@@ -3498,7 +3727,7 @@ function pcReset(){
 function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 
 /* ---------- tabs & wiring ---------- */
-const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
     const was=Object.values(views).find(v=>!$(v).classList.contains("hidden")),to=views[t];
@@ -3729,6 +3958,18 @@ $("picSearch").onsubmit=e=>{
   const q=$("picQuery").value.trim();
   if(q) picSearch(/[぀-ヿ一-鿿]/.test(q)?q:"",q);
 };
+
+/* dictionary */
+dictRecentUI();
+$("dictForm").onsubmit=e=>{ e.preventDefault(); dictLookup($("jishoInput").value); };
+$("dictRecent").onclick=e=>{ const b=e.target.closest("[data-q]"); if(b) dictLookup(b.dataset.q); };
+$("dictBody").addEventListener("click",e=>{ const w=e.target.closest(".dw"); if(w) dictLookup(w.dataset.q,{push:true}); });
+$("dictBody").addEventListener("keydown",e=>{
+  const w=e.target.closest&&e.target.closest(".dw");
+  if(w&&(e.key==="Enter"||e.key===" ")){ e.preventDefault(); dictLookup(w.dataset.q,{push:true}); }
+});
+// "辞書" links on lesson pages and review answers
+document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-dict]"); if(b) dictOpen(b.dataset.dict); });
 
 /* lessons tab */
 lsBatchUI();
