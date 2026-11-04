@@ -19,21 +19,51 @@ is reachable only through the private gateway.
 
 ## Notes
 
-- No secrets, and no server-side state apart from pronunciation check
-  recordings (below). The WaniKani token and study stats live in the
-  browser's localStorage, per origin, and API calls go straight from the
-  browser to WaniKani.
+- One secret, the Anthropic API key for Talk, kept on the VM and never sent
+  to the browser (below). Server-side state is that, the pronunciation
+  check recordings and picture choices. The WaniKani token and study stats
+  live in the browser's localStorage, per origin, and API calls go straight
+  from the browser to WaniKani.
 - VOICEVOX is not published. nginx proxies an allowlist of endpoints under
   `/vv/` and drops the `Origin` header, which the engine would otherwise 403.
 - `/vv/` goes to VOICEVOX on KBU (192.168.1.201:50021, Quadlet `voicevox`)
   first: ~0.4 s per sentence there vs ~10 s on this VM, which is too slow for
   Talk's read-aloud. The local engine is the backup when KBU is unreachable.
-- The Talk tab chats through `/llm/`, which nginx proxies to Ollama on
+- The Talk tab chats with Claude by default (Settings → "Talk with"), through
+  `/claude/v1/messages`. nginx forwards only that POST to
+  `api.anthropic.com` (TLS verified) and adds the API key itself, so the
+  browser never has it.
+  - **Models:** Sonnet 5.5 by default; Opus 5.5 or Haiku 5.5 from Settings.
+    Each reply is labelled with the model that wrote it. The hover glosses
+    always use Haiku 5.5.
+  - **Requests:** structured outputs (the same JSON schemas Ollama gets, all
+    objects closed), effort `low` for replies and glosses and `medium` for
+    the sentence check, and top-level `cache_control`, so the known-words
+    prompt and the chat so far are read from cache. Sonnet and Opus calls
+    opt into server-side fallback (`fallbacks: "default"`).
+  - **Fallback:** if Claude can't answer (no key, an error, a refusal),
+    Ollama does, and the reply's label says why.
+  - **The key:** `/opt/wkjp/secrets/claude.conf` on the VM, root-only, one
+    line `set $claude_key "sk-ant-...";`. Without it `/claude/` answers 503.
+    Use a key from its own Console workspace with a monthly spend limit:
+    the site is LAN-only, but anyone who can reach it can spend from it.
+    To install or change it, run this in your own terminal (not through
+    Claude Code, so the key stays out of any transcript):
+
+    ```sh
+    read -rsp 'Anthropic API key: ' K; echo
+    printf 'set $claude_key "%s";\n' "$K" | ssh <you>@192.168.201.20 \
+      'sudo sh -c "umask 077; mkdir -p /opt/wkjp/secrets; cat > /opt/wkjp/secrets/claude.conf" &&
+       cd /opt/wkjp/live && sudo docker compose exec -T app nginx -t &&
+       sudo docker compose exec -T app nginx -s reload'
+    unset K
+    ```
+- Ollama is the alternative and the fallback: `/llm/` proxies to Ollama on
   base-station (192.168.1.18:11434, `~/llm/local-compose.yaml` there). Only
-  `/api/chat` and `/api/tags` pass. When base-station is off, Talk shows an
-  error and the rest of the app is unaffected.
-- Each Talk reply gets a follow-up `/api/chat` call that splits it into words
-  with reading and meaning, for the hover/tap glosses. Kanji words not in the
+  `/api/chat` and `/api/tags` pass. When both are unavailable, Talk shows
+  both reasons and the rest of the app is unaffected.
+- Each Talk reply gets a follow-up call that splits it into words with
+  reading and meaning, for the hover/tap glosses. Kanji words not in the
   learned set get a dotted underline.
 - Talk's prompt lists the learner's newest ~800 learned words, plus, when
   Settings → "New words in Talk" is above 0% (default 15%), the nearest ~150

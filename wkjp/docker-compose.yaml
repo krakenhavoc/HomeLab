@@ -19,6 +19,9 @@ services:
       - /opt/wkjp/rec:/srv/rec
       # Picture choices for items (nginx /pics/picks.json), kept the same way.
       - /opt/wkjp/pics:/srv/pics
+      # The Anthropic API key for Talk (nginx /claude/), placed by hand on the
+      # VM and never in git; see the README.
+      - /opt/wkjp/secrets:/etc/nginx/secrets:ro
     depends_on:
       - voicevox
 

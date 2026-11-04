@@ -12,6 +12,7 @@ REPO_DIR=/opt/wkjp/repo
 LIVE_DIR=/opt/wkjp/live
 REC_DIR=/opt/wkjp/rec
 PICS_DIR=/opt/wkjp/pics
+SECRETS_DIR=/opt/wkjp/secrets
 SRC_DIR="${REPO_DIR}/wkjp"
 
 log() { echo "[wkjp-sync] $*"; }
@@ -67,6 +68,12 @@ find "${REC_DIR}" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +90 -exec r
 mkdir -p "${PICS_DIR}"
 chown 101:101 "${PICS_DIR}"
 chmod 0750 "${PICS_DIR}"
+
+# Secrets nginx includes (the Anthropic API key for Talk), placed by hand.
+# Root only: the nginx master reads config as root. The files are left alone.
+mkdir -p "${SECRETS_DIR}"
+chown root:root "${SECRETS_DIR}"
+chmod 0700 "${SECRETS_DIR}"
 
 cd "${LIVE_DIR}"
 # Bounded: a hung registry must not block the sync.
