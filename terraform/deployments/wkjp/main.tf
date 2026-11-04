@@ -37,7 +37,9 @@ resource "proxmox_virtual_environment_vm" "wkjp" {
 
   cpu {
     cores = var.wkjp_host.cpu_cores
-    type  = "x86-64-v2-AES"
+    # host passes AVX2/FMA through: the ReazonSpeech (sherpa-onnx int8) and
+    # VOICEVOX fallback engines are CPU-bound. Set in Proxmox first, 2026-11-04.
+    type = "host"
   }
 
   memory {
