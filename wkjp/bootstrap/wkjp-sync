@@ -12,6 +12,7 @@ REPO_DIR=/opt/wkjp/repo
 LIVE_DIR=/opt/wkjp/live
 REC_DIR=/opt/wkjp/rec
 PICS_DIR=/opt/wkjp/pics
+STATS_DIR=/opt/wkjp/stats
 SECRETS_DIR=/opt/wkjp/secrets
 SRC_DIR="${REPO_DIR}/wkjp"
 
@@ -68,6 +69,11 @@ find "${REC_DIR}" -mindepth 1 -maxdepth 1 -type d -name '20*' -mtime +90 -exec r
 mkdir -p "${PICS_DIR}"
 chown 101:101 "${PICS_DIR}"
 chmod 0750 "${PICS_DIR}"
+
+# Practice-time log: nginx writes one time-<id>.json per browser. Never pruned.
+mkdir -p "${STATS_DIR}"
+chown 101:101 "${STATS_DIR}"
+chmod 0750 "${STATS_DIR}"
 
 # Secrets nginx includes (the Anthropic API key for Talk), placed by hand.
 # Root only: the nginx master reads config as root. The files are left alone.

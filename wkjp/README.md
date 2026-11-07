@@ -278,6 +278,22 @@ is reachable only through the private gateway.
   - The chooser searches Japanese Wikipedia for the word and Wikimedia
     Commons for the meaning, or for whatever is typed. Each photo links to
     its file page for the author and licence.
+- The Stats tab's **Practice time** card is a rough log of active time:
+  - **Counting:** a 15 s tick adds to today's total for the open tab's
+    activity (Lessons, Reviews, Talk, Speak, Dictionary, Practice; not Stats
+    or Settings). It counts only while the page is visible, and only if the
+    learner has pressed, clicked, scrolled or touched in the last 2 minutes,
+    or the mic is open or audio is playing (hands-free Reviews, Live mode).
+  - **Storage:** each browser has a random id (`wkl_device`) and its own
+    file on the VM, `/opt/wkjp/stats/time-<id>.json` (nginx `/stats/`, GET
+    and PUT only for that name pattern, 256 KB cap), saved at most once a
+    minute and when the page hides. No browser writes another's file, so
+    there's nothing to merge or lose. The Stats tab reads the listing
+    (`/stats/`, autoindex JSON) and adds every browser up. Not pruned; a
+    browser keeps two years.
+  - **Shown:** today, the last 7 days, all time, a streak of days with 5+
+    minutes, minutes a day for 14 days (hover or focus a bar for the day by
+    activity), and the last 7 days by activity.
 - nginx gzips JSON, CSS, JS and SVG (and HTML, always): `index.html` and
   `emoji.json` are a few hundred KB each.
 - The Speak tab's pronunciation check plays words one at a time:
