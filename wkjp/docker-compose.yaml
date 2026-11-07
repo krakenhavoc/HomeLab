@@ -21,6 +21,8 @@ services:
       - /opt/wkjp/pics:/srv/pics
       # Practice-time log, one file per browser (nginx /stats/), kept the same way.
       - /opt/wkjp/stats:/srv/stats
+      # Started Anki words (nginx /anki/known.json), sent from base-station.
+      - /opt/wkjp/anki:/srv/anki
       # The Anthropic API key for Talk (nginx /claude/), placed by hand on the
       # VM and never in git; see the README.
       - /opt/wkjp/secrets:/etc/nginx/secrets:ro
