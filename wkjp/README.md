@@ -38,8 +38,12 @@ is reachable only through the private gateway.
   - The VM is on another VLAN, so base-station needs the route
     `192.168.0.0/16 via 192.168.1.1` in its `Hibiscus` NetworkManager profile
     while ProtonVPN is up; without it base-station's replies go into the
-    tunnel, nginx can't connect, and everything falls back. Docker's
-    published ports bypass ufw, so no firewall rule is needed.
+    tunnel, nginx can't connect, and everything falls back.
+  - Inter-VLAN flows (allowed on the router, which denies by default; not
+    in Git): from the wkjp VM 192.168.201.20 to base-station 192.168.1.18
+    TCP 11434 (Ollama), 8080 (Whisper) and 50121 (VOICEVOX), and to KBU
+    192.168.1.201 TCP 8080 (the Whisper backup). base-station runs no host
+    firewall (ufw is installed but disabled).
 - The Talk tab chats with Claude by default (Settings → "Talk with"), through
   `/claude/v1/messages`. nginx forwards only that POST to
   `api.anthropic.com` (TLS verified) and adds the API key itself, so the
