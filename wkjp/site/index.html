@@ -211,6 +211,19 @@
   #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
   @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
   /* the mark at 40% is the detector's threshold: speech has to cross it to count */
+  /* Talk's Live mode */
+  #talkLive{text-align:center; margin:0 0 10px;}
+  #talkLiveMsg{font-size:.9rem; color:var(--muted); min-height:1.4em;}
+  #talkLive[data-state=listen] #talkLiveMsg{color:var(--green);}
+  #talkLive[data-state=speak] #talkLiveMsg{color:var(--accent);}
+  #talkLive .kbd{margin-top:6px;}
+  #btnTalkLive.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); animation:rvPulse 1.2s infinite;}
+  .msg.ai.streaming .ja::after{content:"▍"; color:var(--muted); animation:liveBlink 1s steps(2) infinite;}
+  @keyframes liveBlink{50%{opacity:0;}}
+  #talkLevel{position:relative; height:6px; background:var(--bg); border-radius:99px; margin:6px auto 0; max-width:320px;}
+  #talkLevel::after{content:""; position:absolute; left:40%; top:-4px; bottom:-4px; width:2px; border-radius:1px; background:var(--muted);}
+  #talkLevelFill{height:100%; width:0%; border-radius:99px; background:var(--accent); transition:width .05s;}
+  #talkLevelFill.over{background:var(--green);}
   #rvLevel,#pcLevel{position:relative; height:6px; background:var(--bg); border-radius:99px; margin-top:10px;}
   #rvLevel::after,#pcLevel::after{content:""; position:absolute; left:40%; top:-4px; bottom:-4px; width:2px; border-radius:1px; background:var(--muted);}
   #rvLevelFill,#pcLevelFill{height:100%; width:0%; border-radius:99px; background:var(--accent); transition:width .05s;}
@@ -683,8 +696,14 @@
       <div id="talkLog"></div>
       <div id="glossTip" class="hidden"></div>
       <div id="talkErr" class="err hidden"></div>
+      <div id="talkLive" class="hidden" aria-live="polite">
+        <div id="talkLiveMsg"></div>
+        <div id="talkLevel" class="hidden"><div id="talkLevelFill"></div></div>
+        <div class="kbd"><b>space</b> interrupt / done talking · <b>esc</b> stop Live</div>
+      </div>
       <div class="composer">
         <textarea id="talkInput" rows="1" placeholder="こんにちは！" title="enter sends · shift+enter new line"></textarea>
+        <button class="btn hidden" id="btnTalkLive" title="Live conversation: speak, hear the reply, it listens again">🗣 Live</button>
         <button class="btn hidden" id="btnTalkMic" title="record Japanese; click again to stop">🎤</button>
         <button class="btn primary" id="btnTalkSend">Send</button>
       </div>
@@ -1214,6 +1233,9 @@ function refreshVoices(){
   }
 }
 function stopAudio(){
+  // a Talk reply being spoken sentence by sentence counts as done
+  const sp=talkSpeaking; talkSpeaking=null;
+  if(sp) sp.finish();
   vvSeq++; queueToken++;
   if(vvAudio){ try{vvAudio.pause();}catch(e){} vvAudio=null; }
   clearTimeout(speakTimer);
@@ -1780,7 +1802,7 @@ const GLOSS_SYSTEM=[
 const hasKanji=t=>/[一-鿿々]/.test(t);
 const isJa=t=>/[぀-ヿ一-鿿]/.test(t);
 const wkLevel=()=>DATA?DATA.user.level:1;
-let TALK=[],talkBusy=false;
+let TALK=[],talkBusy=false,talkSpeaking=null,LIVE=null;
 
 // Upcoming WaniKani vocab the learner hasn't learned yet, nearest levels first.
 // DATA holds subjects up to level+5, so this is what they'll meet next.
@@ -1849,7 +1871,8 @@ async function llmChat(messages,schema,temp){
 const CLAUDE_BASE=location.protocol==="file:"?"":location.origin+"/claude";
 const CLAUDE_MODELS={"claude-sonnet-5-5":"Claude Sonnet 5.5","claude-opus-5-5":"Claude Opus 5.5","claude-haiku-5-5":"Claude Haiku 5.5"};
 const CLAUDE_GLOSS="claude-haiku-5-5";       // the hover dictionary is a simple job
-async function claudeChat(model,system,messages,schema,effort){
+// onPartial(jsonSoFar): stream the answer, for Talk's replies
+async function claudeChat(model,system,messages,schema,effort,onPartial){
   // turns must start with the learner's
   const msgs=messages.slice();
   while(msgs.length&&msgs[0].role!=="user") msgs.shift();
@@ -1863,26 +1886,75 @@ async function claudeChat(model,system,messages,schema,effort){
   const hdr={"Content-Type":"application/json","anthropic-version":"2026-10-21"};
   // if Sonnet or Opus declines, the API retries on a fallback model in the same call
   if(model!=="claude-haiku-5-5"){ body.fallbacks="default"; hdr["anthropic-beta"]="server-side-fallback-2026-07-01"; }
+  if(onPartial) body.stream=true;
   const r=await fetch(CLAUDE_BASE+"/v1/messages",{method:"POST",headers:hdr,body:JSON.stringify(body)});
   if(!r.ok){
     let m="";
     try{ m=(await r.json()).error.message||""; }catch(e){}
     throw new Error(r.status===503?"no Anthropic API key on the wkjp server":`error ${r.status}${m?": "+m:""}`);
   }
-  const j=await r.json();
+  const j=onPartial?await claudeReadStream(r,onPartial):await r.json();
   if(j.stop_reason==="refusal") throw new Error("declined to answer");
   if(j.stop_reason==="max_tokens") throw new Error("answer was cut off");
   const t=(j.content||[]).find(b=>b.type==="text");
   if(!t) throw new Error("no answer");
   return {out:JSON.parse(t.text),model:j.model||model};
 }
+// Server-sent events: each text delta goes to onPartial as the JSON so far.
+// Returns the message the way the non-streaming call does.
+async function claudeReadStream(r,onPartial){
+  const rd=r.body.getReader(),dec=new TextDecoder();
+  let buf="",text="",model="",stop=null;
+  for(;;){
+    const {value,done}=await rd.read();
+    if(done) break;
+    buf+=dec.decode(value,{stream:true}).replace(/\r/g,"");
+    let k;
+    while((k=buf.indexOf("\n\n"))>=0){
+      const data=buf.slice(0,k).split("\n").filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trim()).join("\n");
+      buf=buf.slice(k+2);
+      if(!data) continue;
+      let d;
+      try{ d=JSON.parse(data); }catch(e){ continue; }
+      if(d.type==="message_start") model=(d.message||{}).model||model;
+      else if(d.type==="content_block_delta"&&d.delta&&d.delta.type==="text_delta"){ text+=d.delta.text; try{ onPartial(text); }catch(e){} }
+      else if(d.type==="message_delta"&&d.delta) stop=d.delta.stop_reason||stop;
+      else if(d.type==="error") throw new Error((d.error||{}).message||"the stream broke off");
+    }
+  }
+  return {model,stop_reason:stop,content:text?[{type:"text",text}]:[]};
+}
+// a string field of JSON still being written: {text, done}, or null before it starts
+function jsonFieldPrefix(src,key){
+  const m=src.indexOf(`"${key}"`);
+  if(m<0) return null;
+  let i=src.indexOf(":",m+key.length+2);
+  if(i<0) return null;
+  i=src.indexOf('"',i+1);
+  if(i<0) return null;
+  let out="",j=i+1;
+  const esc1={n:"\n",t:"\t",r:"",b:"",f:"",'"':'"',"\\":"\\","/":"/"};
+  while(j<src.length){
+    const ch=src[j];
+    if(ch==="\\"){
+      if(j+1>=src.length) break;
+      const n=src[j+1];
+      if(n==="u"){ if(j+6>src.length) break; out+=String.fromCharCode(parseInt(src.substr(j+2,4),16)); j+=6; continue; }
+      out+=esc1[n]??n; j+=2; continue;
+    }
+    if(ch==='"') return {text:out,done:true};
+    out+=ch; j++;
+  }
+  return {text:out,done:false};
+}
 // Talk's model calls: Claude unless Settings says Ollama, and Ollama whenever
 // Claude can't answer. kind: reply, check or gloss. Returns {out, by}.
-async function talkLLM(kind,system,messages,schema,temp){
+// onPartial streams Claude's answer as it's written (Ollama's comes whole).
+async function talkLLM(kind,system,messages,schema,temp,onPartial){
   let why="";
   if(S.talkEngine!=="ollama"&&CLAUDE_BASE){
     try{
-      const r=await claudeChat(kind==="gloss"?CLAUDE_GLOSS:S.claudeModel,system,messages,schema,kind==="check"?"medium":"low");
+      const r=await claudeChat(kind==="gloss"?CLAUDE_GLOSS:S.claudeModel,system,messages,schema,kind==="check"?"medium":"low",onPartial);
       return {out:r.out,by:CLAUDE_MODELS[r.model]||r.model};
     }catch(e){ why=e.message; }
   }
@@ -1899,17 +1971,21 @@ function talkAdd(cls,html){
   talkScroll();
   return d;
 }
-function talkReply(r,by){
-  // the model sometimes appends the translation to the reply itself
-  r.reply=r.reply.replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
-  const spk=S.engine==="voicevox"?pickVvSpeaker():null;
+// the model sometimes appends the translation to the reply itself
+const talkClean=t=>(t||"").replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,"").trim();
+// opt.el: the bubble the reply streamed into; opt.spoken: already being read aloud; opt.spk: its voice
+function talkReply(r,by,opt={}){
+  r.reply=talkClean(r.reply);
+  const spk=opt.spk!=null?opt.spk:S.engine==="voicevox"?pickVvSpeaker():null;
   const gp=(S.talkGrammar||grammarList().length)&&r.grammar?r.grammar.trim():"";
-  const d=talkAdd("msg ai",`<div class="ja">${esc(r.reply)}</div>${gp?`<div class="gp" lang="ja">文法: ${esc(gp)}</div>`:""}<div class="en hidden">${esc(r.english)}</div>
-    <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button><span class="by">${esc(by||"")}</span></div>`);
+  const html=`<div class="ja">${esc(r.reply)}</div>${gp?`<div class="gp" lang="ja">文法: ${esc(gp)}</div>`:""}<div class="en hidden">${esc(r.english)}</div>
+    <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button><span class="by">${esc(by||"")}</span></div>`;
+  let d=opt.el;
+  if(d){ d.className="msg ai"; d.innerHTML=html; talkScroll(); } else d=talkAdd("msg ai",html);
   d.querySelector("[data-a=play]").onclick=()=>speakText(r.reply,false,spk);
   d.querySelector("[data-a=slow]").onclick=()=>speakText(r.reply,true,spk);
   d.querySelector("[data-a=en]").onclick=()=>{ d.querySelector(".en").classList.toggle("hidden"); talkScroll(); };
-  if(S.talkSpeak) speakText(r.reply,false,spk);
+  if(S.talkSpeak&&!opt.spoken) speakText(r.reply,false,spk);
   prefetchSpeech(r.reply,spk);
   talkLLM("gloss",GLOSS_SYSTEM,[{role:"user",content:r.reply}],GLOSS_SCHEMA,0)
     .then(g=>glossWrap(d.querySelector(".ja"),r.reply,g.out.words)).catch(()=>{});
@@ -1969,9 +2045,59 @@ function talkGrow(){
   b.style.height="auto";
   b.style.height=Math.min(b.scrollHeight,140)+"px";
 }
-async function talkSend(){
+// Sentences read aloud as they arrive: each is synthesized as soon as it's
+// complete and played in order. done resolves once the last has played, or
+// when stopAudio() cuts it off. onStart: the first sentence starts playing.
+function talkSpeaker(spk,onStart){
+  stopAudio();
+  const my=++queueToken,q=[];
+  let playing=false,closed=false,started=false,resolve;
+  const done=new Promise(r=>{ resolve=r; });
+  const alive=()=>my===queueToken;
+  const sp={done,
+    finish(){ if(resolve){ const r=resolve; resolve=null; if(talkSpeaking===sp) talkSpeaking=null; r(); } },
+    say(text){
+      const t=speakableText(text);
+      if(!t||!alive()) return;
+      for(const c of chunkText(t)) q.push({text:c,audio:S.engine==="voicevox"?vvFetchAudio(c,false,spk).catch(()=>null):null});
+      if(!playing) next();
+    },
+    end(){ closed=true; if(!playing&&!q.length) sp.finish(); },
+    get busy(){ return alive()&&(playing||q.length>0); }};
+  function next(){
+    if(!alive()){ sp.finish(); return; }
+    if(!q.length){ playing=false; if(closed) sp.finish(); return; }
+    playing=true;
+    const it=q.shift();
+    const go=()=>{ if(!started){ started=true; if(onStart) onStart(); } };
+    if(S.engine==="voicevox"){
+      it.audio.then(url=>{
+        if(!alive()){ sp.finish(); return; }
+        if(!url){ next(); return; }
+        go(); vvPlay(url,next); vvPlayer.onerror=()=>next();
+      });
+    }else if("speechSynthesis" in window){
+      const u=new SpeechSynthesisUtterance(it.text);
+      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
+      u.onend=next; u.onerror=next;
+      go(); speechSynthesis.speak(u);
+    }else next();
+  }
+  talkSpeaking=sp;
+  return sp;
+}
+// where the last finished sentence of a reply being written ends
+function talkSentenceEnd(t){
+  let e=0;
+  for(let i=0;i<t.length;i++) if("。！？!?\n".includes(t[i])) e=i+1;
+  return e;
+}
+// opt.onSpeak: the reply started playing (Live mode's status). Returns a
+// promise for the end of the reading aloud, or null if nothing is read.
+async function talkSend(opt){
+  if(!opt||typeof opt!=="object"||opt instanceof Event) opt={};
   const box=$("talkInput"),text=box.value.trim(),err=$("talkErr");
-  if(!text||talkBusy) return;
+  if(!text||talkBusy) return null;
   unlockAudio();
   err.classList.add("hidden");
   talkBusy=true; $("btnTalkSend").disabled=true;
@@ -1989,12 +2115,35 @@ async function talkSend(){
     me.after(d);
     talkScroll();
   }).catch(()=>{});
+  // The reply streams into the "…" bubble, and each sentence is read aloud as
+  // soon as it's finished, so speech starts after the first one.
+  const spk=S.engine==="voicevox"?pickVvSpeaker():null;
+  let sp=S.talkSpeak||LIVE?talkSpeaker(spk,opt.onSpeak):null,said=0,shown="";
+  const onPartial=src=>{
+    const f=jsonFieldPrefix(src,"reply");
+    if(!f||!f.text) return;
+    shown=f.text;
+    if(!wait.classList.contains("streaming")){ wait.classList.add("streaming"); wait.innerHTML=`<div class="ja"></div>`; }
+    wait.querySelector(".ja").textContent=shown;
+    talkScroll();
+    const upto=f.done?shown.length:talkSentenceEnd(shown);
+    if(sp&&upto>said){ sp.say(shown.slice(said,upto)); said=upto; }
+  };
+  let speaking=null;
   try{
-    const {out,by}=await talkLLM("reply",talkSystem(),TALK.slice(-20),REPLY_SCHEMA,0.7);
-    wait.remove();
-    talkReply(out,by);
+    const {out,by}=await talkLLM("reply",talkSystem(),TALK.slice(-20),REPLY_SCHEMA,0.7,onPartial);
+    out.reply=talkClean(out.reply);
+    if(sp){
+      // the rest, or all of it if this isn't what streamed (Ollama answered instead)
+      if(said&&!out.reply.startsWith(shown.slice(0,said))){ sp=talkSpeaker(spk,opt.onSpeak); said=0; }
+      if(said<out.reply.length) sp.say(out.reply.slice(said));
+      sp.end();
+      speaking=sp.done;
+    }
+    talkReply(out,by,{el:wait,spoken:!!sp,spk});
     TALK.push({role:"assistant",content:out.reply});
   }catch(e){
+    if(sp) stopAudio();
     wait.remove();
     TALK.pop();
     box.value=text; talkGrow();
@@ -2002,7 +2151,83 @@ async function talkSend(){
     err.classList.remove("hidden");
   }
   talkBusy=false; $("btnTalkSend").disabled=false;
-  box.focus();
+  if(!LIVE) box.focus();
+  return speaking;
+}
+
+/* Live mode: hands-free conversation. Listen until the learner stops talking
+   (the Reviews mic detector), transcribe, send, read the reply aloud as it
+   streams, then listen again. The mic is off while the reply plays, so it
+   doesn't hear itself. Space interrupts the reply or ends the learner's turn
+   early; Esc, the button or leaving the tab stops it. */
+function liveUI(state,msg){
+  const on=!!LIVE;
+  $("btnTalkLive").classList.toggle("on",on);
+  $("btnTalkLive").textContent=on?"⏹ Live":"🗣 Live";
+  $("btnTalkMic").disabled=on;
+  $("talkLive").classList.toggle("hidden",!on);
+  $("talkLive").dataset.state=state||"";
+  $("talkLiveMsg").textContent=msg||"";
+  $("talkLevel").classList.toggle("hidden",state!=="listen");
+}
+async function liveStart(){
+  unlockAudio();
+  $("talkErr").classList.add("hidden");
+  if(micRec) micRec.stop();
+  try{ await micOpen(); }
+  catch(e){ talkErr("mic blocked: "+(e.message||e.name)); return; }
+  LIVE={seq:0,stopNow:false,state:""};
+  liveListen();
+}
+function liveStop(){
+  if(!LIVE) return;
+  LIVE=null;
+  stopAudio();
+  micClose();
+  liveUI();
+}
+const talkSttForm=blob=>{
+  const fd=new FormData();
+  fd.append("file",blob,"talk."+recExt(blob.type));
+  fd.append("prompt",STT_PROMPT);
+  fd.append("language",S.sttLang==="auto"?"auto":"ja");
+  return fd;
+};
+async function liveListen(msg){
+  if(!LIVE) return;
+  const my=++LIVE.seq,cur=()=>!!LIVE&&LIVE.seq===my;
+  LIVE.stopNow=false; LIVE.state="listen";
+  liveUI("listen",msg||"Listening… talk in Japanese");
+  // a conversational turn: up to 20 s, over after a 0.9 s pause
+  const blob=await micUtterance(cur,{fill:$("talkLevelFill"),stopNow:()=>cur()&&LIVE.stopNow,quietMs:900,maxMs:20000});
+  if(!cur()) return;
+  if(!blob){ liveListen(msg); return; }            // 10 s of nothing: keep waiting
+  LIVE.state="hear"; liveUI("hear","…");
+  let text="";
+  try{
+    const j=await sttPost(talkSttForm(blob),{retry:true,alive:cur,onWait:n=>{ if(cur()) liveUI("hear",`${STT_BUSY} Trying again (${n})…`); }});
+    text=sttClean((j.text||"").trim());
+  }catch(e){ if(cur()){ liveListen("⚠ "+(e.message||"speech-to-text failed")+". Say it again."); } return; }
+  if(!cur()) return;
+  if(!text){ liveListen("Didn't catch that. Say it again."); return; }
+  const box=$("talkInput");
+  box.value=(box.value?box.value+" ":"")+text; talkGrow();
+  LIVE.state="reply"; liveUI("reply","Thinking…");
+  const spoken=await talkSend({onSpeak:()=>{ if(cur()){ LIVE.state="speak"; liveUI("speak","Speaking… (space to interrupt)"); } }});
+  if(!cur()) return;
+  if(spoken) await spoken;
+  if(!cur()) return;
+  // a moment for the last of the audio to clear the room before listening
+  await new Promise(r=>setTimeout(r,250));
+  if(cur()) liveListen();
+}
+function liveKey(e){
+  if(!LIVE||$("viewTalk").classList.contains("hidden")) return;
+  if(e.key==="Escape"){ e.preventDefault(); liveStop(); return; }
+  if(e.key!==" "||(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) return;
+  e.preventDefault();
+  if(LIVE.state==="speak"||LIVE.state==="reply"&&talkSpeaking){ stopAudio(); liveListen(); }
+  else if(LIVE.state==="listen") LIVE.stopNow=true;
 }
 async function llmConnect(){
   const st=$("llmStatus"),sel=$("llmModel");
@@ -2167,7 +2392,8 @@ function micLevel(){
 // peaked at -34 to -18 dB and only stayed over the line for 50-100 ms.
 const MIC_MIN=0.004,MIC_OVER=5.6,MIC_TAIL=0.18;
 // The recording, or null if nobody spoke or alive() went false.
-// opt.fill: level meter; opt.stopNow(): stop and keep what's recorded so far
+// opt.fill: level meter; opt.stopNow(): stop and keep what's recorded so far;
+// opt.quietMs: the pause that ends it (0.8 s); opt.maxMs: longest take (9 s)
 function micUtterance(alive,opt={}){
   return new Promise(resolve=>{
     if(!MIC){ resolve(null); return; }
@@ -2194,7 +2420,7 @@ function micUtterance(alive,opt={}){
       if(lv>Math.max(thr,heard?peak*MIC_TAIL:0)) quiet=0; else quiet+=50;
       let stop=!alive()||!MIC;
       if(!stop&&stopNow()){ keep=true; stop=true; }
-      else if(!stop&&heard&&(quiet>=800||t>=9000)){ keep=true; stop=true; }
+      else if(!stop&&heard&&(quiet>=(opt.quietMs||800)||t>=(opt.maxMs||9000))){ keep=true; stop=true; }
       else if(!stop&&!heard&&t>=10000) stop=true;
       if(!stop) return;
       clearInterval(tick); fill.style.width="0%"; fill.classList.remove("over");
@@ -3760,6 +3986,7 @@ Object.keys(views).forEach(t=>{
     const rvHome=RV&&RV.lesson?"viewLessons":"viewReviews";
     if(was===rvHome&&to!==rvHome) rvPause();
     if(was==="viewLessons"&&to!=="viewLessons") stopAudio();
+    if(was==="viewTalk"&&to!=="viewTalk") liveStop();
     if(t!=="tabSpeak") pcPause();
     if(t==="tabSpeak"&&!PC) pcSrcNote();
     if(to==="viewReviews"&&was!=="viewReviews"){
@@ -4069,6 +4296,8 @@ $("speakInput").addEventListener("keydown",e=>{
 
 /* talk tab */
 $("btnTalkSend").onclick=talkSend;
+if(canRecord){ $("btnTalkLive").classList.remove("hidden"); $("btnTalkLive").onclick=()=>LIVE?liveStop():liveStart(); }
+document.addEventListener("keydown",liveKey);
 $("talkInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); talkSend(); }
 });
