@@ -1,0 +1,11 @@
+# Nightly backup of wkjp's saved data to an encrypted restic repository on
+# the NFS share. A user unit on base-station; see wkjp/README.md.
+[Unit]
+Description=Back up wkjp's saved data (restic, NFS)
+After=network-online.target
+RequiresMountsFor=/mnt/backups
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/usr/bin:/bin
+ExecStart=%h/.local/bin/wkjp-backup
