@@ -95,7 +95,8 @@ def mirror(base, stage):
             ):
                 continue
             save(path, get(f"{base}/rec/{d['name']}/{urllib.parse.quote(name)}"))
-            n["new"] += 1
+            if name != "session.json":
+                n["new"] += 1
     return n
 
 
