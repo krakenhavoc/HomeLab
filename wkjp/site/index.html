@@ -232,6 +232,20 @@
   #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
   @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
   /* the mark at 40% is the detector's threshold: speech has to cross it to count */
+  /* Talk role-plays */
+  .sceneBar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-2px 0 8px;}
+  .sceneBar label{margin:0; font-size:.8rem;}
+  .sceneBar select{width:auto; padding:6px 10px; font-size:.88rem;}
+  #sceneGoals{margin:0 0 10px; padding:8px 12px 8px 30px; background:var(--card2); border-radius:10px; font-size:.86rem;}
+  #sceneGoals li{margin:2px 0; color:var(--muted);}
+  #sceneGoals li.done{color:var(--green);}
+  #sceneGoals li.done::marker{content:"✓ ";}
+  .debrief{align-self:stretch; background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:.9rem;}
+  .debrief h3{font-size:.84rem; color:var(--muted); margin:10px 0 4px;}
+  .debrief h3:first-child{margin-top:0;}
+  .debrief li{margin:3px 0 3px 18px;}
+  .debrief .ja{font-family:var(--mincho);}
+  .debrief .why{color:var(--muted); font-size:.82rem;}
   /* Talk's Live mode */
   #talkLive{text-align:center; margin:0 0 10px;}
   #talkLiveMsg{font-size:.9rem; color:var(--muted); min-height:1.4em;}
@@ -750,6 +764,12 @@
         <label><input type="checkbox" id="chkTalkSpeak"> read aloud</label>
         <button class="btn small" id="btnTalkNew">New chat</button>
       </div>
+      <div class="sceneBar">
+        <label for="talkScene">Scene</label>
+        <select id="talkScene"></select>
+        <button class="btn small hidden" id="btnSceneEnd">Finish &amp; debrief</button>
+      </div>
+      <ol id="sceneGoals" class="hidden"></ol>
       <div id="talkLog"></div>
       <div id="glossTip" class="hidden"></div>
       <div id="talkErr" class="err hidden"></div>
@@ -1884,7 +1904,7 @@ const LLM_DEFAULT=location.protocol==="file:"?"http://localhost:11434":location.
 const llmBase=()=>((S.llmUrl||LLM_DEFAULT).trim()||LLM_DEFAULT).replace(/\/+$/,"");
 const str={type:"string"};
 // every object closed (additionalProperties:false): Claude's structured outputs require it
-const REPLY_SCHEMA={type:"object",additionalProperties:false,required:["reply","english","grammar"],properties:{reply:str,english:str,grammar:str}};
+const REPLY_SCHEMA={type:"object",additionalProperties:false,required:["reply","english","grammar","goals"],properties:{reply:str,english:str,grammar:str,goals:{type:"array",items:{type:"integer"}}}};
 // errors first so the model looks before it corrects
 const CHECK_SCHEMA={type:"object",additionalProperties:false,required:["errors","correction","note"],
   properties:{errors:{type:"array",items:str},correction:str,note:str}};
@@ -1918,6 +1938,103 @@ function grammarLines(){
     "grammar: the grammar point your reply uses from that list"+(lv?` (or another ${lv} point worth noticing)`:"")+", written like the list (e.g. 〜たい); empty if none."
   ].filter(Boolean);
 }
+/* Travel role-plays: the model plays the other side of a scene the learner
+   will meet in Japan, the app shows the goals, the model marks which are
+   done, and Finish asks for a debrief whose fixes go into the notebook. */
+const SCENES=[
+  {id:"restaurant",ja:"レストラン",en:"Restaurant",role:"a server at a casual Japanese restaurant",
+   open:"いらっしゃいませ！何名様ですか？",openEn:"Welcome! How many people?",
+   goals:["Say how many people","Order a drink and a dish","Ask about something on the menu (a recommendation, or whether it's spicy)","Ask for the bill"]},
+  {id:"station",ja:"駅",en:"Train station",role:"staff at a JR ticket office",
+   open:"こんにちは。どうなさいましたか？",openEn:"Hello. How can I help?",
+   goals:["Say where you want to go","Buy a ticket (reserved seat or not)","Ask which platform, or what time it leaves"]},
+  {id:"hotel",ja:"ホテル",en:"Hotel check-in",role:"front desk staff at a business hotel",
+   open:"いらっしゃいませ。チェックインでしょうか？",openEn:"Welcome. Checking in?",
+   goals:["Check in with your name","Ask what time breakfast is","Ask to leave your luggage after check-out"]},
+  {id:"shop",ja:"買い物",en:"Clothes shop",role:"a clerk in a clothing store",
+   open:"いらっしゃいませ。何かお探しですか？",openEn:"Welcome. Looking for something?",
+   goals:["Ask for another size or colour","Ask the price","Ask whether you can pay by card, or shop tax-free"]},
+  {id:"directions",ja:"道を聞く",en:"Asking directions",role:"a friendly passer-by in Tokyo whom the learner has just stopped",
+   open:"はい、何でしょうか？",openEn:"Yes, can I help you?",
+   goals:["Ask the way to a place","Check you understood by repeating the directions","Thank them"]},
+  {id:"pharmacy",ja:"薬局",en:"Pharmacy",role:"a pharmacist at a drugstore",
+   open:"いらっしゃいませ。どうされましたか？",openEn:"Welcome. What seems to be the matter?",
+   goals:["Describe a symptom (a headache, a cold, a stomach ache)","Ask how to take the medicine","Ask the price"]},
+  {id:"konbini",ja:"コンビニ",en:"Convenience store",role:"a convenience store clerk; the learner has brought a bento to the register",
+   open:"いらっしゃいませ。お弁当、温めますか？",openEn:"Welcome. Shall I heat up your bento?",
+   goals:["Answer whether to heat the bento","Ask for a bag (or say you don't need one)","Pay and ask for a receipt"]},
+];
+let SCENE=null,sceneDone=new Set();
+const sceneOf=id=>SCENES.find(x=>x.id===id)||null;
+function sceneLines(){
+  if(!SCENE) return [
+    `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
+    "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
+    "goals: always empty."];
+  return [
+    `Role-play for a learner at WaniKani level ${wkLevel()} who is travelling to Japan. You are ${SCENE.role}, in Japan. Stay in that role.`,
+    `You opened the scene by saying: 「${SCENE.open}」`,
+    "Speak the way real staff or people there speak (polite, with the set phrases they use), but keep sentences short and simple. 1-2 sentences.",
+    "Don't do the learner's tasks for them: answer and react naturally, and let them lead. If they seem stuck, or write English, help with a short hint in simple Japanese.",
+    "The learner's goals in this scene: "+SCENE.goals.map((g,i)=>`${i+1}. ${g}`).join("; ")+".",
+    "goals: the numbers of the goals the learner has achieved so far in this conversation, all of them, not only this turn."];
+}
+function sceneUI(){
+  $("btnSceneEnd").classList.toggle("hidden",!SCENE);
+  const gl=$("sceneGoals");
+  gl.classList.toggle("hidden",!SCENE);
+  gl.innerHTML=SCENE?SCENE.goals.map((g,i)=>`<li class="${sceneDone.has(i+1)?"done":""}">${esc(g)}</li>`).join(""):"";
+}
+// a new chat in the chosen scene: the other side speaks first (quiet: on page load)
+function sceneStart(id,quiet){
+  if(LIVE) liveStop();
+  stopAudio();
+  TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden");
+  SCENE=sceneOf(id); sceneDone=new Set();
+  S.talkScene=SCENE?SCENE.id:""; saveS();
+  sceneUI();
+  if(SCENE){
+    if(!quiet) unlockAudio();
+    talkReply({reply:SCENE.open,english:SCENE.openEn,grammar:"",goals:[]},`${SCENE.ja} ${SCENE.en}`,{spoken:quiet||!S.talkSpeak});
+    TALK.push({role:"assistant",content:SCENE.open});
+  }
+}
+function sceneGoals(list){
+  if(!SCENE||!Array.isArray(list)) return;
+  list.forEach(n=>{ if(Number.isInteger(n)&&n>=1&&n<=SCENE.goals.length) sceneDone.add(n); });
+  sceneUI();
+}
+const DEBRIEF_SCHEMA={type:"object",additionalProperties:false,required:["summary","went_well","fixes","phrases"],properties:{
+  summary:str,went_well:{type:"array",items:str},
+  fixes:{type:"array",items:{type:"object",additionalProperties:false,required:["yours","better","why"],properties:{yours:str,better:str,why:str}}},
+  phrases:{type:"array",items:{type:"object",additionalProperties:false,required:["ja","en"],properties:{ja:str,en:str}}}}};
+async function sceneEnd(){
+  if(!SCENE) return;
+  const said=TALK.filter(m=>m.role==="user").length;
+  if(!said){ sceneStart(""); $("talkScene").value=""; return; }
+  const sc=SCENE,btn=$("btnSceneEnd");
+  btn.disabled=true; btn.textContent="Debriefing…";
+  if(LIVE) liveStop();
+  const transcript=TALK.map(m=>(m.role==="user"?"Learner: ":"Staff: ")+m.content).join("\n");
+  const sys=[
+    `You coach a Japanese learner (WaniKani level ${wkLevel()}) who just role-played this scene: ${sc.en}, with ${sc.role}.`,
+    "Their goals were: "+sc.goals.map((g,i)=>`${i+1}. ${g}`).join("; ")+".",
+    "Write a short debrief, in English except for Japanese examples.",
+    "summary: one or two sentences on how it went and which goals they reached.",
+    "went_well: up to 3 specific things they did well.",
+    "fixes: up to 4 of the learner's own lines that could be more natural or correct: yours = their line exactly, better = the natural Japanese, why = one short reason. Empty if none.",
+    "phrases: 3-5 useful phrases for this situation in Japan that they didn't use, ja with en."].join("\n");
+  try{
+    const {out}=await talkLLM("check",sys,[{role:"user",content:transcript}],DEBRIEF_SCHEMA,0);
+    const li=a=>a.length?`<ul>${a.join("")}</ul>`:"<p class=\"note\">None.</p>";
+    talkAdd("debrief",`<h3>${esc(sc.ja)} ${esc(sc.en)}: debrief</h3><div>${esc(out.summary)}</div>`+
+      `<h3>Went well</h3>${li(out.went_well.map(x=>`<li>${esc(x)}</li>`))}`+
+      `<h3>Say it better (added to the mistake notebook)</h3>${li(out.fixes.map(f=>`<li><span class="ja" lang="ja">${esc(f.yours)}</span> → <b class="ja" lang="ja">${esc(f.better)}</b><div class="why">${esc(f.why)}</div></li>`))}`+
+      `<h3>Useful phrases</h3>${li(out.phrases.map(p=>`<li><span class="ja" lang="ja">${esc(p.ja)}</span> <span class="why">${esc(p.en)}</span></li>`))}`);
+    out.fixes.forEach(f=>{ if(f.yours&&f.better&&f.yours.trim()!==f.better.trim()) nbAddTalk(f.yours.trim(),f.better.trim(),f.why||""); });
+  }catch(e){ talkErr("debrief failed: "+(e.message||e)); }
+  btn.disabled=false; btn.textContent="Finish & debrief";
+}
 function talkSystem(){
   // newest WaniKani words first (the model knows basic words anyway, and the
   // old order cut off a higher-level learner's recent vocab), then Anki's
@@ -1926,8 +2043,7 @@ function talkSystem(){
   const pct=+S.talkNewPct||0;
   const fresh=pct?upcomingWords(new Set(all),150):[];
   return [
-    `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
-    "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
+    ...sceneLines(),
     ...grammarLines(),
     "Plain text only, no markdown, no readings in parentheses.",
     pct
@@ -2240,6 +2356,7 @@ async function talkSend(opt){
     }
     talkReply(out,by,{el:wait,spoken:!!sp,spk});
     TALK.push({role:"assistant",content:out.reply});
+    sceneGoals(out.goals);
   }catch(e){
     if(sp) stopAudio();
     wait.remove();
@@ -4691,7 +4808,14 @@ document.addEventListener("keydown",liveKey);
 $("talkInput").addEventListener("keydown",e=>{
   if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); talkSend(); }
 });
-$("btnTalkNew").onclick=()=>{ TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden"); };
+$("btnTalkNew").onclick=()=>sceneStart(SCENE?SCENE.id:"");
+$("talkScene").innerHTML=`<option value="">Free conversation</option>`+SCENES.map(x=>`<option value="${x.id}">${x.ja}  ${x.en}</option>`).join("");
+$("talkScene").onchange=e=>{
+  if(TALK.some(m=>m.role==="user")&&!confirm("Start a new conversation in this scene? The current one will be cleared.")){ $("talkScene").value=SCENE?SCENE.id:""; return; }
+  sceneStart(e.target.value);
+};
+$("btnSceneEnd").onclick=sceneEnd;
+if(sceneOf(S.talkScene)){ $("talkScene").value=S.talkScene; sceneStart(S.talkScene,true); }
 $("talkInput").addEventListener("input",talkGrow);
 // hover with a mouse, tap on touch
 $("talkLog").addEventListener("pointerover",e=>{

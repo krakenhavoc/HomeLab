@@ -163,6 +163,23 @@ recordings (`rec`). The Anthropic key
   unlearned WaniKani words to draw new words from. The model treats the
   percentage as a rough target. "Send automatically when I stop the mic" sends
   the transcription as soon as Whisper returns it.
+- Talk's **Scene** picker turns the chat into a travel role-play:
+  レストラン restaurant, 駅 station ticket office, ホテル hotel check-in,
+  買い物 clothes shop, 道を聞く asking directions, 薬局 pharmacy, コンビニ
+  convenience store (`SCENES`).
+  - The other side speaks first: a fixed opening line, shown, spoken and
+    kept in the system prompt (Claude's turns must start with the
+    learner's). The prompt makes the model that person (staff use their set
+    polite phrases, short sentences) and lists the learner's goals.
+  - The reply schema has a `goals` field: the numbers of the goals reached
+    so far. The app ticks them off in the checklist, ignoring out-of-range
+    numbers. Outside a scene the prompt says to leave it empty.
+  - **Finish & debrief** sends the transcript to the Talk model (medium
+    effort): a summary, what went well, up to 4 "say it better" fixes (which
+    go into the mistake notebook as Talk corrections) and useful phrases.
+  - The scene is remembered (`S.talkScene`). New chat restarts it, and a
+    reload shows the opening line without playing it. Live mode works in
+    scenes too.
 - Settings → "Grammar focus" (off, JLPT N5, N4 or N3) and "Grammar I'm
   working on" (a list such as `〜たい、〜てから`, e.g. from Bunpro) steer Talk:
   - Replies stay at that level and work a listed point into most replies,
