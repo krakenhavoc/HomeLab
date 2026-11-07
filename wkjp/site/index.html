@@ -1537,6 +1537,29 @@ async function loadWK(){
 }
 
 /* ---------- pools ---------- */
+// Words started in Anki (Kaishi 1.5k), sent by base-station to anki/known.json:
+// known words for Talk and the dictionary, not quiz items.
+let ANKI=load("wkl_anki",null);
+async function ankiLoad(){
+  if(location.protocol==="file:") return;
+  try{
+    const r=await fetch("anki/known.json",{cache:"no-store"});
+    if(!r.ok) return;
+    const d=await r.json();
+    if(!d||!Array.isArray(d.words)) return;
+    ANKI={deck:String(d.deck||"Anki"),at:d.at||"",total:+d.total||0,
+      words:d.words.filter(w=>w&&typeof w.c==="string"&&w.c).map(w=>({c:w.c,r:String(w.r||""),m:String(w.m||"")}))};
+    store("wkl_anki",ANKI);
+    updateChips();
+  }catch(e){}
+}
+// Everything the learner knows: WaniKani words (newest level first), then the
+// Anki ones WaniKani doesn't have (most recently studied first).
+function knownWords(){
+  const wk=getPools().words.slice().sort((a,b)=>b.l-a.l).map(w=>w.c);
+  const have=new Set(wk);
+  return wk.concat((ANKI?ANKI.words:[]).map(w=>w.c).filter(c=>!have.has(c)&&(have.add(c),true)));
+}
 function getPools(){
   if(!DATA) return {words:[],sentences:[]};
   const ids=new Set(DATA.assignments.filter(a=>S.srs==="guru"?a.st>=5:true).map(a=>a.sid));
@@ -1552,7 +1575,8 @@ function updateChips(){
   const {words,sentences}=getPools();
   chip.textContent=`Lv ${DATA.user.level} · ${words.length} words · ${sentences.length}/${CORPUS.length} sentences`;
   note.textContent=`Pool: ${words.length} learned words, ${sentences.length} of ${CORPUS.length} sentences unlocked. Sentences unlock as you learn the vocab in them.`;
-  dn.textContent=`Signed in as ${DATA.user.name} · data refreshed ${new Date(DATA.ts).toLocaleString()}`;
+  dn.textContent=`Signed in as ${DATA.user.name} · data refreshed ${new Date(DATA.ts).toLocaleString()}`+
+    (ANKI?` · ${ANKI.words.length} words from Anki (${ANKI.deck}${ANKI.total?`, of ${ANKI.total}`:""})${ANKI.at?`, sent ${new Date(ANKI.at).toLocaleString()}`:""}, used as known words in Talk and the dictionary`:"");
 }
 
 /* ---------- stats ---------- */
@@ -1859,12 +1883,12 @@ function grammarLines(){
   ].filter(Boolean);
 }
 function talkSystem(){
-  // newest first: the model knows basic words anyway, and the old order cut off
-  // a higher-level learner's recent vocab at 800
-  const learned=getPools().words.slice().sort((a,b)=>b.l-a.l);
-  const words=learned.slice(0,800).map(w=>w.c);
+  // newest WaniKani words first (the model knows basic words anyway, and the
+  // old order cut off a higher-level learner's recent vocab), then Anki's
+  const all=knownWords();
+  const words=all.slice(0,1500);
   const pct=+S.talkNewPct||0;
-  const fresh=pct?upcomingWords(new Set(learned.map(w=>w.c)),150):[];
+  const fresh=pct?upcomingWords(new Set(all),150):[];
   return [
     `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
     "Reply in natural, polite Japanese (です/ます), 1-3 short sentences, and usually end with a question to keep the chat going.",
@@ -2030,7 +2054,7 @@ function talkReply(r,by,opt={}){
 // Wrap each glossed word in a span. The model's split doesn't always match
 // the text exactly, so anything it can't place stays plain.
 function glossWrap(el,text,words){
-  const known=new Set(getPools().words.map(w=>w.c));
+  const known=new Set(knownWords());
   const frag=document.createDocumentFragment();
   let pos=0;
   for(const w of words){
@@ -3267,10 +3291,10 @@ const DICT_SCHEMA={type:"object",additionalProperties:false,required:["headword"
     properties:{def:DICT_TOK,ex:DICT_TOK,en:str,ex_en:str}}}}};
 let DICT_CACHE=load("wkl_dict",{}),DICT_RECENT=load("wkl_dict_recent",[]);
 let DICT=null,dictSeq=0;                 // DICT: {entry, by, q, stack:[earlier entries]}
-const dictKnown=()=>new Set(getPools().words.map(w=>w.c));
+const dictKnown=()=>new Set(knownWords());
 function dictSystem(){
   // newest first, as in Talk; up to 3000 words (~10K tokens, cached after the first lookup)
-  const words=getPools().words.slice().sort((a,b)=>b.l-a.l).slice(0,3000).map(w=>w.c);
+  const words=knownWords().slice(0,3000);
   return [
     `You write entries for a Japanese-Japanese learner's dictionary (国語辞典) for a learner at WaniKani level ${wkLevel()}.`,
     "Write like a children's 国語辞典: short plain-form definitions (〜こと。〜もの。〜様子。), at most 3 senses, the common ones first.",
@@ -4500,6 +4524,7 @@ syncEngineUI();
 if(S.engine==="voicevox") vvConnect();
 updateChips();
 if(DATA){ show("configCard"); } else { show("setupCard"); }
+ankiLoad();
 })();
 </script>
 </body>

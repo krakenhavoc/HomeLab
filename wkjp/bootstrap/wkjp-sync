@@ -13,6 +13,7 @@ LIVE_DIR=/opt/wkjp/live
 REC_DIR=/opt/wkjp/rec
 PICS_DIR=/opt/wkjp/pics
 STATS_DIR=/opt/wkjp/stats
+ANKI_DIR=/opt/wkjp/anki
 SECRETS_DIR=/opt/wkjp/secrets
 SRC_DIR="${REPO_DIR}/wkjp"
 
@@ -74,6 +75,11 @@ chmod 0750 "${PICS_DIR}"
 mkdir -p "${STATS_DIR}"
 chown 101:101 "${STATS_DIR}"
 chmod 0750 "${STATS_DIR}"
+
+# Started Anki words: nginx writes known.json here when base-station sends it.
+mkdir -p "${ANKI_DIR}"
+chown 101:101 "${ANKI_DIR}"
+chmod 0750 "${ANKI_DIR}"
 
 # Secrets nginx includes (the Anthropic API key for Talk), placed by hand.
 # Root only: the nginx master reads config as root. The files are left alone.

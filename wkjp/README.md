@@ -14,6 +14,7 @@ is reachable only through the private gateway.
 | Reconcile loop | `wkjp/bootstrap/` |
 | Pronunciation check report | `wkjp/tools/rec-report.py` |
 | Emoji for item pictures | `wkjp/tools/build-emoji.py` → `wkjp/site/emoji.json` |
+| Anki words as known words | `wkjp/tools/anki-sync.py` + `wkjp/tools/systemd/` (on base-station) |
 | TLS and private routing | `gateway/caddy/Caddyfile` |
 | Portal entry | `gateway/homepage/services.yaml` |
 
@@ -98,7 +99,25 @@ is reachable only through the private gateway.
     your turn now; Esc, the button or leaving the tab stops it.
   - It reads replies aloud whatever "read aloud" says; that box is for
     typed messages.
-- Talk's prompt lists the learner's newest ~800 learned words, plus, when
+- Words started in Anki count as known too:
+  - **Sync:** `wkjp/tools/anki-sync.py` runs on base-station (Flatpak Anki)
+    every 15 minutes from a user timer. It reads the collection without
+    touching it (SQLite's backup API, or a copy of the files while Anki holds
+    its exclusive lock), takes the notes in "Kaishi 1.5k" with a card past
+    "new", and PUTs their Word, Word Reading and Word Meaning to
+    `/anki/known.json` (`/opt/wkjp/anki` on the VM) when the list changed.
+  - **Install** (on base-station, from a checkout):
+    `install -Dm755 wkjp/tools/anki-sync.py ~/.local/bin/wkjp-anki-sync`,
+    `install -Dm644 -t ~/.config/systemd/user wkjp/tools/systemd/*`, then
+    `systemctl --user daemon-reload && systemctl --user enable --now
+    wkjp-anki-sync.timer`. `wkjp-anki-sync --dry-run` shows what it found.
+  - **In the app:** `knownWords()` is the WaniKani learned words (newest
+    level first) followed by the Anki ones WaniKani doesn't have. Talk's
+    prompt (up to 1,500), its gloss underlines, and the dictionary's prompt
+    (up to 3,000) and known-word check all use it. The listening Practice
+    quiz and Reviews stay WaniKani-only. Settings → Vocabulary says how many
+    came from Anki and when.
+- Talk's prompt lists up to 1,500 known words (above), plus, when
   Settings → "New words in Talk" is above 0% (default 15%), the nearest ~150
   unlearned WaniKani words to draw new words from. The model treats the
   percentage as a rough target. "Send automatically when I stop the mic" sends

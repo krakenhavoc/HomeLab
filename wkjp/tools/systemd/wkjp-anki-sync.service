@@ -1,0 +1,9 @@
+# Sends the learner's started Anki words (Kaishi 1.5k) to wkjp as extra known
+# words. A user unit on the machine with Anki desktop; see wkjp/README.md.
+[Unit]
+Description=Send started Anki words to wkjp
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/wkjp-anki-sync
