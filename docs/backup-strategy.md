@@ -26,6 +26,8 @@ flowchart LR
 
 The `cmd-and-ctrl` deployment provisions separate Cloudflare R2 buckets for its production and development environments. Retention and uploads are owned by that application's restic job, not by this repository. Terraform creates the buckets and an incomplete-multipart-upload cleanup rule; it deliberately does not expire completed restic objects because age-based object deletion can corrupt a repository.
 
+`wkjp` saves a little user data on its VM (picture choices, practice-time logs, recordings). `wkjp/tools/wkjp-backup.py` runs nightly on base-station, copies that data over HTTPS and keeps encrypted restic snapshots on the `nfs-prd` export; its restore was tested on 2026-11-07. See [wkjp/README.md](../wkjp/README.md#backups).
+
 Other workload backup jobs are not codified in this repository today. Proxmox backup configuration may exist operationally, but it is outside this codebase and must be verified on the live platform before relying on it.
 
 The `scripts/backup/` directory is a reserved workspace, not evidence of an automated backup system.

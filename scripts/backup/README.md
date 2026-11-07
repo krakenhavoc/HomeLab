@@ -1,6 +1,6 @@
 # Backup scripts
 
-No backup script is implemented in this directory yet.
+No backup script is implemented in this directory yet. Service-owned jobs live with their service: `wkjp/tools/wkjp-backup.py` (see [wkjp/README.md](../../wkjp/README.md#backups)).
 
 The current documented recovery model is in [Backup and recovery strategy](../../docs/backup-strategy.md). The `cmd_and_ctrl` environments use application-owned restic jobs with Terraform-managed Cloudflare R2 buckets; other backup coverage must be verified on the live Proxmox platform.
 

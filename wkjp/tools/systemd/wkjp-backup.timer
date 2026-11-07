@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up wkjp's saved data nightly
+
+[Timer]
+OnCalendar=*-*-* 03:30
+RandomizedDelaySec=15min
+# run on the next boot if base-station was off at 03:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

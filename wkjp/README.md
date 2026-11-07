@@ -15,6 +15,46 @@ is reachable only through the private gateway.
 | Pronunciation check report | `wkjp/tools/rec-report.py` |
 | Emoji for item pictures | `wkjp/tools/build-emoji.py` → `wkjp/site/emoji.json` |
 | Anki words as known words | `wkjp/tools/anki-sync.py` + `wkjp/tools/systemd/` (on base-station) |
+| Backups of saved data | `wkjp/tools/wkjp-backup.py` + `wkjp/tools/systemd/` (on base-station) |
+
+## Backups
+
+The VM is rebuilt from Git, but what the app saved on it isn't: picture
+choices (`/opt/wkjp/pics`), practice-time logs (`stats`), the Anki word list
+(`anki`, also rebuilt by its sync) and recordings (`rec`). The Anthropic key
+(`secrets`) is left out on purpose; make a new one in the Console.
+
+- **Job:** `wkjp-backup` on base-station, nightly at 03:30 from a user timer
+  (`Persistent=true`, so a missed night runs at the next boot). It copies the
+  data over HTTPS (what nginx serves; recordings only when new) into
+  `~/.cache/wkjp-backup/data`, then takes a restic snapshot.
+- **Where:** `/mnt/backups/wkjp-restic`, the NFS export
+  `192.168.10.9:/export/nfs/backups` (folder on the Proxmox host's
+  `/srv/storage/prd/nfs`, separate from the VM's datastore but the same
+  host). Encrypted with the password in
+  `~/.config/wkjp-backup/restic-password`, which also needs a copy outside
+  base-station.
+- **Retention:** 14 daily, 8 weekly, 12 monthly (`restic forget --prune`).
+- **Install:** restic in `~/.local/bin` (official release, checksum
+  verified), `install -m755 wkjp/tools/wkjp-backup.py
+  ~/.local/bin/wkjp-backup`, the two units in `~/.config/systemd/user`, then
+  `systemctl --user enable --now wkjp-backup.timer`. The first run takes
+  `--init` to create the repository.
+- **Restore:**
+
+  ```sh
+  export RESTIC_REPOSITORY=/mnt/backups/wkjp-restic
+  export RESTIC_PASSWORD_FILE=~/.config/wkjp-backup/restic-password
+  restic snapshots
+  restic restore latest --target /tmp/wkjp-restore
+  # the tree is under /tmp/wkjp-restore/home/<user>/.cache/wkjp-backup/data:
+  # copy pics/ stats/ anki/ rec/ into /opt/wkjp/ on the VM, then
+  # chown -R 101:101 /opt/wkjp/{pics,stats,anki,rec}
+  ```
+
+  Tested 2026-11-07: the restored snapshot matched the staged copy (190
+  files, 5 MB), `anki/known.json` and a recording matched the live server
+  byte for byte, and `restic check` passed.
 | TLS and private routing | `gateway/caddy/Caddyfile` |
 | Portal entry | `gateway/homepage/services.yaml` |
 
