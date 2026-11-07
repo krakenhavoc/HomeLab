@@ -20,8 +20,9 @@ is reachable only through the private gateway.
 ## Backups
 
 The VM is rebuilt from Git, but what the app saved on it isn't: picture
-choices (`/opt/wkjp/pics`), practice-time logs (`stats`), the Anki word list
-(`anki`, also rebuilt by its sync) and recordings (`rec`). The Anthropic key
+choices (`/opt/wkjp/pics`), practice-time logs (`stats`), mistake notebooks
+(`notebook`), the Anki word list (`anki`, also rebuilt by its sync) and
+recordings (`rec`). The Anthropic key
 (`secrets`) is left out on purpose; make a new one in the Console.
 
 - **Job:** `wkjp-backup` on base-station, nightly at 03:30 from a user timer
@@ -337,6 +338,23 @@ choices (`/opt/wkjp/pics`), practice-time logs (`stats`), the Anki word list
   - The chooser searches Japanese Wikipedia for the word and Wikimedia
     Commons for the meaning, or for whatever is typed. Each photo links to
     its file page for the author and licence.
+- The **mistake notebook** (a card on the Reviews tab, hidden during a
+  session) collects what to go over again:
+  - **Review and lesson misses:** recorded when a miss is confirmed (Next,
+    not "Misheard, again"), with the question, the right answer and what
+    was typed or heard. Missing the same item again bumps its count.
+  - **Talk corrections:** when the sentence check corrects Japanese the
+    learner wrote, the sentence, the correction and the note.
+  - **Drill:** flashcards, up to 20, most-missed first. Space shows the
+    answer (and plays it); 1 is "again", which brings it back at the end,
+    and 2 is "got it". × removes one from the list.
+  - **Storage:** like the practice-time log, one file per browser,
+    `/opt/wkjp/notebook/nb-<id>.json` (nginx `/notebook/`, GET and PUT for
+    that name pattern, plus a listing), saved 3 s after a change and when
+    the page hides. The app merges every browser's file. An entry shows
+    while its latest miss is newer than the latest "got it" for it from any
+    browser, so clearing it on the phone clears it on the desktop too.
+    Each browser keeps up to 500 entries.
 - The Stats tab's **Practice time** card is a rough log of active time:
   - **Counting:** a 15 s tick adds to today's total for the open tab's
     activity (Lessons, Reviews, Talk, Speak, Dictionary, Practice; not Stats
