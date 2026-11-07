@@ -82,6 +82,22 @@ is reachable only through the private gateway.
 - Each Talk reply gets a follow-up call that splits it into words with
   reading and meaning, for the hover/tap glosses. Kanji words not in the
   learned set get a dotted underline.
+- Talk replies stream: the reply call to Claude asks for `stream: true`, and
+  nginx passes the server-sent events straight through (`proxy_buffering off`
+  on `/claude/`). The app reads the `reply` field out of the JSON as it's
+  written (`jsonFieldPrefix`), shows it in the bubble, and hands each finished
+  sentence to VOICEVOX at once (`talkSpeaker`), so speech starts after the
+  first sentence rather than after the whole reply. The sentence check and
+  glosses don't stream. An Ollama reply comes whole and is read the old way.
+- **Live mode** (🗣 Live) is hands-free conversation:
+  - It listens with the Reviews mic detector (room-relative threshold, level
+    meter), ends the turn after a 0.9 s pause (20 s at most), transcribes it,
+    sends it, reads the streamed reply aloud, then listens again.
+  - The mic is off while the reply plays, so it doesn't hear itself.
+  - Space while it speaks interrupts and listens; space while you talk ends
+    your turn now; Esc, the button or leaving the tab stops it.
+  - It reads replies aloud whatever "read aloud" says; that box is for
+    typed messages.
 - Talk's prompt lists the learner's newest ~800 learned words, plus, when
   Settings → "New words in Talk" is above 0% (default 15%), the nearest ~150
   unlearned WaniKani words to draw new words from. The model treats the
