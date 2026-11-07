@@ -134,6 +134,27 @@
   .missItem .jp{font-size:1.1rem; min-width:90px; font-family:var(--mincho); font-weight:700;}
   .missItem .mean{color:var(--muted); flex:1;}
   .statGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
+  .statGrid.four{grid-template-columns:repeat(4,1fr);}
+  @media (max-width:480px){ .statGrid.four{grid-template-columns:repeat(2,1fr);} }
+  /* practice time: one series, so one colour and no legend */
+  .tH{font-size:.84rem; color:var(--muted); font-weight:700; margin:16px 0 6px;}
+  .tchart{position:relative; display:flex; align-items:flex-end; gap:2px; height:120px; border-bottom:1px solid var(--line);}
+  .tchart .gl{position:absolute; left:0; right:0; border-top:1px dashed #2c3456; pointer-events:none;}
+  .tchart .gl span{position:absolute; right:0; top:-1.3em; font-size:.66rem; color:var(--muted);}
+  .tchart .col{flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; outline:none;}
+  .tchart .bar{background:var(--accent); border-radius:4px 4px 0 0;}
+  .tchart .col:hover .bar,.tchart .col:focus-visible .bar{filter:brightness(1.18);}
+  .tchart .col:focus-visible{box-shadow:inset 0 0 0 2px var(--soft); border-radius:4px;}
+  .tdays{display:flex; gap:2px; font-size:.66rem; color:var(--muted); margin-top:4px;}
+  .tdays span{flex:1; text-align:center;}
+  .tdays span.today{color:var(--text); font-weight:700;}
+  .trow{display:grid; grid-template-columns:6.5em 1fr 5.5em; align-items:center; gap:10px; padding:4px 0; font-size:.88rem;}
+  .trow .b{height:8px; background:var(--bg); border-radius:99px; overflow:hidden;}
+  .trow .b span{display:block; height:100%; background:var(--accent); border-radius:99px;}
+  .trow .v{text-align:right; color:var(--muted); font-variant-numeric:tabular-nums;}
+  #tmTip{position:fixed; z-index:50; background:var(--card); border:1px solid var(--line); border-radius:8px;
+    padding:6px 10px; font-size:.82rem; pointer-events:none; box-shadow:0 4px 14px #0008; max-width:220px;}
+  #tmTip .r{color:var(--muted); font-size:.76rem;}
   .statBox{background:var(--card2); border-radius:10px; padding:12px; text-align:center;}
   .statBox .v{font-size:1.4rem; font-weight:800;}
   .statBox .l{font-size:.74rem; color:var(--muted);}
@@ -712,8 +733,24 @@
 
   <!-- ============ STATS VIEW ============ -->
   <main id="viewStats" class="hidden">
+    <section class="card" id="timeCard">
+      <h2>Practice time</h2>
+      <div class="statGrid four">
+        <div class="statBox"><div class="v" id="tmToday">–</div><div class="l">today</div></div>
+        <div class="statBox"><div class="v" id="tmWeek">–</div><div class="l">last 7 days</div></div>
+        <div class="statBox"><div class="v" id="tmAll">–</div><div class="l">all time</div></div>
+        <div class="statBox"><div class="v" id="tmStreak">–</div><div class="l">day streak</div></div>
+      </div>
+      <h3 class="tH">Minutes a day, last 14 days</h3>
+      <div class="tchart" id="tmChart" role="list" aria-label="Practice minutes per day, last 14 days"></div>
+      <div class="tdays" id="tmDays" aria-hidden="true"></div>
+      <h3 class="tH">Last 7 days by activity</h3>
+      <div id="tmBreak"></div>
+      <p class="note" id="tmNote"></p>
+      <div id="tmTip" class="hidden"></div>
+    </section>
     <section class="card">
-      <h2>All-time stats</h2>
+      <h2>Listening practice</h2>
       <div class="statGrid">
         <div class="statBox"><div class="v" id="stAnswered">0</div><div class="l">answered</div></div>
         <div class="statBox"><div class="v" id="stAccuracy">–</div><div class="l">accuracy</div></div>
@@ -3977,6 +4014,119 @@ function pcReset(){
 // leaving the tab ends a running check; what's recorded is kept
 function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 
+/* ---------- Practice time ---------- */
+// A rough log of active time per activity. A 15 s tick counts while the page
+// is visible, on a practice tab, and the learner has touched it in the last
+// 2 minutes, or the mic is open or audio is playing (hands-free Reviews, Live).
+// Each browser keeps its own file on the wkjp server (stats/time-<id>.json),
+// so devices never overwrite each other; the Stats tab adds them up.
+const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewDict:"dictionary"};
+const TIME_NAME={reviews:"Reviews",lessons:"Lessons",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice"};
+const TIME_TICK=15,TIME_IDLE=120000;
+let DEVICE=load("wkl_device","");
+if(!/^[a-f0-9]{16}$/.test(DEVICE)){
+  DEVICE=Array.from(crypto.getRandomValues(new Uint8Array(8)),x=>x.toString(16).padStart(2,"0")).join("");
+  store("wkl_device",DEVICE);
+}
+let TIMELOG=load("wkl_timelog",null);
+if(!TIMELOG||typeof TIMELOG.days!=="object") TIMELOG={v:1,days:{}};
+let timeLast=Date.now(),timeDirty=false,timeSent=0;
+const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+["keydown","pointerdown","wheel","touchstart"].forEach(ev=>addEventListener(ev,()=>{ timeLast=Date.now(); },{passive:true,capture:true}));
+function timeTick(){
+  const view=Object.values(views).find(v=>!$(v).classList.contains("hidden")),act=TIME_ACT[view];
+  const busy=Date.now()-timeLast<TIME_IDLE||!!MIC||!!(vvAudio&&!vvAudio.paused);
+  if(!act||document.visibilityState!=="visible"||!busy) return;
+  const k=dayKey(),d=TIMELOG.days[k]=TIMELOG.days[k]||{};
+  d[act]=(d[act]||0)+TIME_TICK;
+  // two years is plenty for a rough log
+  const keys=Object.keys(TIMELOG.days).sort();
+  if(keys.length>730) keys.slice(0,keys.length-730).forEach(x=>{ delete TIMELOG.days[x]; });
+  timeDirty=true;
+  store("wkl_timelog",TIMELOG);
+  if(Date.now()-timeSent>60000) timeSave();
+}
+// this browser's file on the server; keepalive for the last save as the page hides
+function timeSave(keepalive){
+  if(!timeDirty||location.protocol==="file:") return;
+  timeDirty=false; timeSent=Date.now();
+  const body=JSON.stringify({v:1,device:DEVICE,ua:navigator.userAgent.slice(0,160),at:new Date().toISOString(),days:TIMELOG.days});
+  fetch(`stats/time-${DEVICE}.json`,{method:"PUT",body,keepalive:!!keepalive,headers:{"Content-Type":"application/json"}})
+    .then(r=>{ if(!r.ok) timeDirty=true; },()=>{ timeDirty=true; });
+}
+// every browser's log: the others from the server, this one from memory
+async function timeAll(){
+  let docs=[];
+  try{
+    const r=await fetch("stats/",{cache:"no-store"});
+    if(r.ok){
+      const files=(await r.json()).map(f=>f.name).filter(n=>/^time-[a-f0-9]{16}\.json$/.test(n)&&n!==`time-${DEVICE}.json`);
+      docs=(await Promise.all(files.map(n=>fetch("stats/"+n,{cache:"no-store"}).then(x=>x.ok?x.json():null,()=>null)))).filter(Boolean);
+    }
+  }catch(e){}
+  docs.push({device:DEVICE,days:TIMELOG.days});
+  const days={};
+  for(const doc of docs) for(const [k,v] of Object.entries(doc.days||{})){
+    if(!/^\d{4}-\d\d-\d\d$/.test(k)||!v||typeof v!=="object") continue;
+    const o=days[k]=days[k]||{};
+    for(const [a,sec] of Object.entries(v)) if(Object.hasOwn(TIME_NAME,a)&&+sec>0) o[a]=(o[a]||0)+(+sec);
+  }
+  return {days,devices:docs.length};
+}
+const sumDay=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
+function fmtDur(sec){
+  const m=Math.round(sec/60);
+  if(m<60) return `${m} min`;
+  const h=Math.floor(m/60),r=m%60;
+  return r?`${h} h ${r} min`:`${h} h`;
+}
+async function renderTime(){
+  const {days,devices}=await timeAll();
+  const today=new Date(),back=n=>{ const d=new Date(today); d.setDate(d.getDate()-n); return d; };
+  const last=n=>Array.from({length:n},(_,i)=>back(n-1-i));
+  const week=last(7).map(d=>days[dayKey(d)]||{});
+  $("tmToday").textContent=fmtDur(sumDay(days[dayKey()]));
+  $("tmWeek").textContent=fmtDur(week.reduce((a,o)=>a+sumDay(o),0));
+  $("tmAll").textContent=fmtDur(Object.values(days).reduce((a,o)=>a+sumDay(o),0));
+  // days in a row with at least 5 minutes, counting today only once it qualifies
+  let streak=0;
+  for(let i=sumDay(days[dayKey()])>=300?0:1;;i++){ if(sumDay(days[dayKey(back(i))])>=300) streak++; else break; }
+  $("tmStreak").textContent=String(streak);
+  // the chart: minutes per day, a gridline at a round number near the top
+  const fort=last(14),mins=fort.map(d=>Math.round(sumDay(days[dayKey(d)])/60));
+  const top=Math.max(10,...mins),step=top>120?60:top>60?30:top>30?15:10,grid=Math.floor(top/step)*step;
+  const scale=Math.max(top,grid)*1.08;
+  const fmtD=d=>d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
+  $("tmChart").innerHTML=`<div class="gl" style="bottom:${100*grid/scale}%"><span>${grid} min</span></div>`+
+    fort.map((d,i)=>`<div class="col" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(fmtD(d))}: ${mins[i]} minutes">`+
+      `<div class="bar" style="height:${mins[i]?Math.max(2,100*mins[i]/scale):0}%"></div></div>`).join("");
+  $("tmDays").innerHTML=fort.map((d,i)=>`<span class="${i===13?"today":""}">${i===13?"today":i%2?"":d.getDate()}</span>`).join("");
+  const tip=$("tmTip"),chart=$("tmChart");
+  const show=el=>{
+    const i=+el.dataset.i,o=days[dayKey(fort[i])]||{};
+    const parts=Object.keys(TIME_NAME).filter(a=>o[a]).map(a=>`${TIME_NAME[a]} ${fmtDur(o[a])}`);
+    tip.innerHTML=`<div><b>${esc(fmtD(fort[i]))}</b>: ${esc(fmtDur(sumDay(o)))}</div>`+(parts.length?`<div class="r">${esc(parts.join(", "))}</div>`:"");
+    tip.classList.remove("hidden");
+    const b=el.getBoundingClientRect(),t=tip.getBoundingClientRect();
+    tip.style.top=Math.max(4,b.top+b.height-(el.querySelector(".bar").offsetHeight||0)-t.height-8)+"px";
+    tip.style.left=Math.max(4,Math.min(b.left+b.width/2-t.width/2,innerWidth-t.width-4))+"px";
+  };
+  const hide=()=>tip.classList.add("hidden");
+  chart.querySelectorAll(".col").forEach(el=>{ el.onmouseenter=()=>show(el); el.onfocus=()=>show(el); el.onmouseleave=hide; el.onblur=hide; });
+  // the week by activity, biggest first
+  const tot={};
+  week.forEach(o=>Object.entries(o).forEach(([a,s])=>{ tot[a]=(tot[a]||0)+s; }));
+  const rows=Object.keys(TIME_NAME).filter(a=>tot[a]).sort((a,b)=>tot[b]-tot[a]),max=Math.max(1,...rows.map(a=>tot[a]));
+  $("tmBreak").innerHTML=rows.length?rows.map(a=>`<div class="trow"><span>${TIME_NAME[a]}</span>`+
+    `<span class="b"><span style="width:${100*tot[a]/max}%"></span></span><span class="v">${fmtDur(tot[a])}</span></div>`).join("")
+    :`<p class="note">Nothing yet this week. Time counts while you use Lessons, Reviews, Talk, Speak, the dictionary or Practice.</p>`;
+  $("tmNote").textContent=`Counted while a practice tab is in front and you've used it in the last 2 minutes (or the mic or audio is on), in 15-second steps.`+
+    (devices>1?` Added up across ${devices} browsers.`:"");
+}
+setInterval(timeTick,TIME_TICK*1000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") timeSave(true); });
+addEventListener("pagehide",()=>timeSave(true));
+
 /* ---------- tabs & wiring ---------- */
 const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
@@ -3999,7 +4149,7 @@ Object.keys(views).forEach(t=>{
       $(tab).classList.toggle("active",tab===t);
       $(view).classList.toggle("hidden",tab!==t);
     });
-    if(t==="tabStats") renderStats();
+    if(t==="tabStats"){ renderStats(); timeSave(); renderTime(); }
     if(t==="tabTalk"){ talkFit(); talkScroll(); if(!$("llmStatus").textContent) llmConnect(); }
   };
 });
