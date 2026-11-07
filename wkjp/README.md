@@ -26,9 +26,20 @@ is reachable only through the private gateway.
   from the browser to WaniKani.
 - VOICEVOX is not published. nginx proxies an allowlist of endpoints under
   `/vv/` and drops the `Origin` header, which the engine would otherwise 403.
-- `/vv/` goes to VOICEVOX on KBU (192.168.1.201:50021, Quadlet `voicevox`)
-  first: ~0.4 s per sentence there vs ~10 s on this VM, which is too slow for
-  Talk's read-aloud. The local engine is the backup when KBU is unreachable.
+- Speech runs on base-station (192.168.1.18, `~/llm/local-compose.yaml`
+  there) since 2026-11-07, because KBU's GPU kept overheating:
+  - `/vv/` goes to VOICEVOX on base-station's CPU (port 50121, ~0.3 s a
+    sentence) first. This VM's own engine (~10 s, too slow for Talk's
+    read-aloud) is the backup.
+  - `/stt/` goes to whisper.cpp on base-station's RTX 5070 Ti (port 8080,
+    ~0.1 s a clip) first, with KBU's whisper.cpp as the backup.
+  - nginx skips a server that doesn't connect for 30 s, and every response
+    carries `X-Served-By` with the address that answered.
+  - The VM is on another VLAN, so base-station needs the route
+    `192.168.0.0/16 via 192.168.1.1` in its `Hibiscus` NetworkManager profile
+    while ProtonVPN is up; without it base-station's replies go into the
+    tunnel, nginx can't connect, and everything falls back. Docker's
+    published ports bypass ufw, so no firewall rule is needed.
 - The Talk tab chats with Claude by default (Settings → "Talk with"), through
   `/claude/v1/messages`. nginx forwards only that POST to
   `api.anthropic.com` (TLS verified) and adds the API key itself, so the
@@ -83,12 +94,17 @@ is reachable only through the private gateway.
   - Off (the default) keeps the old "keep grammar simple" prompt, and no
     `文法` tag shows.
 - The Talk mic records in the browser and posts the clip to `/stt/`, proxied
-  to whisper.cpp (large-v3-turbo, Vulkan on the RX 6800M) on KBU,
-  192.168.1.201:8080 (`~/.config/containers/systemd/whisper-vk.container`).
-  That Quadlet runs with Silero VAD (`--vad --vad-model
-  /models/ggml-silero-v6.2.0.bin --vad-threshold 0.35 --vad-speech-pad-ms
-  200`), so silence and loud noise come back empty instead of as invented
-  subtitle lines such as ご視聴ありがとうございました. The default 0.5 threshold
+  to whisper.cpp large-v3-turbo: on base-station, the 8-bit model (~1.3 GiB
+  of VRAM, counted in Ollama's `OLLAMA_GPU_OVERHEAD` so the desktop keeps its
+  headroom) in `ghcr.io/ggml-org/whisper.cpp:main-cuda`; on KBU, the Vulkan
+  build (`~/.config/containers/systemd/whisper-vk.container`). Both run with
+  `--inference-path /v1/audio/transcriptions --convert` and Silero VAD
+  (`--vad --vad-model /models/ggml-silero-v6.2.0.bin --vad-threshold 0.35
+  --vad-speech-pad-ms 200`), so silence and loud noise come back empty
+  instead of as invented subtitle lines such as ご視聴ありがとうございました.
+  The CUDA image has kernels up to sm_90; the driver compiles them for the
+  5070 Ti's sm_120 on first use (~27 s), cached in
+  `~/llm/whisper-cpp/cuda-cache` so a recreated container doesn't pay again. The default 0.5 threshold
   clipped speech in moderate noise. The app also drops those stock phrases and
   prompt echoes, and shows "didn't catch that" without auto-sending.
   Settings → "Mic language" switches Whisper from forced Japanese to
@@ -102,7 +118,7 @@ is reachable only through the private gateway.
   - If Whisper hears nothing or a stock phrase, ReazonSpeech's text is
     judged instead.
   - **Paused Whisper:** if ReazonSpeech has an answer, Whisper gets 6 s,
-    with "Checking with Whisper on KBU…" shown after 2 s. After that, the
+    with "Checking with Whisper…" shown after 2 s. After that, the
     answer is judged on ReazonSpeech alone, and a miss says so.
   - **Second listens** (dropped r, English slip, own kanji) also give up
     after 6 s instead of retrying.
@@ -123,16 +139,16 @@ is reachable only through the private gateway.
     crashing container only turns `/asr/` into a 502, and the app falls
     back to Whisper alone. compose builds the image (`pull_policy: build`);
     the first build downloads the model (~160 MB, pinned revision).
-  - **CPU type:** the VM's `x86-64-v2-AES` CPU type hides AVX/AVX2, which
-    ONNX Runtime would use. An AVX2 type (`x86-64-v3`) would speed it up,
-    once the Proxmox host is confirmed to support it.
-- KBU's RX 6800M runs hot, and `kbu-gpu-guard` there freezes `whisper-server`
-  near 100 °C, sometimes for a couple of minutes. Requests hang meanwhile,
-  then nginx answers 504, or 502 as Whisper resumes. Reviews, the
-  pronunciation check and Talk hold the clip and send it again (`sttPost`):
-  one request at a time, 8 s apart, for up to 3 minutes, with a "Whisper on
-  KBU isn't answering" status. The Reviews "next / again" listener doesn't
-  retry.
+  - **CPU type:** the VM runs with CPU type `host` (since 2026-11-04), so
+    ONNX Runtime gets AVX2/FMA; `x86-64-v2-AES` hid them.
+- Whisper can still be away: base-station off, or, on the KBU backup,
+  `kbu-gpu-guard` freezing `whisper-server` near 100 °C for up to a couple of
+  minutes (KBU's RX 6800M runs hot; that's why it's only the backup now).
+  Requests hang meanwhile, then nginx answers 504, or 502 as Whisper
+  resumes. Reviews, the pronunciation check and Talk hold the clip and send
+  it again (`sttPost`): one request at a time, 8 s apart, for up to 3
+  minutes, with a "Whisper isn't answering" status. The Reviews "next /
+  again" listener doesn't retry.
 - The Reviews tab does the WaniKani reviews that are due, WaniKani-style
   (meaning and reading, ~10 items in play, misses come back), answered by
   voice or typing. Meaning answers go to the same Whisper as English,

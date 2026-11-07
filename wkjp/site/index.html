@@ -577,7 +577,7 @@
         <li>With "let me check the results" on, nothing goes to WaniKani until you've looked over the list at the end. You can mark a miss as correct there, or untick an item to leave it due.</li>
         <li>Vowel length is forgiven (speech-to-text often hears がっこう as がっこ). A near miss, like じ for し, asks you to say it again.</li>
         <li>Sending results needs a token with the <b>reviews:create</b> permission (WaniKani → Settings → API Tokens). Unsent results wait here and resend.</li>
-        <li>Speech-to-text runs on KBU, so voice answers need that PC on.</li>
+        <li>Speech-to-text runs on base-station's GPU (KBU as a backup), so voice answers need one of them on.</li>
       </details>
     </section>
 
@@ -807,7 +807,7 @@
         <option value="ja">Japanese only (most accurate for Japanese)</option>
         <option value="auto">Auto-detect (if I speak English or mix)</option>
       </select>
-      <p class="note">Claude needs the API key on the wkjp server; Ollama needs base-station on. The mic uses Whisper on KBU.</p>
+      <p class="note">Claude needs the API key on the wkjp server; Ollama needs base-station on. The mic uses Whisper on base-station's GPU, with KBU as a backup.</p>
     </section>
   </main>
 </div>
@@ -2020,7 +2020,7 @@ async function llmConnect(){
     st.textContent="⚠ can't reach Ollama — is base-station on?";
   }
 }
-// Mic records locally and transcribes with Whisper on KBU's GPU (/stt/).
+// Mic records locally and transcribes with Whisper (/stt/: base-station's GPU, KBU as backup).
 const STT_BASE=location.protocol==="file:"?"http://localhost:8080":location.origin+"/stt";
 // whisper.cpp drops Japanese punctuation unless the prompt has some
 const STT_PROMPT="こんにちは。今日はいい天気ですね。";
@@ -2209,12 +2209,12 @@ function micUtterance(alive,opt={}){
     rec.start();
   });
 }
-// KBU's GPU guard pauses Whisper for up to a couple of minutes when the GPU
+// Whisper can be away for a while: on KBU (now the backup) its GPU guard pauses it for minutes when the GPU
 // runs hot: requests hang, then nginx answers 504 (or 502 as it resumes).
 // With opt.retry the clip is sent again once Whisper is back, instead of the
 // answer being lost. One request at a time, 8 s apart, so a hot GPU doesn't
 // wake up to a pile of work; gives up after 3 minutes or when alive() is false.
-const STT_BUSY=`Whisper on KBU isn't answering, probably paused while its GPU cools.`;
+const STT_BUSY=`Whisper isn't answering (base-station off, or the KBU backup paused while its GPU cools).`;
 async function sttPost(fd,opt={}){
   const t0=Date.now();
   for(let n=1;;n++){
@@ -2224,7 +2224,7 @@ async function sttPost(fd,opt={}){
     clearTimeout(tm);
     if(r&&r.ok) return r.json();
     if(r&&![502,503,504].includes(r.status)) throw new Error("speech-to-text error "+r.status);
-    const down=`can't reach speech-to-text on KBU${r?` (${r.status})`:""}`;
+    const down=`can't reach speech-to-text${r?` (${r.status})`:""}`;
     if(!opt.retry||Date.now()-t0>180000||(opt.alive&&!opt.alive())) throw new Error(down);
     if(opt.onWait) opt.onWait(n);
     await new Promise(res=>setTimeout(res,8000));
@@ -2402,9 +2402,9 @@ async function rvListen(){
   }
   let text="";
   // With ReazonSpeech's answer in hand, give Whisper ~6 s, then judge without
-  // it: KBU's GPU guard can pause Whisper for minutes.
+  // it: Whisper can be away for minutes (KBU's GPU guard, base-station off).
   const slow=alt?setTimeout(()=>{ if(my===rvSeq&&RV&&RV.phase==="question")
-    rvStatus("Checking with Whisper on KBU… (it may be paused while its GPU cools)","again"); },2000):0;
+    rvStatus("Checking with Whisper…","again"); },2000):0;
   try{ text=await sttTranscribe(blob,q==="reading"?"ja":"en",q==="reading"?RV_JA_PROMPT:"",
     alt?{timeout:6000}:rvSttWait(()=>my===rvSeq&&!!RV&&RV.phase==="question")); }
   catch(e){
@@ -2632,7 +2632,7 @@ function rvWrong(heard,gaveUp,spoken){
   RV.phase="wrong"; RV.cur.gaveUp=gaveUp;
   const inp=$("rvInput"); inp.className="bad"; inp.disabled=true;
   rvStatus((gaveUp?"Here's the answer.":spoken&&heard?`✗ heard “${heard}”`:"✗ not quite")+
-    (spoken&&!gaveUp&&RV.cur.whisperDown?" (Whisper on KBU was paused, so only ReazonSpeech judged this)":""),"bad");
+    (spoken&&!gaveUp&&RV.cur.whisperDown?" (Whisper didn't answer in time, so only ReazonSpeech judged this)":""),"bad");
   const info=$("rvInfo");
   info.innerHTML=(rvSayText(s)?`<button class="btn small say" id="btnRvSay" title="hear it (p)">🔊</button>`:"")+
     (spoken&&RV.cur.clip?`<button class="btn small say" id="btnRvClip" title="play back what the mic recorded (m)">▶ my answer</button>`:"")+picHTML(s,true)+rvInfoHTML(s);
@@ -3486,7 +3486,7 @@ async function pcJudge(text,w){
 // spells 学校 as がっこお, which is the same length as がっこう
 const pcShort=(v,w)=>!!v.len&&kanaKey(v.heard).length<kanaKey(w.r).length;
 const pcGrade=(v,w)=>v.v==="ok"&&!pcShort(v,w)?"ok":v.v==="ok"||v.v==="near"?"near":"bad";
-// a take passes if either recogniser heard it (Whisper on KBU, ReazonSpeech on the VM)
+// a take passes if either recogniser heard it (Whisper on base-station, ReazonSpeech on the VM)
 const pcBest=(a,b)=>a==="ok"||b==="ok"?"ok":a==="near"||b==="near"?"near":"bad";
 const pcMark=g=>g==="ok"?"✓":g==="near"?"≈":"✗";
 async function pcWordList(n){
