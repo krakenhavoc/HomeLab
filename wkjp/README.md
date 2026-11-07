@@ -277,10 +277,23 @@ recordings (`rec`). The Anthropic key
 - Meaning and reading questions look different on purpose: meaning is a
   light paper bar and answer box with an `A` badge, reading is dark ink with
   `あ`, following WaniKani's light/dark convention.
-- Each tab carries its Japanese word (練習, 学習, 復習, 話す, 会話, 辞書, 統計,
-  設定) above the English, with the reading in the tooltip. Eight tabs don't
-  fit side by side, so the stack is used at every width. Below 480px only the
-  Japanese shows; the English stays for screen readers.
+- Each tab carries its Japanese word (今日, 練習, 学習, 復習, 話す, 会話, 辞書,
+  統計, 設定) above the English, with the reading in the tooltip. Nine tabs
+  don't fit side by side, so the stack is used at every width. Below 520px
+  (where the English labels would overflow) only the Japanese shows, smaller
+  again below 360px; the English stays for screen readers.
+- **今日 Today** is the landing tab:
+  - **Waiting:** WaniKani reviews due now (or when the next ones come) and
+    new lessons, from `/v2/summary` fetched each time the tab opens; the
+    mistake notebook's count; a scene of the day for Talk (the seven scenes
+    in turn); and the Anki deck's progress.
+  - **Goal:** today's practice minutes (every browser added up) against a
+    daily goal (15–90 min, default 30, `S.dailyGoal`), plus the streak.
+  - **Next:** one button for the most useful thing to do: reviews if any
+    are due, else lessons, else the notebook, else today's scene ("Connect
+    WaniKani" without a token). The row buttons go to the same places:
+    Reviews and Lessons start once their data is loaded, Drill starts the
+    notebook drill, and Play or 🗣 Live opens Talk in today's scene.
 - The 辞書 Dictionary tab is a Japanese-Japanese dictionary written, as far
   as it can be, in words the learner already knows:
   - **Writing:** the Talk model (Settings → Conversation partner; Claude,

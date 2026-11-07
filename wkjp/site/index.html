@@ -46,13 +46,13 @@
   nav button:hover .tabJa{opacity:1;}
   nav button.active{background:var(--card2); color:var(--text); box-shadow:inset 0 -2px 0 var(--accent);}
   nav button.active .tabJa{color:var(--accent); opacity:1;}
-  /* phones: the Japanese alone (English stays for screen readers and in the tooltip) */
-  @media (max-width:480px){
+  /* narrow screens: the Japanese alone (English stays for screen readers and in the tooltip); below ~505px nine tabs with English overflow */
+  @media (max-width:520px){
     nav .tabEn{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
     nav button{padding:8px 2px;}
-    nav .tabJa{font-size:1.04rem;}
+    nav .tabJa{font-size:.92rem;}
   }
-  @media (max-width:360px){ nav button{padding:8px 1px;} nav .tabJa{font-size:.92rem;} }
+  @media (max-width:360px){ nav button{padding:8px 1px;} nav .tabJa{font-size:.84rem;} }
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
   .card h2{font-size:1.02rem; margin-bottom:10px;}
   .card p{font-size:.9rem; color:var(--muted);}
@@ -232,6 +232,26 @@
   #rvMic.on{background:var(--accent); border-color:var(--accent); animation:rvPulse 1.2s infinite;}
   @keyframes rvPulse{50%{box-shadow:0 0 0 7px rgba(240,177,61,.22);}}
   /* the mark at 40% is the detector's threshold: speech has to cross it to count */
+  /* Today */
+  .tdHead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .tdHead h2{margin:0; flex:1;}
+  .tdStreak{font-size:.85rem; color:var(--accent);}
+  .tdGoal{margin:12px 0 14px;}
+  .tdBar{height:10px; background:var(--bg); border-radius:99px; overflow:hidden;}
+  .tdBar span{display:block; height:100%; width:0; background:var(--accent); border-radius:99px; transition:width .4s;}
+  .tdBar.met span{background:var(--green);}
+  .tdGoalRow{display:flex; align-items:center; gap:8px; margin-top:6px; font-size:.85rem;}
+  .tdGoalRow .grow{flex:1;}
+  .tdGoalRow label{margin:0; font-size:.78rem;}
+  .tdGoalRow select{width:auto; padding:3px 8px; font-size:.8rem;}
+  #btnTdNext{width:100%; padding:14px; font-size:1rem;}
+  .tdRows{margin-top:10px;}
+  .tdRow{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line);}
+  .tdRow:last-child{border-bottom:none;}
+  .tdRow .k{font-family:var(--mincho); font-weight:700; font-size:1.25rem; min-width:2.6em; color:var(--text);}
+  .tdRow .t{flex:1; font-size:.9rem; color:var(--muted); min-width:0;}
+  .tdRow .t b{color:var(--text); font-weight:700;}
+  .tdRow .acts{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
   /* Talk role-plays */
   .sceneBar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-2px 0 8px;}
   .sceneBar label{margin:0; font-size:.8rem;}
@@ -439,7 +459,8 @@
   <div id="voiceWarn" class="warn hidden"></div>
 
   <nav>
-    <button id="tabPractice" class="active" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span><span class="tabEn">Practice</span></button>
+    <button id="tabToday" class="active" title="今日 (きょう)"><span class="tabJa" lang="ja">今日</span><span class="tabEn">Today</span></button>
+    <button id="tabPractice" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span><span class="tabEn">Practice</span></button>
     <button id="tabLessons" title="学習 (がくしゅう)"><span class="tabJa" lang="ja">学習</span><span class="tabEn">Lessons</span></button>
     <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span><span class="tabEn">Reviews</span></button>
     <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span><span class="tabEn">Speak</span></button>
@@ -450,7 +471,22 @@
   </nav>
 
   <!-- ============ PRACTICE VIEW ============ -->
-  <main id="viewPractice">
+  <!-- ============ TODAY VIEW ============ -->
+  <main id="viewToday">
+    <section class="card" id="todayCard">
+      <div class="tdHead"><h2 id="tdDate"></h2><span class="tdStreak" id="tdStreak"></span></div>
+      <div class="tdGoal">
+        <div class="tdBar" role="progressbar" aria-label="practice today" aria-valuemin="0" id="tdBar"><span id="tdBarFill"></span></div>
+        <div class="tdGoalRow"><span id="tdGoalTxt"></span><span class="grow"></span>
+          <label for="tdGoalSel">daily goal</label>
+          <select id="tdGoalSel"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option></select></div>
+      </div>
+      <button class="btn primary" id="btnTdNext" disabled>…</button>
+      <div class="tdRows" id="tdRows"></div>
+    </section>
+  </main>
+
+  <main id="viewPractice" class="hidden">
 
     <!-- setup -->
     <section id="setupCard" class="card">
@@ -4257,6 +4293,13 @@ async function timeAll(){
   return {days,devices:docs.length};
 }
 const sumDay=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
+// days in a row with at least 5 minutes, counting today only once it qualifies
+function timeStreak(days){
+  const back=n=>{ const d=new Date(); d.setDate(d.getDate()-n); return d; };
+  let streak=0;
+  for(let i=sumDay(days[dayKey()])>=300?0:1;;i++){ if(sumDay(days[dayKey(back(i))])>=300) streak++; else break; }
+  return streak;
+}
 function fmtDur(sec){
   const m=Math.round(sec/60);
   if(m<60) return `${m} min`;
@@ -4272,9 +4315,7 @@ async function renderTime(){
   $("tmWeek").textContent=fmtDur(week.reduce((a,o)=>a+sumDay(o),0));
   $("tmAll").textContent=fmtDur(Object.values(days).reduce((a,o)=>a+sumDay(o),0));
   // days in a row with at least 5 minutes, counting today only once it qualifies
-  let streak=0;
-  for(let i=sumDay(days[dayKey()])>=300?0:1;;i++){ if(sumDay(days[dayKey(back(i))])>=300) streak++; else break; }
-  $("tmStreak").textContent=String(streak);
+  $("tmStreak").textContent=String(timeStreak(days));
   // the chart: minutes per day, a gridline at a round number near the top
   const fort=last(14),mins=fort.map(d=>Math.round(sumDay(days[dayKey(d)])/60));
   const top=Math.max(10,...mins),step=top>120?60:top>60?30:top>30?15:10,grid=Math.floor(top/step)*step;
@@ -4463,8 +4504,79 @@ function nbDrillEnd(){
 addEventListener("pagehide",()=>nbSave(true));
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") nbSave(true); });
 
+/* ---------- Today ---------- */
+// The landing page: what's waiting (WaniKani reviews and lessons, the mistake
+// notebook), today's practice time against a goal, a scene of the day, and
+// one "next" button for the most useful thing to do.
+let TD_SUM=null,tdSeq=0;
+const sceneOfDay=()=>SCENES[Math.floor(Date.now()/86400000)%SCENES.length];
+// fresh each time Today opens (one small request), so finished reviews don't linger
+async function tdSummary(){
+  if(!TOKEN) return null;
+  try{ TD_SUM=(await wkFetch(WK+"/summary")).data; }catch(e){}
+  return TD_SUM;
+}
+const tdWhen=t=>new Date(t).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"});
+async function renderToday(){
+  const my=++tdSeq;
+  $("tdDate").textContent=new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"});
+  const goal=+S.dailyGoal||30;
+  $("tdGoalSel").value=String(goal);
+  const [sum,nb,tm]=await Promise.all([tdSummary(),nbLoadAll().catch(()=>null),timeAll().catch(()=>null),ankiLoad()]);
+  if(my!==tdSeq) return;
+  const today=tm?Math.round(sumDay(tm.days[dayKey()])/60):0,streak=tm?timeStreak(tm.days):0;
+  $("tdStreak").textContent=streak?`${streak}-day streak`:"";
+  $("tdBarFill").style.width=Math.min(100,100*today/goal)+"%";
+  $("tdBar").classList.toggle("met",today>=goal);
+  $("tdBar").setAttribute("aria-valuemax",String(goal)); $("tdBar").setAttribute("aria-valuenow",String(today));
+  $("tdGoalTxt").innerHTML=today>=goal?`<b>${today} min</b> today. Goal met ✓`:`<b>${today}</b> of ${goal} min today`;
+  const rv=sum?((sum.reviews[0]||{}).subject_ids||[]).length:0,ls=sum?((sum.lessons[0]||{}).subject_ids||[]).length:0;
+  const nbn=nb?nbOpen(nb).length:0,sc=sceneOfDay();
+  const rows=[];
+  if(!TOKEN) rows.push(["復習","<b>Connect WaniKani</b> to see your reviews and lessons.",`<button class="btn small" data-go="setup">Connect</button>`]);
+  else{
+    rows.push(["復習",rv?`<b>${plural(rv,"review")}</b> due now`:`No reviews due${sum&&sum.next_reviews_at?`; next ${esc(tdWhen(sum.next_reviews_at))}`:""}`,
+      rv?`<button class="btn small" data-go="reviews">Start</button>`:""]);
+    rows.push(["学習",ls?`<b>${plural(ls,"new item")}</b> to learn`:"No new lessons waiting",ls?`<button class="btn small" data-go="lessons">Learn</button>`:""]);
+  }
+  rows.push(["ノート",nbn?`<b>${plural(nbn,"mistake")}</b> in your notebook`:"Mistake notebook is clear",nbn?`<button class="btn small" data-go="drill">Drill</button>`:""]);
+  rows.push(["会話",`Scene of the day: <b lang="ja">${esc(sc.ja)}</b> ${esc(sc.en)}`,
+    `<button class="btn small" data-go="scene">Play</button>`+(canRecord?`<button class="btn small" data-go="live">🗣 Live</button>`:"")]);
+  if(ANKI) rows.push(["Anki",`<b>${esc(ANKI.deck)}</b>: ${ANKI.words.length}${ANKI.total?` of ${ANKI.total}`:""} words started`+
+    (ANKI.at?`, synced ${esc(tdWhen(ANKI.at))}`:""),""]);
+  $("tdRows").innerHTML=rows.map(([k,t,a])=>`<div class="tdRow"><span class="k" lang="ja">${k}</span><span class="t">${t}</span><span class="acts">${a}</span></div>`).join("");
+  // the next thing to do
+  const nx=$("btnTdNext");
+  const [go,label]=!TOKEN?["setup","Connect WaniKani ▸"]:rv?["reviews",`Start ${plural(rv,"review")} ▸`]:ls?["lessons",`Learn ${plural(ls,"new item")} ▸`]
+    :nbn?["drill",`Drill ${plural(nbn,"mistake")} ▸`]:["scene",`Play today's scene: ${sc.ja} ▸`];
+  nx.dataset.go=go; nx.textContent=label; nx.disabled=false;
+}
+// press a button once it's ready (the tab loads its own data first)
+function tdPressWhenReady(id,ms=8000){
+  const t0=Date.now(),t=setInterval(()=>{
+    const b=$(id);
+    if(b&&!b.disabled&&b.offsetParent){ clearInterval(t); b.click(); }
+    else if(Date.now()-t0>ms) clearInterval(t);
+  },150);
+}
+function tdGo(go){
+  if(go==="setup"){ $("tabPractice").click(); show("setupCard"); return; }
+  if(go==="reviews"){ $("tabReviews").click(); tdPressWhenReady("btnRvStart"); return; }
+  if(go==="lessons"){ $("tabLessons").click(); tdPressWhenReady("btnLsStart"); return; }
+  if(go==="drill"){ $("tabReviews").click(); nbLoadAll().then(()=>{ nbRender(); nbDrillStart(); }); return; }
+  if(go==="scene"||go==="live"){
+    $("tabTalk").click();
+    const sc=sceneOfDay();
+    if(!SCENE||SCENE.id!==sc.id){
+      if(TALK.some(m=>m.role==="user")&&!confirm(`Start today's scene (${sc.en})? The current conversation will be cleared.`)) return;
+      $("talkScene").value=sc.id; sceneStart(sc.id);
+    }
+    if(go==="live"&&!LIVE) liveStart();
+  }
+}
+
 /* ---------- tabs & wiring ---------- */
-const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
     const was=Object.values(views).find(v=>!$(v).classList.contains("hidden")),to=views[t];
@@ -4486,6 +4598,7 @@ Object.keys(views).forEach(t=>{
       $(view).classList.toggle("hidden",tab!==t);
     });
     if(t==="tabStats"){ renderStats(); timeSave(); renderTime(); }
+    if(t==="tabToday"){ timeSave(); renderToday(); }
     if(t==="tabTalk"){ talkFit(); talkScroll(); if(!$("llmStatus").textContent) llmConnect(); }
   };
 });
@@ -4709,6 +4822,11 @@ $("dictBody").addEventListener("keydown",e=>{
 // "辞書" links on lesson pages and review answers
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-dict]"); if(b) dictOpen(b.dataset.dict); });
 
+/* today */
+$("tdGoalSel").onchange=e=>{ S.dailyGoal=+e.target.value; saveS(); renderToday(); };
+$("btnTdNext").onclick=()=>tdGo($("btnTdNext").dataset.go);
+$("tdRows").onclick=e=>{ const b=e.target.closest("[data-go]"); if(b) tdGo(b.dataset.go); };
+
 /* mistake notebook */
 $("btnNbDrill").onclick=nbDrillStart;
 $("nbFilter").onclick=e=>{
@@ -4865,6 +4983,7 @@ if(S.engine==="voicevox") vvConnect();
 updateChips();
 if(DATA){ show("configCard"); } else { show("setupCard"); }
 ankiLoad();
+renderToday();
 })();
 </script>
 </body>
