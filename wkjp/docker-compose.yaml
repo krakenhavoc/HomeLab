@@ -23,6 +23,8 @@ services:
       - /opt/wkjp/stats:/srv/stats
       # Started Anki words (nginx /anki/known.json), sent from base-station.
       - /opt/wkjp/anki:/srv/anki
+      # Mistake notebook, one file per browser (nginx /notebook/).
+      - /opt/wkjp/notebook:/srv/notebook
       # The Anthropic API key for Talk (nginx /claude/), placed by hand on the
       # VM and never in git; see the README.
       - /opt/wkjp/secrets:/etc/nginx/secrets:ro

@@ -14,6 +14,7 @@ REC_DIR=/opt/wkjp/rec
 PICS_DIR=/opt/wkjp/pics
 STATS_DIR=/opt/wkjp/stats
 ANKI_DIR=/opt/wkjp/anki
+NOTEBOOK_DIR=/opt/wkjp/notebook
 SECRETS_DIR=/opt/wkjp/secrets
 SRC_DIR="${REPO_DIR}/wkjp"
 
@@ -80,6 +81,11 @@ chmod 0750 "${STATS_DIR}"
 mkdir -p "${ANKI_DIR}"
 chown 101:101 "${ANKI_DIR}"
 chmod 0750 "${ANKI_DIR}"
+
+# Mistake notebook: nginx writes one nb-<id>.json per browser. Never pruned.
+mkdir -p "${NOTEBOOK_DIR}"
+chown 101:101 "${NOTEBOOK_DIR}"
+chmod 0750 "${NOTEBOOK_DIR}"
 
 # Secrets nginx includes (the Anthropic API key for Talk), placed by hand.
 # Root only: the nginx master reads config as root. The files are left alone.

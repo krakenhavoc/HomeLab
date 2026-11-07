@@ -386,6 +386,27 @@
   .dictNote{margin-top:10px; font-size:.95rem;}
   .dictFoot{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; font-size:.75rem; color:var(--muted);}
   .dictFoot .grow{flex:1;}
+  /* mistake notebook */
+  .nbHead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .nbHead h2{margin:0;}
+  .nbHead .grow{flex:1;}
+  .nbHead .seg button{padding:4px 11px; font-size:.78rem;}
+  .nbRow{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:.9rem;}
+  .nbRow:last-child{border-bottom:none;}
+  .nbRow .jp{font-family:var(--mincho); font-weight:700; font-size:1.1rem; min-width:4.5em;}
+  .nbRow .what{flex:1; color:var(--muted); min-width:0;}
+  .nbRow .what b{color:var(--text); font-weight:500;}
+  .nbRow .n{font-size:.75rem; color:var(--muted); white-space:nowrap;}
+  .nbRow .x{background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem; padding:2px 6px;}
+  .nbRow .x:hover{color:var(--red);}
+  .nbTag{font-size:.7rem; border:1px solid var(--line); border-radius:5px; padding:0 5px; color:var(--muted); margin-right:4px;}
+  #nbDrill{margin-top:14px; border-top:1px solid var(--line); padding-top:14px;}
+  .nbProg{font-size:.8rem; color:var(--muted); margin-bottom:8px;}
+  #nbFront .ask{text-align:center; margin-top:10px; font-size:.95rem;}
+  #nbFront .said{font-size:1.25rem; text-align:center; font-family:var(--mincho); line-height:1.8;}
+  #nbBack{margin-top:12px; background:var(--card2); border-radius:10px; padding:12px 14px; font-size:.95rem;}
+  #nbBack .ans{font-size:1.25rem; font-family:var(--mincho); font-weight:700;}
+  #nbBack .why{color:var(--muted); font-size:.88rem; margin-top:4px;}
   #lsMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:8px; color:var(--amber);}
 
   @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none !important; transition:none !important;} }
@@ -613,6 +634,21 @@
         <li>Sending results needs a token with the <b>reviews:create</b> permission (WaniKani → Settings → API Tokens). Unsent results wait here and resend.</li>
         <li>Speech-to-text runs on base-station's GPU (KBU as a backup), so voice answers need one of them on.</li>
       </details>
+    </section>
+
+    <section id="nbCard" class="card">
+      <div class="nbHead"><h2>Mistake notebook</h2><span class="grow"></span>
+        <div class="seg" id="nbFilter"><button data-v="all" class="on">All</button><button data-v="review">Reviews</button><button data-v="talk">Talk</button></div></div>
+      <p id="nbSummary" class="note" style="margin-top:0;"></p>
+      <div id="nbList"></div>
+      <div class="row" style="margin-top:12px;"><button class="btn primary" id="btnNbDrill" disabled>Drill ▸</button></div>
+      <div id="nbDrill" class="hidden">
+        <div class="nbProg" id="nbProg"></div>
+        <div id="nbFront"></div>
+        <div id="nbBack" class="hidden"></div>
+        <div class="actionRow" id="nbActions"></div>
+        <div class="kbd"><b>space</b>/<b>enter</b> show · <b>1</b> again · <b>2</b> got it · <b>p</b> hear it · <b>esc</b> stop</div>
+      </div>
     </section>
 
     <section id="rvCard" class="card hidden">
@@ -2170,6 +2206,7 @@ async function talkSend(opt){
   const ja=isJa(text);
   talkLLM("check",checkSystem(ja),[{role:"user",content:text}],CHECK_SCHEMA,0).then(({out:c})=>{
     if(!c.correction||c.correction.trim()===text) return;
+    if(ja) nbAddTalk(text,c.correction.trim(),c.note||"");
     const d=document.createElement("div");
     d.className="fix";
     d.innerHTML=`${ja?"✏️":"🇯🇵"} ${esc(c.correction)}${c.note?`<div class="why">${esc(c.note)}</div>`:""}`;
@@ -2372,7 +2409,11 @@ let rvOutErr="",rvFlushing=null,rvDropped=[];
 const saveOut=()=>store("wkl_rv_outbox",RV_OUT);
 let RV_HOLD=load("wkl_rv_hold",[]);      // finished, waiting for the learner to check them
 const saveHold=()=>store("wkl_rv_hold",RV_HOLD);
-const rvShow=id=>["rvStartCard","rvCard","rvDoneCard"].forEach(c=>$(c).classList.toggle("hidden",c!==id));
+const rvShow=id=>{
+  ["rvStartCard","rvCard","rvDoneCard"].forEach(c=>$(c).classList.toggle("hidden",c!==id));
+  $("nbCard").classList.toggle("hidden",id==="rvCard");
+  if(id!=="rvCard") nbRender();
+};
 function rvStatus(text,cls){ const st=$("rvStatus"); st.textContent=text; st.className=cls||""; }
 
 async function rvCheck(){
@@ -2936,6 +2977,7 @@ function rvWrong(heard,gaveUp,spoken){
 // only now does the miss count; it comes back later in the session
 function rvCommitWrong(){
   if(!RV||RV.phase!=="wrong") return;
+  nbAddMiss(RV.cur.item.sub,RV.cur.q,RV.cur.gaveUp?"":$("rvInput").value.trim(),RV.lesson?"lesson":"review");
   RV.cur.item.wrong[RV.cur.q]++; RV.answers++;
   rvNext();
 }
@@ -4151,6 +4193,159 @@ setInterval(timeTick,TIME_TICK*1000);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") timeSave(true); });
 addEventListener("pagehide",()=>timeSave(true));
 
+/* ---------- Mistake notebook ---------- */
+// Confirmed misses from Reviews and lesson quizzes, and the Talk check's
+// corrections of the learner's Japanese, drilled as flashcards. Like the
+// practice-time log, each browser keeps its own file on the wkjp server
+// (notebook/nb-<id>.json) and the app adds them up: an entry shows while its
+// latest miss is newer than the latest "got it" for it from any browser.
+let NB=load("wkl_notebook",null);
+if(!NB||typeof NB.entries!=="object") NB={v:1,entries:{},done:{}};
+let NB_ALL=null,nbDirty=false,nbTimer=null,nbFilter="all",NBD=null;
+function nbStore(){
+  store("wkl_notebook",NB);
+  nbDirty=true;
+  clearTimeout(nbTimer); nbTimer=setTimeout(nbSave,3000);
+  NB_ALL=null;
+}
+function nbSave(keepalive){
+  if(!nbDirty||location.protocol==="file:") return;
+  nbDirty=false;
+  fetch(`notebook/nb-${DEVICE}.json`,{method:"PUT",keepalive:!!keepalive,headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({v:1,device:DEVICE,at:new Date().toISOString(),entries:NB.entries,done:NB.done})})
+    .then(r=>{ if(!r.ok) nbDirty=true; },()=>{ nbDirty=true; });
+}
+function nbPut(id,e){
+  const old=NB.entries[id];
+  NB.entries[id]={...e,n:(old?old.n:0)+1,at:Date.now()};
+  // a few hundred is plenty: drop the oldest
+  const ids=Object.keys(NB.entries);
+  if(ids.length>500) ids.sort((a,b)=>NB.entries[a].at-NB.entries[b].at).slice(0,ids.length-500).forEach(k=>{ delete NB.entries[k]; delete NB.done[k]; });
+  nbStore();
+}
+function nbAddMiss(s,q,yours,from){
+  if(!s||!s.id) return;
+  const ans=q==="meaning"?s.meanings.slice(0,3).join(", ")||s.pm:s.readings.filter(r=>r.acc).map(r=>r.r).join("、");
+  nbPut(`r:${s.id}:${q}`,{k:"review",from,q,sid:s.id,type:s.type,c:s.chars||"",img:s.img||"",pm:s.pm,ans,yours,
+    say:rvSayText(s)});
+}
+function nbAddTalk(said,fix,note){
+  let h=0;
+  for(const ch of said) h=(h*31+ch.codePointAt(0))>>>0;
+  nbPut(`t:${h.toString(16)}`,{k:"talk",said,fix,note});
+}
+// every browser's notebook, merged
+async function nbLoadAll(){
+  let docs=[];
+  try{
+    const r=await fetch("notebook/",{cache:"no-store"});
+    if(r.ok){
+      const files=(await r.json()).map(f=>f.name).filter(n=>/^nb-[a-f0-9]{16}\.json$/.test(n)&&n!==`nb-${DEVICE}.json`);
+      docs=(await Promise.all(files.map(n=>fetch("notebook/"+n,{cache:"no-store"}).then(x=>x.ok?x.json():null,()=>null)))).filter(Boolean);
+    }
+  }catch(e){}
+  docs.push(NB);
+  const entries={},done={};
+  for(const d of docs){
+    for(const [id,e] of Object.entries(d.entries||{})){
+      if(!e||typeof e!=="object"||(e.k!=="review"&&e.k!=="talk")) continue;
+      const cur=entries[id];
+      entries[id]=!cur||e.at>cur.at?{...e,n:(cur?cur.n:0)+(+e.n||1)}:{...cur,n:cur.n+(+e.n||1)};
+    }
+    for(const [id,t] of Object.entries(d.done||{})) done[id]=Math.max(done[id]||0,+t||0);
+  }
+  NB_ALL={entries,done};
+  return NB_ALL;
+}
+const plural=(n,w)=>`${n} ${w}${n===1?"":"s"}`;
+const nbOpen=a=>Object.entries(a.entries).filter(([id,e])=>e.at>(a.done[id]||0)).map(([id,e])=>({id,...e})).sort((x,y)=>y.at-x.at);
+const nbWho=e=>e.k==="talk"?"Talk":e.from==="lesson"?"Lesson":"Review";
+async function nbRender(){
+  const a=NB_ALL||await nbLoadAll();
+  const open=nbOpen(a),shown=open.filter(e=>nbFilter==="all"||(nbFilter==="talk")===(e.k==="talk"));
+  $("nbSummary").textContent=open.length
+    ?`${open.length} to work on: ${open.filter(e=>e.k!=="talk").length} from reviews and lessons, ${plural(open.filter(e=>e.k==="talk").length,"Talk correction")}. "Got it" in a drill clears one until you miss it again.`
+    :"Nothing here yet. Misses you confirm in Reviews and lessons, and corrections from Talk, collect here to drill.";
+  $("nbList").innerHTML=shown.slice(0,30).map(e=>`<div class="nbRow" data-id="${esc(e.id)}">`+
+    (e.k==="talk"
+      ?`<span class="what"><span class="nbTag">Talk</span><span lang="ja">${esc(e.said)}</span> → <b lang="ja">${esc(e.fix)}</b></span>`
+      :`<span class="jp" lang="ja">${esc(e.c||e.pm)}</span><span class="what"><span class="nbTag">${nbWho(e)}</span>${e.q} <b lang="${e.q==="reading"?"ja":"en"}">${esc(e.ans)}</b>${e.yours?`, you: ${esc(e.yours)}`:""}</span>`)+
+    `<span class="n">${e.n>1?`×${e.n}`:""}</span><button class="x" data-x="${esc(e.id)}" title="remove" aria-label="remove">×</button></div>`).join("")+
+    (shown.length>30?`<p class="note">and ${shown.length-30} more</p>`:"");
+  $("btnNbDrill").disabled=!shown.length;
+  $("btnNbDrill").textContent=shown.length?`Drill ${Math.min(shown.length,20)} ▸`:"Drill ▸";
+}
+function nbDone(id){
+  NB.done[id]=Date.now();
+  nbStore();
+}
+/* the drill: up to 20, oldest-missed-most first; Again puts it back later */
+function nbDrillStart(){
+  const a=NB_ALL;
+  if(!a) return;
+  const open=nbOpen(a).filter(e=>nbFilter==="all"||(nbFilter==="talk")===(e.k==="talk"));
+  const q=open.sort((x,y)=>y.n-x.n||x.at-y.at).slice(0,20);
+  if(!q.length) return;
+  unlockAudio();
+  NBD={q,i:0,got:0,again:0,shown:false};
+  $("nbDrill").classList.remove("hidden"); $("btnNbDrill").classList.add("hidden");
+  nbCard();
+}
+function nbCard(){
+  const d=NBD;
+  if(d.i>=d.q.length){ nbDrillEnd(); return; }
+  const e=d.q[d.i];
+  d.shown=false;
+  $("nbProg").textContent=`${d.i+1} of ${d.q.length} · ${nbWho(e)}${e.n>1?`, missed ${e.n}×`:""}`;
+  if(e.k==="talk"){
+    $("nbFront").innerHTML=`<div class="said" lang="ja">${esc(e.said)}</div><div class="ask">What should it be?</div>`;
+    $("nbBack").innerHTML=`<div class="ans" lang="ja">${esc(e.fix)}</div>${e.note?`<div class="why">${esc(e.note)}</div>`:""}`;
+  }else{
+    $("nbFront").innerHTML=`<div id="nbItem"></div><div class="ask">${e.q==="meaning"?"Meaning?":"Reading?"}${e.yours?` <span class="note">(you said ${esc(e.yours)})</span>`:""}</div>`;
+    drawItem($("nbItem"),{type:e.type,chars:e.c,img:e.img,pm:e.pm});
+    $("nbItem").style.borderRadius="12px";
+    $("nbBack").innerHTML=`<div class="ans" lang="${e.q==="reading"?"ja":"en"}">${esc(e.ans)}</div>`+
+      (e.q==="meaning"?"":`<div class="why">${esc(e.pm)}</div>`);
+  }
+  $("nbBack").classList.add("hidden");
+  $("nbActions").innerHTML=`<button class="btn" id="btnNbStop">Stop</button><button class="btn primary" id="btnNbShow">Show ▸</button>`;
+  $("btnNbStop").onclick=nbDrillEnd;
+  $("btnNbShow").onclick=nbShow;
+}
+function nbSay(){
+  const e=NBD&&NBD.q[NBD.i];
+  if(!e) return;
+  speak(e.k==="talk"?e.fix:e.say||e.c);
+}
+function nbShow(){
+  if(!NBD||NBD.shown) return;
+  NBD.shown=true;
+  $("nbBack").classList.remove("hidden");
+  $("nbActions").innerHTML=`<button class="btn small" id="btnNbSay" title="hear it (p)">🔊</button><button class="btn" id="btnNbAgain">Again (1)</button><button class="btn primary" id="btnNbGot">Got it (2)</button>`;
+  $("btnNbSay").onclick=nbSay;
+  $("btnNbAgain").onclick=()=>nbGrade(false);
+  $("btnNbGot").onclick=()=>nbGrade(true);
+  nbSay();
+}
+function nbGrade(ok){
+  const d=NBD;
+  if(!d||!d.shown) return;
+  const e=d.q[d.i];
+  if(ok){ d.got++; nbDone(e.id); }
+  else{ d.again++; if(d.q.length<40) d.q.push(e); }     // once more at the end
+  d.i++;
+  nbCard();
+}
+function nbDrillEnd(){
+  if(!NBD) return;
+  const d=NBD; NBD=null;
+  stopAudio();
+  $("nbDrill").classList.add("hidden"); $("btnNbDrill").classList.remove("hidden");
+  nbRender().then(()=>{ if(d.got||d.again) $("nbSummary").textContent=`Drill done: ${d.got} got it, ${d.again} again. `+$("nbSummary").textContent; });
+}
+addEventListener("pagehide",()=>nbSave(true));
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") nbSave(true); });
+
 /* ---------- tabs & wiring ---------- */
 const views={tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
@@ -4396,6 +4591,27 @@ $("dictBody").addEventListener("keydown",e=>{
 });
 // "辞書" links on lesson pages and review answers
 document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-dict]"); if(b) dictOpen(b.dataset.dict); });
+
+/* mistake notebook */
+$("btnNbDrill").onclick=nbDrillStart;
+$("nbFilter").onclick=e=>{
+  const b=e.target.closest("[data-v]");
+  if(!b) return;
+  nbFilter=b.dataset.v;
+  $("nbFilter").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  nbRender();
+};
+$("nbList").onclick=e=>{ const x=e.target.closest("[data-x]"); if(x){ nbDone(x.dataset.x); nbRender(); } };
+document.addEventListener("keydown",e=>{
+  if(!NBD||$("viewReviews").classList.contains("hidden")) return;
+  if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(e.key==="Enter"&&e.target&&e.target.tagName==="BUTTON") return;
+  if((e.key===" "||e.key==="Enter")&&!NBD.shown){ e.preventDefault(); nbShow(); }
+  else if(e.key==="1"&&NBD.shown){ e.preventDefault(); nbGrade(false); }
+  else if((e.key==="2"||e.key==="Enter")&&NBD.shown){ e.preventDefault(); nbGrade(true); }
+  else if(e.key==="p"){ e.preventDefault(); nbSay(); }
+  else if(e.key==="Escape"){ e.preventDefault(); nbDrillEnd(); }
+});
 
 /* lessons tab */
 lsBatchUI();
