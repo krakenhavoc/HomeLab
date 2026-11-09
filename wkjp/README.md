@@ -300,7 +300,7 @@ recordings (`rec`). The Anthropic key
     ("Connect WaniKani" without a token). The row buttons go to the same places:
     Reviews and Lessons start once their data is loaded, Drill starts the
     notebook drill, and Play or 🗣 Live opens Talk in today's scene.
-- **講座 Course**, a card on Today under the summary: a 30-unit course by
+- **講座 Course**, a card on Today under the summary: a 31-unit course by
   trip situation for a learner who is just starting to speak (はじめまして,
   ordering, finding places, restaurants, trains, ryokan, shopping, small talk
   about work, home and hobbies, reasons, plans, reservations, casual speech,
@@ -332,12 +332,13 @@ recordings (`rec`). The Anthropic key
   - **Which unit:** the one picked in the menu, until it's finished after
     being picked; then the first unfinished one. Nothing is locked. The
     pace is about a unit a week, only as a guide; finishing sooner is fine.
-  - **Izakaya track:** six units (`iz1`-`iz6`) mixed in among the others,
-    for chatting with the person next to you: the questions everyone asks,
-    casual speech, reactions and asking back, drinking, local talk, and a
-    last dress rehearsal. In these scenes (and unit `u22`, `casual: true`)
-    the partner speaks casually and the learner stays polite. Progress is
-    saved by unit id, so adding units doesn't disturb it.
+  - **Small-talk track:** seven units mixed in among the others, for
+    casual conversation with people anywhere: the questions everyone asks,
+    casual speech, reactions and asking back, drinking, talking to the chef
+    at a counter (`ck1`), local talk, and a last dress rehearsal (`iz1`-`iz6`).
+    In scenes marked `casual: true` (the `iz` ones and `u22`) the partner
+    speaks casually and the learner stays polite; the chef stays warm and
+    polite. Progress is saved by unit id, so adding units doesn't disturb it.
   - **About me:** name (katakana), where you're from (Japanese) and a few
     English lines. They fill the {name} and {from} phrases (left out until
     set) and go to the drills, Talk and its hints.

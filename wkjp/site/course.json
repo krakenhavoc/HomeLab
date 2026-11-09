@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "about": "wkjp's course: about one unit a week (only a guide) by trip situation, with an izakaya track (iz1-iz6) mixed in, for a learner who is starting to speak, in step with Bunpro N5 then N4. Each unit: Phrases (hear, repeat, recall), a cued Drill, and a Role-play test. {name} and {from} come from About me; a phrase that needs one is skipped until it's filled in. hear: a phrase to understand, not to say.",
+  "about": "wkjp's course: about one unit a week (only a guide) by trip situation, with a small-talk track (iz1-iz6, ck1) mixed in, for a learner who is starting to speak, in step with Bunpro N5 then N4. Each unit: Phrases (hear, repeat, recall), a cued Drill, and a Role-play test. {name} and {from} come from About me; a phrase that needs one is skipped until it's filled in. hear: a phrase to understand, not to say.",
   "units": [
     {
       "id": "u01", "ja": "はじめまして", "en": "Meeting people", "level": "N5",
@@ -87,7 +87,7 @@
         "goals": ["Say where you're from", "Say what your job is", "Say something you like, or a hobby", "Ask them about their job or hobbies"]}
     },
     {
-      "id": "iz1", "ja": "よく聞かれること", "en": "Izakaya: the questions everyone asks", "level": "N5",
+      "id": "iz1", "ja": "よく聞かれること", "en": "Small talk: the questions everyone asks", "level": "N5",
       "can": ["Understand the questions people ask a visitor, in casual speech", "Answer them about your own life in a sentence or two", "Take a compliment on your Japanese", "Dodge a personal question lightly"],
       "grammar": ["〜の？", "〜からです", "〜です / 〜ます", "plain forms (to hear)"],
       "phrases": [
@@ -102,8 +102,8 @@
         {"ja": "いえいえ、まだまだです。", "kana": "いえいえ、まだまだです", "en": "Oh no, I've still got a long way to go."},
         {"ja": "秘密です。", "kana": "ひみつです", "en": "That's a secret. (a light way to dodge a question)"}
       ],
-      "focus": "The questions a local at an izakaya counter asks a visitor, in casual speech: where they're from, whether it's their first time in Japan, their job, why they study Japanese, what food they like, where they've been, whether they drink, even age or marriage (何歳？, 結婚してるの？). The partner always speaks casually; the learner answers politely in one to three short sentences. Use About the learner for true answers so these become the learner's own rehearsed lines.",
-      "scene": {"casual": true, "role": "a friendly regular sitting next to the learner at the counter of a small izakaya in Tokyo, curious about the visitor",
+      "focus": "The questions Japanese people ask a visitor anywhere (on a train, at an inn, in a shop, at a bar), in casual speech: where they're from, whether it's their first time in Japan, their job, why they study Japanese, what food they like, where they've been, whether they drink, even age or marriage (何歳？, 結婚してるの？). The partner always speaks casually; the learner answers politely in one to three short sentences. Use About the learner for true answers so these become the learner's own rehearsed lines.",
+      "scene": {"casual": true, "role": "a friendly local sitting next to the learner on a bench outside a shrine in Tokyo, curious about the visitor",
         "open": "お、一人？どこから来たの？", "openEn": "Oh, on your own? Where are you from?",
         "goals": ["Say where you're from", "Say whether it's your first time in Japan", "Say what you do for work", "Say why you study Japanese"]}
     },
@@ -150,7 +150,7 @@
         "goals": ["Check in and say how many nights", "Ask what time breakfast is (from and until)", "Ask what time check-out is", "Ask until what time the front desk is open, or say when you'll be back"]}
     },
     {
-      "id": "iz2", "ja": "くだけた話し方", "en": "Izakaya: understanding casual speech", "level": "N5",
+      "id": "iz2", "ja": "くだけた話し方", "en": "Small talk: understanding casual speech", "level": "N5",
       "can": ["Follow short casual sentences", "Recognise 〜てる, 〜の？, 〜じゃん and よ", "Say when you didn't catch something", "Ask what a word means"],
       "grammar": ["〜てる", "〜の？", "〜じゃん", "だ / だよ"],
       "phrases": [
@@ -165,7 +165,7 @@
         {"ja": "「うまい」は「おいしい」ですか？", "kana": "うまいはおいしいですか", "en": "Does うまい mean おいしい?"},
         {"ja": "ちょっとわかりませんでした。", "kana": "ちょっとわかりませんでした", "en": "I didn't quite understand that."}
       ],
-      "focus": "Listening to casual speech at a bar: plain forms, 〜てる, 〜の？, 〜じゃん, よ, ね, うまい, めっちゃ, short dropped-particle sentences. The partner always speaks casually. Each cue asks the learner to show they understood by answering politely, or to say what they didn't catch or ask what a word means.",
+      "focus": "Listening to casual speech from friendly locals: plain forms, 〜てる, 〜の？, 〜じゃん, よ, ね, うまい, めっちゃ, short dropped-particle sentences. The partner always speaks casually. Each cue asks the learner to show they understood by answering politely, or to say what they didn't catch or ask what a word means.",
       "scene": {"casual": true, "role": "a relaxed local at a standing bar in Tokyo who chats in short, casual sentences and sometimes uses a word the learner won't know",
         "open": "ここ、よく来るの？", "openEn": "Do you come here often?",
         "goals": ["Answer their question", "Say you didn't catch something, or ask them to say it again", "Ask what a word means", "Say what you're drinking or eating"]}
@@ -213,7 +213,7 @@
         "goals": ["Say where you went", "Say what you did or saw there", "Say how it was (楽しかった, おいしかった…)", "Ask them a question back"]}
     },
     {
-      "id": "iz3", "ja": "あいづちと質問", "en": "Izakaya: reactions and asking back", "level": "N5",
+      "id": "iz3", "ja": "あいづちと質問", "en": "Small talk: reactions and asking back", "level": "N5",
       "can": ["React while someone tells you something", "Fill a pause instead of freezing", "Ask follow-up questions", "Keep a conversation going by asking about them"],
       "grammar": ["〜んですか", "あいづち", "〜ね", "も"],
       "phrases": [
@@ -229,7 +229,7 @@
         {"ja": "私も好きです。", "kana": "わたしもすきです", "en": "I like it too."}
       ],
       "focus": "The partner, speaking casually, tells short stories about their day, town, job or hobby. The cue asks the learner to react naturally (そうなんですか, へえ, なるほど, いいですね), or to ask a follow-up question about what was just said, so the learner gets used to keeping the other person talking. The learner stays polite.",
-      "scene": {"casual": true, "role": "a talkative local next to the learner at an izakaya counter in Osaka, who likes telling short stories and leaves room for the learner to react",
+      "scene": {"casual": true, "role": "a talkative local sharing a table with the learner at a busy café in Osaka, who likes telling short stories and leaves room for the learner to react",
         "open": "昨日、釣りに行ったんだよ。", "openEn": "I went fishing yesterday, you know.",
         "goals": ["React to what they say (そうなんですか, へえ…)", "Ask a follow-up question about their story", "Ask something about them (where they live, how often they come)", "Say something you like too"]}
     },
@@ -255,7 +255,7 @@
         "goals": ["Order a drink", "Ask what a dish is or what's in it", "Say something you can't eat or are allergic to", "Order a dish, or ask for a refill"]}
     },
     {
-      "id": "iz4", "ja": "乾杯", "en": "Izakaya: drinking with people", "level": "N5",
+      "id": "iz4", "ja": "乾杯", "en": "Small talk: drinking with people", "level": "N5",
       "can": ["Toast and share a drink", "Accept or politely decline another", "Respond when someone offers to pay", "Say how well you hold your drink"],
       "grammar": ["〜はどうですか", "〜ませんか", "もう", "いいですか"],
       "phrases": [
@@ -274,6 +274,27 @@
       "scene": {"casual": true, "role": "a generous, cheerful local at an izakaya in Tokyo who wants to share a drink with the learner",
         "open": "いいね、一緒に飲もうよ！何飲む？", "openEn": "Nice, let's have a drink together! What are you having?",
         "goals": ["Say what you'd like to drink", "Toast with them", "Accept or politely decline another drink", "Respond when they offer to pay"]}
+    },
+    {
+      "id": "ck1", "ja": "大将と話す", "en": "Small talk: talking to the chef", "level": "N5",
+      "can": ["Sit at a counter and leave the choice to the chef", "Ask what something is and how it is made", "Compliment the food in more than one way", "Ask the chef about their work and the restaurant"],
+      "grammar": ["〜んですか", "何の〜", "どうやって", "〜て何年ですか"],
+      "phrases": [
+        {"ja": "大将、おまかせでお願いします。", "kana": "たいしょう、おまかせでおねがいします", "en": "Chef, I'll leave it up to you, please."},
+        {"ja": "苦手なものはありますか？", "kana": "にがてなものはありますか", "en": "Is there anything you don't eat?", "hear": true},
+        {"ja": "これは何の魚ですか？", "kana": "これはなんのさかなですか", "en": "What kind of fish is this?"},
+        {"ja": "どうやって作るんですか？", "kana": "どうやってつくるんですか", "en": "How do you make it?"},
+        {"ja": "とてもおいしいです！", "kana": "とてもおいしいです", "en": "It's delicious!"},
+        {"ja": "こんなにおいしいのは初めてです。", "kana": "こんなにおいしいのははじめてです", "en": "I've never had one this good."},
+        {"ja": "旬の魚は何ですか？", "kana": "しゅんのさかなはなんですか", "en": "What fish is in season?"},
+        {"ja": "料理人になって何年ですか？", "kana": "りょうりにんになってなんねんですか", "en": "How many years have you been a chef?"},
+        {"ja": "お店は長いんですか？", "kana": "おみせはながいんですか", "en": "Has this place been here long?"},
+        {"ja": "ごちそうさまでした。とてもおいしかったです。", "kana": "ごちそうさまでした。とてもおいしかったです", "en": "Thank you for the meal. It was delicious."}
+      ],
+      "focus": "Sitting at the counter of a sushi, ramen, tempura or small family restaurant and chatting with the chef while they work: leaving the choice to them (おまかせ), what a dish or fish is, how it is made, what is in season, compliments, how long they have cooked, the history of the place. The chef also asks things: anything the learner does not eat, where they are from, how they find Japanese food. The chef is warm and polite, and keeps answers short while working.",
+      "scene": {"role": "the chef behind the counter of a small sushi restaurant in Tokyo, friendly and proud of the food, happy to chat while working",
+        "open": "いらっしゃいませ。今日はおまかせでよろしいですか？", "openEn": "Welcome. Would you like to leave it to me today?",
+        "goals": ["Order the chef’s choice, or ask what they recommend", "Ask what something is or how it is made", "Compliment the food", "Ask about the chef or the restaurant"]}
     },
     {
       "id": "u10", "ja": "家族と家", "en": "Home, family and routine", "level": "N5",
@@ -423,7 +444,7 @@
         "goals": ["Reply about the weather", "Say where you're from and what you think of the city", "Ask for a recommendation (food or a place)", "React and say you'll try it"]}
     },
     {
-      "id": "iz5", "ja": "地元の話", "en": "Izakaya: places, food and local talk", "level": "N4",
+      "id": "iz5", "ja": "地元の話", "en": "Small talk: places, food and local talk", "level": "N4",
       "can": ["Say what you thought of a place", "Ask about someone's hometown and local food", "Ask locals where to go", "Talk about sports and what's popular"],
       "grammar": ["〜と思います", "〜たことがあります", "〜より", "〜てくれて"],
       "phrases": [
@@ -438,8 +459,8 @@
         {"ja": "まだ行ったことがありません。", "kana": "まだいったことがありません", "en": "I haven't been there yet."},
         {"ja": "教えてくれてありがとうございます。", "kana": "おしえてくれてありがとうございます", "en": "Thanks for telling me."}
       ],
-      "focus": "Longer local chat at an izakaya: what the learner thought of the places they've been, the partner's hometown and its food, baseball and other things locals care about, where to go next, opinions with と思います. The partner speaks casually and gives opinions of their own; the learner stays polite, and asks for tips.",
-      "scene": {"casual": true, "role": "the friendly owner behind the counter of a small izakaya in Kanazawa, proud of the town and its food",
+      "focus": "Longer chat with a local: what the learner thought of the places they've been, the partner's hometown and its food, baseball and other things locals care about, where to go next, opinions with と思います. The partner speaks casually and gives opinions of their own; the learner stays polite, and asks for tips.",
+      "scene": {"casual": true, "role": "the friendly owner of a small shop in Kanazawa, proud of the town and its food, chatting with the learner",
         "open": "金沢はどう？もうどこか行った？", "openEn": "How's Kanazawa? Been anywhere yet?",
         "goals": ["Say where you've been and what you thought of it", "Ask about their hometown or the local food", "Ask for a recommendation for tomorrow", "Thank them and say you'll go"]}
     },
