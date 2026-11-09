@@ -284,6 +284,7 @@
   #crMeBox textarea{font-size:.92rem; line-height:1.5;}
   .crTop{display:flex; align-items:center; gap:10px; font-size:.8rem; color:var(--muted); margin-bottom:12px;}
   .crTop .grow{flex:1;}
+  .crTop select{width:auto; padding:3px 6px; font-size:.78rem;}
   .crPh{text-align:center; padding:6px 0 2px;}
   .crPh .ja{font-family:var(--mincho); font-size:1.6rem; font-weight:700; line-height:1.5;}
   .crPh .kana{color:var(--muted); font-size:.95rem; margin-top:2px;}
@@ -575,7 +576,9 @@
         </details>
       </div>
       <div id="crRun" class="hidden">
-        <div class="crTop"><span id="crProg"></span><span class="grow"></span><button class="btn small" id="btnCrStop">Stop</button></div>
+        <div class="crTop"><span id="crProg"></span><span class="grow"></span>
+          <label for="crPause" class="sr">mic stops</label><select id="crPause" class="micPauseSel" title="when the mic stops listening"></select>
+          <button class="btn small" id="btnCrStop">Stop</button></div>
         <div id="crBody"></div>
         <div id="crLevel" class="hidden"><div id="crLevelFill"></div></div>
         <div id="crMsg" aria-live="polite"></div>
@@ -1056,6 +1059,8 @@
         <option value="ja">Japanese only (most accurate for Japanese)</option>
         <option value="auto">Auto-detect (if I speak English or mix)</option>
       </select>
+      <label for="micPause" style="margin-top:10px;">When the mic stops listening (Live mode and the course)</label>
+      <select id="micPause" class="micPauseSel"></select>
       <p class="note">Claude needs the API key on the wkjp server; Ollama needs base-station on. The mic uses Whisper on base-station's GPU, with KBU as a backup.</p>
     </section>
   </main>
@@ -1423,7 +1428,7 @@ let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,conte
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkGrammar:"",talkGrammarList:"",talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
-  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true},load("wkl_settings",{}));
+  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true,micPause:2500},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -2555,15 +2560,21 @@ const talkSttForm=blob=>{
   fd.append("language",S.sttLang==="auto"?"auto":"ja");
   return fd;
 };
+// Live mode and the course: a beginner stops to think mid-sentence, so the
+// pause that ends a turn is a setting (S.micPause ms; 0: until space or ⏹).
+// Reviews keep their own quick 0.8 s: answers there are single words.
+const MIC_PAUSES=[[900,"after a 0.9 s pause (quick)"],[1500,"after a 1.5 s pause"],[2500,"after a 2.5 s pause"],[4000,"after a 4 s pause"],[0,"when I press space or ⏹"]];
+const micTurn=()=>{ const p=+S.micPause; return p>0?{quietMs:p,maxMs:Math.max(20000,p*10),waitMs:20000}:{quietMs:3600000,maxMs:60000,waitMs:20000}; };
+const micTurnHint=()=>+S.micPause>0?"space when you're done":"space or ⏹ when you're done";
 async function liveListen(msg){
   if(!LIVE) return;
   const my=++LIVE.seq,cur=()=>!!LIVE&&LIVE.seq===my;
   LIVE.stopNow=false; LIVE.state="listen";
-  liveUI("listen",msg||"Listening… talk in Japanese");
-  // a conversational turn: up to 20 s, over after a 0.9 s pause
-  const blob=await micUtterance(cur,{fill:$("talkLevelFill"),stopNow:()=>cur()&&LIVE.stopNow,quietMs:900,maxMs:20000});
+  liveUI("listen",msg||`Listening… talk in Japanese (${micTurnHint()})`);
+  // a conversational turn, over after the learner's pause setting
+  const blob=await micUtterance(cur,{fill:$("talkLevelFill"),stopNow:()=>cur()&&LIVE.stopNow,...micTurn()});
   if(!cur()) return;
-  if(!blob){ liveListen(msg); return; }            // 10 s of nothing: keep waiting
+  if(!blob){ liveListen(msg); return; }            // 20 s of nothing: keep waiting
   LIVE.state="hear"; liveUI("hear","…");
   let text="";
   try{
@@ -2759,7 +2770,8 @@ function micLevel(){
 const MIC_MIN=0.004,MIC_OVER=5.6,MIC_TAIL=0.18;
 // The recording, or null if nobody spoke or alive() went false.
 // opt.fill: level meter; opt.stopNow(): stop and keep what's recorded so far;
-// opt.quietMs: the pause that ends it (0.8 s); opt.maxMs: longest take (9 s)
+// opt.quietMs: the pause that ends it (0.8 s); opt.maxMs: longest take (9 s);
+// opt.waitMs: how long to wait for speech to start (10 s)
 function micUtterance(alive,opt={}){
   return new Promise(resolve=>{
     if(!MIC){ resolve(null); return; }
@@ -2787,7 +2799,7 @@ function micUtterance(alive,opt={}){
       let stop=!alive()||!MIC;
       if(!stop&&stopNow()){ keep=true; stop=true; }
       else if(!stop&&heard&&(quiet>=(opt.quietMs||800)||t>=(opt.maxMs||9000))){ keep=true; stop=true; }
-      else if(!stop&&!heard&&t>=10000) stop=true;
+      else if(!stop&&!heard&&t>=(opt.waitMs||10000)) stop=true;
       if(!stop) return;
       clearInterval(tick); fill.style.width="0%"; fill.classList.remove("over");
       // what the detector saw, for Reviews' diagnostics (dB relative to full scale)
@@ -4912,8 +4924,8 @@ async function crListen(){
   stopAudio();
   try{ await micOpen(); }catch(e){ crMsg("Mic blocked: "+(e.message||e.name),"bad"); return null; }
   const my=++crMicSeq,alive=()=>CRS===s&&crMicSeq===my;
-  s.listening=true; s.stopNow=false; crMicUI(true); crMsg("Listening…");
-  const blob=await micUtterance(alive,{fill:$("crLevelFill"),stopNow:()=>alive()&&s.stopNow,quietMs:900,maxMs:15000});
+  s.listening=true; s.stopNow=false; crMicUI(true); crMsg(`Listening… (${micTurnHint()})`);
+  const blob=await micUtterance(alive,{fill:$("crLevelFill"),stopNow:()=>alive()&&s.stopNow,...micTurn()});
   if(alive()){ s.listening=false; crMicUI(false); }
   if(!alive()) return null;
   if(!blob){ crMsg("Didn't hear anything. Press 🎤 (or space) and speak."); return null; }
@@ -5687,6 +5699,11 @@ $("chkTalkAutoSend").checked=S.talkAutoSend;
 $("chkTalkAutoSend").onchange=e=>{ S.talkAutoSend=e.target.checked; saveS(); };
 $("sttLang").value=S.sttLang;
 $("sttLang").onchange=e=>{ S.sttLang=e.target.value; saveS(); };
+document.querySelectorAll(".micPauseSel").forEach(sel=>{
+  sel.innerHTML=MIC_PAUSES.map(([v,t])=>`<option value="${v}">${sel.id==="crPause"?t.replace(" (quick)","").replace("after a ","mic stops: ").replace("when I press space or ⏹","mic stops: when I press"):"Stop "+t}</option>`).join("");
+  sel.value=String(S.micPause);
+  sel.onchange=e=>{ S.micPause=+e.target.value; saveS(); document.querySelectorAll(".micPauseSel").forEach(x=>{ x.value=String(S.micPause); }); };
+});
 $("btnLlmConnect").onclick=llmConnect;
 
 /* ---------- init ---------- */
