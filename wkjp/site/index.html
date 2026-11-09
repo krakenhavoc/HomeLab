@@ -252,7 +252,7 @@
   .tdRow .t{flex:1; font-size:.9rem; color:var(--muted); min-width:0;}
   .tdRow .t b{color:var(--text); font-weight:700;}
   .tdRow .acts{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
-  /* Course: one unit a week, three steps */
+  /* Course: units of three steps */
   .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0;}
   .crHead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
   .crHead h2{margin:0; flex:1; font-size:.95rem; color:var(--muted); font-weight:700;}
@@ -2119,7 +2119,9 @@ function sceneLines(){
   return [
     `Role-play for a learner at WaniKani level ${wkLevel()} who is travelling to Japan. You are ${SCENE.role}, in Japan. Stay in that role.`,
     `You opened the scene by saying: 「${SCENE.open}」`,
-    "Speak the way real staff or people there speak (polite, with the set phrases they use), but keep sentences short and simple. 1-2 sentences.",
+    SCENE.casual
+      ?"Speak casual Japanese the way a friendly local does (plain forms, 〜てる, 〜の？, よ, ね), short and simple, 1-2 sentences. The learner answers politely (です/ます), which is right for a visitor: don't comment on it."
+      :"Speak the way real staff or people there speak (polite, with the set phrases they use), but keep sentences short and simple. 1-2 sentences.",
     "Don't do the learner's tasks for them: answer and react naturally, and let them lead. If they seem stuck, or write English, help with a short hint in simple Japanese.",
     "The learner's goals in this scene: "+SCENE.goals.map((g,i)=>`${i+1}. ${g}`).join("; ")+".",
     ...(SCENE.unit?[`This is the role-play test for unit ${crNum(SCENE.unit)} of the learner's course. Situation notes: ${SCENE.unit.focus}`,
@@ -4720,7 +4722,7 @@ function tdGo(go){
 }
 
 /* ---------- Course ---------- */
-// A course by trip situation (site/course.json), one unit a week, for a
+// A course by trip situation (site/course.json), about a unit a week, for a
 // learner who is starting to speak. Each unit has three steps: Phrases (hear,
 // repeat, recall), a cued speaking Drill with a hint ladder, and a Role-play
 // test in Talk. Progress and the About-me notes are kept per browser on the
@@ -4829,10 +4831,9 @@ function crRender(){
   $("crSel").innerHTML=units.map((x,i)=>`<option value="${x.id}"${x===u?" selected":""}>${crDone(a,x)?"✓ ":""}${i+1}. ${esc(x.ja)}  ${esc(x.en)}</option>`).join("");
   $("crHeadTxt").textContent=`講座 Course · unit ${n} of ${N}`;
   $("crJa").textContent=u.ja; $("crEn").textContent=u.en;
-  const wk=a.start?Math.floor((new Date(dayKey())-new Date(a.start))/604800000)+1:0;
-  $("crPace").textContent=!a.start?`One unit a week gets through all ${N} by the trip. Start with step 1.`
+  $("crPace").textContent=!a.start?`About a unit a week gets through all ${N} by the trip, but that's only a guide: go as fast as your studies allow.`
     :doneN>=N?`All ${N} units done. Replay any unit, or keep chatting in Talk.`
-    :`${plural(doneN,"unit")} done · week ${wk} of the plan`+(doneN>=wk-1?", on pace":`, ${wk-1-doneN} behind`);
+    :`${doneN} of ${N} units done. Go at your own speed.`;
   $("crCan").innerHTML=u.can.map(c=>`<li>${esc(c)}</li>`).join("");
   $("crGram").innerHTML=`<span>Grammar (${esc(u.level)}):</span>`+u.grammar.map(g=>`<span class="g" lang="ja">${esc(g)}</span>`).join("");
   const missing=u.phrases.length-crPhrases(u,a.me).length;
@@ -4863,7 +4864,7 @@ function crPicker(){
 }
 function crSceneOf(id){
   const u=crUnit(id);
-  return u?{id:u.id,ja:u.ja,en:`Unit ${crNum(u)}: ${u.en}`,role:u.scene.role,open:u.scene.open,openEn:u.scene.openEn,goals:u.scene.goals,unit:u}:null;
+  return u?{id:u.id,ja:u.ja,en:`Unit ${crNum(u)}: ${u.en}`,role:u.scene.role,open:u.scene.open,openEn:u.scene.openEn,goals:u.scene.goals,casual:!!u.scene.casual,unit:u}:null;
 }
 function crPlay(u,live){
   $("tabTalk").click();
@@ -4887,6 +4888,8 @@ function crOpen(s){
   $("crView").classList.add("hidden"); $("crRun").classList.remove("hidden");
   $("todayCard").classList.add("hidden");
   $("crCard").scrollIntoView({block:"start"});
+  // focus would stay on the now-hidden Start button and swallow enter
+  if(document.activeElement) document.activeElement.blur();
   unlockAudio();
 }
 function crClose(){
