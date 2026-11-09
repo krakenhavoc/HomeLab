@@ -1,0 +1,510 @@
+{
+  "v": 1,
+  "about": "wkjp's course: one unit a week by trip situation, for a learner who is starting to speak, in step with Bunpro N5 then N4. Each unit: Phrases (hear, repeat, recall), a cued Drill, and a Role-play test. {name} and {from} come from About me; a phrase that needs one is skipped until it's filled in. hear: a phrase to understand, not to say.",
+  "units": [
+    {
+      "id": "u01", "ja": "はじめまして", "en": "Meeting people", "level": "N5",
+      "can": ["Greet people and introduce yourself", "Say your name and where you're from", "Say you speak only a little Japanese", "Ask someone to repeat or slow down"],
+      "grammar": ["XはYです", "〜か", "の", "〜から"],
+      "phrases": [
+        {"ja": "こんにちは。", "kana": "こんにちは", "en": "Hello."},
+        {"ja": "はじめまして。", "kana": "はじめまして", "en": "Nice to meet you (first meeting)."},
+        {"ja": "{name}です。", "kana": "{name}です", "en": "I'm {name}."},
+        {"ja": "{from}から来ました。", "kana": "{from}からきました", "en": "I'm from {from}."},
+        {"ja": "よろしくお願いします。", "kana": "よろしくおねがいします", "en": "Nice to meet you (I look forward to knowing you)."},
+        {"ja": "日本語は少しだけ話せます。", "kana": "にほんごはすこしだけはなせます", "en": "I can speak only a little Japanese."},
+        {"ja": "すみません、もう一度お願いします。", "kana": "すみません、もういちどおねがいします", "en": "Sorry, once more please."},
+        {"ja": "ゆっくり話してください。", "kana": "ゆっくりはなしてください", "en": "Please speak slowly."},
+        {"ja": "英語は話せますか？", "kana": "えいごははなせますか", "en": "Do you speak English?"},
+        {"ja": "ありがとうございます。", "kana": "ありがとうございます", "en": "Thank you."}
+      ],
+      "focus": "Short self-introduction exchanges: someone greets the learner, asks their name, where they're from, whether they're travelling, whether they speak Japanese. Sometimes the partner speaks too fast or uses a word the learner won't know, so the learner must ask them to repeat or slow down.",
+      "scene": {"role": "a friendly Japanese guest in the lounge of a hostel in Tokyo, who starts a conversation with the learner",
+        "open": "こんにちは！旅行ですか？", "openEn": "Hi! Are you travelling?",
+        "goals": ["Greet them and say you're travelling", "Say your name", "Say where you're from", "Say you speak a little Japanese, or ask them to speak slowly"]}
+    },
+    {
+      "id": "u02", "ja": "これをください", "en": "Buying things", "level": "N5",
+      "can": ["Ask for things by pointing (this, that)", "Say how many with ひとつ, ふたつ…", "Ask how much and understand the price", "Answer the clerk's usual questions"],
+      "grammar": ["これ・それ・あれ", "を", "〜をください", "〜つ", "いくら"],
+      "phrases": [
+        {"ja": "すみません、これをください。", "kana": "すみません、これをください", "en": "Excuse me, this one please."},
+        {"ja": "それをふたつください。", "kana": "それをふたつください", "en": "Two of those, please."},
+        {"ja": "いくらですか？", "kana": "いくらですか", "en": "How much is it?"},
+        {"ja": "コーヒーをひとつお願いします。", "kana": "こーひーをひとつおねがいします", "en": "One coffee, please."},
+        {"ja": "持ち帰りでお願いします。", "kana": "もちかえりでおねがいします", "en": "To take away, please."},
+        {"ja": "袋はいりません。", "kana": "ふくろはいりません", "en": "I don't need a bag."},
+        {"ja": "カードで払えますか？", "kana": "かーどではらえますか", "en": "Can I pay by card?"},
+        {"ja": "これは何ですか？", "kana": "これはなんですか", "en": "What is this?"},
+        {"ja": "大丈夫です。", "kana": "だいじょうぶです", "en": "I'm fine (no thank you)."},
+        {"ja": "以上です。", "kana": "いじょうです", "en": "That's all."}
+      ],
+      "focus": "Counter exchanges at a café, bakery or konbini: the clerk asks what they'd like, size, hot or iced, eat in or take away (店内でお召し上がりですか / お持ち帰りですか), whether they need a bag or chopsticks, and says the total in yen. The learner orders with これ/それ, counts with ひとつ/ふたつ/みっつ, asks prices and declines politely with 大丈夫です.",
+      "scene": {"role": "a clerk at the counter of a café in Kyoto",
+        "open": "いらっしゃいませ。ご注文はお決まりですか？", "openEn": "Welcome. Have you decided what you'd like?",
+        "goals": ["Order a drink", "Order something to eat by pointing (これ / それ)", "Answer whether it's to eat here or take away", "Ask how much it is"]}
+    },
+    {
+      "id": "u03", "ja": "どこですか", "en": "Finding places", "level": "N5",
+      "can": ["Ask where something is", "Ask whether there's a place nearby", "Understand right, left and straight on", "Check you understood by repeating"],
+      "grammar": ["〜はどこですか", "ここ・そこ・あそこ", "〜があります", "〜の近く"],
+      "phrases": [
+        {"ja": "すみません、トイレはどこですか？", "kana": "すみません、といれはどこですか", "en": "Excuse me, where's the toilet?"},
+        {"ja": "駅はどこですか？", "kana": "えきはどこですか", "en": "Where's the station?"},
+        {"ja": "この近くにコンビニはありますか？", "kana": "このちかくにこんびにはありますか", "en": "Is there a convenience store near here?"},
+        {"ja": "まっすぐですか？", "kana": "まっすぐですか", "en": "Straight on?"},
+        {"ja": "右ですか、左ですか？", "kana": "みぎですか、ひだりですか", "en": "Right or left?"},
+        {"ja": "ここから遠いですか？", "kana": "ここからとおいですか", "en": "Is it far from here?"},
+        {"ja": "歩いて行けますか？", "kana": "あるいていけますか", "en": "Can I walk there?"},
+        {"ja": "地図で教えてください。", "kana": "ちずでおしえてください", "en": "Please show me on the map."},
+        {"ja": "わかりました。ありがとうございます。", "kana": "わかりました。ありがとうございます", "en": "Got it. Thank you."},
+        {"ja": "すみません、わかりません。", "kana": "すみません、わかりません", "en": "Sorry, I don't understand."}
+      ],
+      "focus": "Asking a passer-by, station staff or a shop clerk where things are: toilets, the station, exits (出口), ATMs, lockers, convenience stores. The partner answers with short directions using まっすぐ, 右, 左, 一つ目の角, 信号, あそこ, 〜の隣 / 〜の前, 〜階; the learner checks by repeating, or says they don't understand.",
+      "scene": {"role": "staff at the information counter of a big department store in Tokyo",
+        "open": "いらっしゃいませ。何かお困りですか？", "openEn": "Welcome. Can I help you with something?",
+        "goals": ["Ask where the toilets are", "Ask whether there's an ATM or a café in the building", "Check the directions by repeating them", "Thank them"]}
+    },
+    {
+      "id": "u04", "ja": "仕事と趣味", "en": "Work and hobbies", "level": "N5",
+      "can": ["Say what you do in simple words", "Say what you like and your hobbies", "Say what you do and don't do", "Ask the same questions back"],
+      "grammar": ["〜が好きです", "趣味は〜です", "〜ます / 〜ません", "も", "あまり〜ません"],
+      "phrases": [
+        {"ja": "お仕事は何ですか？", "kana": "おしごとはなんですか", "en": "What's your job?"},
+        {"ja": "ITの仕事をしています。", "kana": "あいてぃーのしごとをしています", "en": "I work in IT."},
+        {"ja": "エンジニアです。", "kana": "えんじにあです", "en": "I'm an engineer."},
+        {"ja": "趣味は何ですか？", "kana": "しゅみはなんですか", "en": "What are your hobbies?"},
+        {"ja": "アニメが好きです。", "kana": "あにめがすきです", "en": "I like anime."},
+        {"ja": "日本の料理が大好きです。", "kana": "にほんのりょうりがだいすきです", "en": "I love Japanese food."},
+        {"ja": "週末は何をしますか？", "kana": "しゅうまつはなにをしますか", "en": "What do you do at weekends?"},
+        {"ja": "週末はよく家でゲームをします。", "kana": "しゅうまつはよくいえでげーむをします", "en": "At weekends I often play games at home."},
+        {"ja": "スポーツはあまりしません。", "kana": "すぽーつはあまりしません", "en": "I don't do sports much."},
+        {"ja": "私もです。", "kana": "わたしもです", "en": "Me too."}
+      ],
+      "focus": "Small talk about work and free time: the partner asks the learner's job, hobbies, what they like, what they do at weekends, and shares their own. The learner answers simply with 〜です, 〜が好きです, 〜をします / 〜しません, and asks back. Use the About me notes for the learner's real answers.",
+      "scene": {"role": "a friendly Japanese office worker sitting next to the learner at the counter of a small bar in Osaka",
+        "open": "こんばんは。どちらから来ましたか？", "openEn": "Good evening. Where are you from?",
+        "goals": ["Say where you're from", "Say what your job is", "Say something you like, or a hobby", "Ask them about their job or hobbies"]}
+    },
+    {
+      "id": "u05", "ja": "何名様ですか", "en": "Restaurants", "level": "N5",
+      "can": ["Say how many people you are", "Order food and drinks", "Ask for a recommendation", "Ask for the bill, and follow the staff's set phrases"],
+      "grammar": ["〜人", "〜にします", "おすすめは何ですか", "〜をお願いします"],
+      "phrases": [
+        {"ja": "二人です。", "kana": "ふたりです", "en": "Two people."},
+        {"ja": "メニューをお願いします。", "kana": "めにゅーをおねがいします", "en": "The menu, please."},
+        {"ja": "おすすめは何ですか？", "kana": "おすすめはなんですか", "en": "What do you recommend?"},
+        {"ja": "じゃあ、これにします。", "kana": "じゃあ、これにします", "en": "Then I'll have this."},
+        {"ja": "生ビールを二つお願いします。", "kana": "なまびーるをふたつおねがいします", "en": "Two draft beers, please."},
+        {"ja": "水をください。", "kana": "みずをください", "en": "Water, please."},
+        {"ja": "これは辛いですか？", "kana": "これはからいですか", "en": "Is this spicy?"},
+        {"ja": "すみません！", "kana": "すみません", "en": "Excuse me! (calling the staff)"},
+        {"ja": "お会計お願いします。", "kana": "おかいけいおねがいします", "en": "The bill, please."},
+        {"ja": "ごちそうさまでした。", "kana": "ごちそうさまでした", "en": "Thank you for the meal."}
+      ],
+      "focus": "A sit-down restaurant: staff say 何名様ですか, こちらへどうぞ, ご注文はお決まりですか, お飲み物は, 少々お待ちください, 以上でよろしいですか, お会計は〜円です. The learner gives the party size, calls the staff, orders with 〜をお願いします / 〜にします, asks for recommendations and about dishes, and asks for the bill. Staff keigo to hear; the learner answers politely and simply.",
+      "scene": {"role": "a server at a casual restaurant in Tokyo with a picture menu",
+        "open": "いらっしゃいませ！何名様ですか？", "openEn": "Welcome! How many people?",
+        "goals": ["Say how many people you are", "Ask for a recommendation", "Order a drink and a dish", "Ask for the bill"]}
+    },
+    {
+      "id": "u06", "ja": "何時ですか", "en": "Times and days", "level": "N5",
+      "can": ["Ask and say times", "Ask about opening and closing hours", "Talk about today, tomorrow and days of the week", "Say how many nights you're staying"],
+      "grammar": ["〜時〜分", "〜から〜まで", "〜に (time)", "今日・明日・昨日", "何曜日"],
+      "phrases": [
+        {"ja": "今、何時ですか？", "kana": "いま、なんじですか", "en": "What time is it now?"},
+        {"ja": "何時からですか？", "kana": "なんじからですか", "en": "From what time?"},
+        {"ja": "何時までですか？", "kana": "なんじまでですか", "en": "Until what time?"},
+        {"ja": "朝ごはんは何時からですか？", "kana": "あさごはんはなんじからですか", "en": "What time does breakfast start?"},
+        {"ja": "七時半に来ます。", "kana": "しちじはんにきます", "en": "I'll come at half past seven."},
+        {"ja": "明日は休みですか？", "kana": "あしたはやすみですか", "en": "Are you closed tomorrow?"},
+        {"ja": "今日は何曜日ですか？", "kana": "きょうはなんようびですか", "en": "What day is it today?"},
+        {"ja": "何時に閉まりますか？", "kana": "なんじにしまりますか", "en": "What time do you close?"},
+        {"ja": "十時にチェックアウトします。", "kana": "じゅうじにちぇっくあうとします", "en": "I'll check out at ten."},
+        {"ja": "三泊です。", "kana": "さんぱくです", "en": "Three nights."}
+      ],
+      "focus": "Times and days when travelling: opening and closing hours of shops, museums and restaurants (営業時間, 定休日), hotel breakfast and check-out times, when a tour or show starts. The partner says times in Japanese (〜時半, 〜分, 午前・午後); the learner asks, confirms, and says when they'll do things.",
+      "scene": {"role": "front desk staff at a business hotel in Tokyo, checking the learner in",
+        "open": "いらっしゃいませ。チェックインですか？", "openEn": "Welcome. Checking in?",
+        "goals": ["Check in and say how many nights", "Ask what time breakfast is (from and until)", "Ask what time check-out is", "Ask until what time the front desk is open, or say when you'll be back"]}
+    },
+    {
+      "id": "u07", "ja": "電車で", "en": "Trains", "level": "N5",
+      "can": ["Say where you want to go", "Buy a ticket and choose a seat", "Ask which platform and which train", "Ask about changes and how long it takes"],
+      "grammar": ["〜まで", "〜たいです", "〜に行きます", "〜で (by)", "何番線"],
+      "phrases": [
+        {"ja": "京都まで大人一枚お願いします。", "kana": "きょうとまでおとないちまいおねがいします", "en": "One adult ticket to Kyoto, please."},
+        {"ja": "指定席はありますか？", "kana": "していせきはありますか", "en": "Are there reserved seats?"},
+        {"ja": "自由席でいいです。", "kana": "じゆうせきでいいです", "en": "An unreserved seat is fine."},
+        {"ja": "何番線ですか？", "kana": "なんばんせんですか", "en": "Which platform?"},
+        {"ja": "この電車は渋谷に行きますか？", "kana": "このでんしゃはしぶやにいきますか", "en": "Does this train go to Shibuya?"},
+        {"ja": "乗り換えはありますか？", "kana": "のりかえはありますか", "en": "Do I need to change trains?"},
+        {"ja": "次の電車は何時ですか？", "kana": "つぎのでんしゃはなんじですか", "en": "What time is the next train?"},
+        {"ja": "浅草に行きたいです。", "kana": "あさくさにいきたいです", "en": "I want to go to Asakusa."},
+        {"ja": "どのくらいかかりますか？", "kana": "どのくらいかかりますか", "en": "How long does it take?"},
+        {"ja": "Suicaにチャージしたいです。", "kana": "すいかにちゃーじしたいです", "en": "I want to top up my Suica."}
+      ],
+      "focus": "Train travel: ticket offices and machines, station staff, platforms (〜番線), Shinkansen reserved (指定席) and unreserved (自由席) seats, changes (乗り換え), lines (〜線), rapid vs local trains (快速, 各駅停車), IC cards, announcements (まもなく、〜番線に電車が参ります). The learner gives destinations with まで / に行きたい and asks about platforms, times and changes.",
+      "scene": {"role": "staff at the JR ticket office in Tokyo Station",
+        "open": "こんにちは。どちらまでですか？", "openEn": "Hello. Where to?",
+        "goals": ["Say where you want to go and buy a ticket", "Choose a reserved or unreserved seat", "Ask which platform", "Ask what time it leaves or how long it takes"]}
+    },
+    {
+      "id": "u08", "ja": "昨日は", "en": "What you did", "level": "N5",
+      "can": ["Say what you did yesterday or today", "Say what was fun, tasty or crowded", "Ask someone what they did", "React with いいですね and すごいですね"],
+      "grammar": ["〜ました / 〜ませんでした", "〜かったです", "〜でした", "〜で (place)", "〜に行きました"],
+      "phrases": [
+        {"ja": "昨日、浅草に行きました。", "kana": "きのう、あさくさにいきました", "en": "Yesterday I went to Asakusa."},
+        {"ja": "お寺を見ました。", "kana": "おてらをみました", "en": "I saw a temple."},
+        {"ja": "とても楽しかったです。", "kana": "とてもたのしかったです", "en": "It was a lot of fun."},
+        {"ja": "ラーメンがおいしかったです。", "kana": "らーめんがおいしかったです", "en": "The ramen was delicious."},
+        {"ja": "人が多かったです。", "kana": "ひとがおおかったです", "en": "There were a lot of people."},
+        {"ja": "雨でした。", "kana": "あめでした", "en": "It was rainy."},
+        {"ja": "どこに行きましたか？", "kana": "どこにいきましたか", "en": "Where did you go?"},
+        {"ja": "何を食べましたか？", "kana": "なにをたべましたか", "en": "What did you eat?"},
+        {"ja": "いいですね！", "kana": "いいですね", "en": "That's nice!"},
+        {"ja": "すごいですね！", "kana": "すごいですね", "en": "Amazing!"}
+      ],
+      "focus": "Small talk about the trip so far: a local or hotel staff asks what the learner did, where they went, what they ate and how it was. The learner answers in the past tense (ました, かったです, でした), asks back, and reacts with いいですね / すごいですね.",
+      "scene": {"role": "a friendly local sitting next to the learner at a ramen counter in Tokyo, who asks about their trip",
+        "open": "旅行ですか？どこに行きましたか？", "openEn": "Travelling? Where have you been?",
+        "goals": ["Say where you went", "Say what you did or saw there", "Say how it was (楽しかった, おいしかった…)", "Ask them a question back"]}
+    },
+    {
+      "id": "u09", "ja": "食べ物", "en": "Food likes and allergies", "level": "N5",
+      "can": ["Use a ramen ticket machine and order at an izakaya", "Say what you like and what you can't eat", "Ask for a dish without something", "Ask what's in a dish"],
+      "grammar": ["い / な adjectives", "〜が好き / 苦手", "〜ないでください", "〜なしで", "〜はありますか"],
+      "phrases": [
+        {"ja": "食券はどこで買いますか？", "kana": "しょっけんはどこでかいますか", "en": "Where do I buy a meal ticket?"},
+        {"ja": "大盛りでお願いします。", "kana": "おおもりでおねがいします", "en": "A large portion, please."},
+        {"ja": "卵アレルギーがあります。", "kana": "たまごあれるぎーがあります", "en": "I'm allergic to eggs."},
+        {"ja": "辛いものは苦手です。", "kana": "からいものはにがてです", "en": "I'm not good with spicy food."},
+        {"ja": "ネギなしでお願いします。", "kana": "ねぎなしでおねがいします", "en": "Without green onion, please."},
+        {"ja": "わさびを入れないでください。", "kana": "わさびをいれないでください", "en": "Please don't put wasabi in."},
+        {"ja": "とりあえずビールで。", "kana": "とりあえずびーるで", "en": "A beer to start with."},
+        {"ja": "英語のメニューはありますか？", "kana": "えいごのめにゅーはありますか", "en": "Do you have an English menu?"},
+        {"ja": "おかわりお願いします。", "kana": "おかわりおねがいします", "en": "Another one (a refill), please."},
+        {"ja": "これは何が入っていますか？", "kana": "これはなにがはいっていますか", "en": "What's in this?"}
+      ],
+      "focus": "Eating out: ramen shops with ticket machines (食券), izakaya (お通し, とりあえず, 生, おかわり, ラストオーダー), set-meal places (定食). The partner asks about portion size, noodle firmness (麺のかたさ), drinks; the learner states likes, dislikes and allergies (〜アレルギーがあります, 〜が苦手です, 〜なしで, 〜を入れないでください) and asks what's in a dish. Use the About me notes for real likes and allergies.",
+      "scene": {"role": "a server at a lively izakaya in Tokyo",
+        "open": "いらっしゃいませ！お飲み物は何にしますか？", "openEn": "Welcome! What would you like to drink?",
+        "goals": ["Order a drink", "Ask what a dish is or what's in it", "Say something you can't eat or are allergic to", "Order a dish, or ask for a refill"]}
+    },
+    {
+      "id": "u10", "ja": "家族と家", "en": "Home, family and routine", "level": "N5",
+      "can": ["Say where you live", "Talk about your family or pets", "Describe a normal day", "Ask someone about theirs"],
+      "grammar": ["〜に住んでいます", "〜ています", "家族は〜人です", "毎日・よく・ときどき", "〜てから"],
+      "phrases": [
+        {"ja": "どこに住んでいますか？", "kana": "どこにすんでいますか", "en": "Where do you live?"},
+        {"ja": "{from}に住んでいます。", "kana": "{from}にすんでいます", "en": "I live in {from}."},
+        {"ja": "家族は四人です。", "kana": "かぞくはよにんです", "en": "There are four people in my family."},
+        {"ja": "犬を飼っています。", "kana": "いぬをかっています", "en": "I have a dog."},
+        {"ja": "兄弟はいますか？", "kana": "きょうだいはいますか", "en": "Do you have brothers or sisters?"},
+        {"ja": "毎朝コーヒーを飲みます。", "kana": "まいあさこーひーをのみます", "en": "I drink coffee every morning."},
+        {"ja": "家で仕事をしています。", "kana": "いえでしごとをしています", "en": "I work from home."},
+        {"ja": "朝ご飯を食べてから、仕事をします。", "kana": "あさごはんをたべてから、しごとをします", "en": "After breakfast, I work."},
+        {"ja": "ときどき料理をします。", "kana": "ときどきりょうりをします", "en": "Sometimes I cook."},
+        {"ja": "結婚していますか？", "kana": "けっこんしていますか", "en": "Are you married?"}
+      ],
+      "focus": "Personal small talk with a local, such as a guesthouse owner or a fellow guest: where the learner lives, family, pets, what a normal day looks like, weekends. The learner answers with 〜に住んでいます, 〜ています, 家族は〜人です and frequency words, and asks back. Use the About me notes for the learner's real answers; the phrases are examples to adapt.",
+      "scene": {"role": "the friendly owner of a small guesthouse in Nara, chatting with the learner in the evening",
+        "open": "日本は初めてですか？", "openEn": "Is this your first time in Japan?",
+        "goals": ["Answer whether it's your first time in Japan", "Say where you live", "Say something about your family or pets", "Ask the owner about their family or town"]}
+    },
+    {
+      "id": "u11", "ja": "〜てもいいですか", "en": "Permission and favours", "level": "N4",
+      "can": ["Ask if you may do something", "Ask people to do things for you", "Understand a polite no", "Ask staff for help"],
+      "grammar": ["て-form", "〜てもいいですか", "〜てください", "〜てもらえますか", "〜ないでください"],
+      "phrases": [
+        {"ja": "写真を撮ってもいいですか？", "kana": "しゃしんをとってもいいですか", "en": "May I take a photo?"},
+        {"ja": "ここに座ってもいいですか？", "kana": "ここにすわってもいいですか", "en": "May I sit here?"},
+        {"ja": "荷物を預かってもらえますか？", "kana": "にもつをあずかってもらえますか", "en": "Could you keep my luggage?"},
+        {"ja": "写真を撮ってもらえますか？", "kana": "しゃしんをとってもらえますか", "en": "Could you take a photo of me?"},
+        {"ja": "もう少しゆっくり言ってもらえますか？", "kana": "もうすこしゆっくりいってもらえますか", "en": "Could you say it a little more slowly?"},
+        {"ja": "ここに書いてください。", "kana": "ここにかいてください", "en": "Please write it here."},
+        {"ja": "タクシーを呼んでもらえますか？", "kana": "たくしーをよんでもらえますか", "en": "Could you call a taxi?"},
+        {"ja": "Wi-Fiのパスワードを教えてください。", "kana": "わいふぁいのぱすわーどをおしえてください", "en": "Please tell me the Wi-Fi password."},
+        {"ja": "窓を開けてもいいですか？", "kana": "まどをあけてもいいですか", "en": "May I open the window?"},
+        {"ja": "すみません、ちょっと手伝ってもらえますか？", "kana": "すみません、ちょっとてつだってもらえますか", "en": "Excuse me, could you help me a moment?"}
+      ],
+      "focus": "Requests and permission when travelling: hotels (keeping luggage, calling a taxi, the Wi-Fi password, writing an address), shrines and shops (may I take photos, may I try it), asking strangers to take a photo. Sometimes the partner refuses politely (すみません、ここは撮影禁止です / ちょっと…) and the learner reacts.",
+      "scene": {"role": "front desk staff at a hotel in Kyoto on the learner's check-out day",
+        "open": "おはようございます。チェックアウトですか？", "openEn": "Good morning. Checking out?",
+        "goals": ["Check out", "Ask them to keep your luggage until the afternoon", "Ask them to call a taxi or write an address for you", "Ask whether you may do something (take a photo, use the lounge)"]}
+    },
+    {
+      "id": "u12", "ja": "旅館と温泉", "en": "Ryokan and onsen", "level": "N4",
+      "can": ["Check in at a ryokan", "Ask about dinner, breakfast and the baths", "Understand the house rules", "Make small requests"],
+      "grammar": ["〜てはいけません", "〜ことができますか", "〜は何時からですか", "〜てもいいですか"],
+      "phrases": [
+        {"ja": "予約した{name}です。", "kana": "よやくした{name}です", "en": "I'm {name}; I have a reservation."},
+        {"ja": "夕食は何時ですか？", "kana": "ゆうしょくはなんじですか", "en": "What time is dinner?"},
+        {"ja": "温泉は何時まで入れますか？", "kana": "おんせんはなんじまではいれますか", "en": "Until what time can I use the onsen?"},
+        {"ja": "貸切風呂はありますか？", "kana": "かしきりぶろはありますか", "en": "Is there a private bath?"},
+        {"ja": "浴衣のサイズを変えてもらえますか？", "kana": "ゆかたのさいずをかえてもらえますか", "en": "Could I have a different size of yukata?"},
+        {"ja": "タオルは持って行ってもいいですか？", "kana": "たおるはもっていってもいいですか", "en": "May I take the towel with me?"},
+        {"ja": "部屋で食べることができますか？", "kana": "へやでたべることができますか", "en": "Can we eat in the room?"},
+        {"ja": "朝ごはんは和食ですか？", "kana": "あさごはんはわしょくですか", "en": "Is breakfast Japanese-style?"},
+        {"ja": "すみません、使い方を教えてください。", "kana": "すみません、つかいかたをおしえてください", "en": "Excuse me, please show me how to use it."},
+        {"ja": "とてもいいお湯でした。", "kana": "とてもいいおゆでした", "en": "The bath was lovely."}
+      ],
+      "focus": "A traditional ryokan with an onsen: arrival (shoes off, スリッパ), the okami explains dinner and breakfast times and where they're served, bath hours and the men's and women's baths swapping (男湯・女湯), house rules (〜てはいけません: no towels in the water, no photos in the bath; tattoo policies vary), yukata, futon. The learner asks about times and rules and makes requests.",
+      "scene": {"role": "the okami (landlady) of a traditional ryokan in Hakone, welcoming the learner",
+        "open": "ようこそいらっしゃいました。お名前をお願いします。", "openEn": "Welcome. May I have your name?",
+        "goals": ["Give your name for the reservation", "Ask what time dinner and breakfast are", "Ask until what time the onsen is open", "Ask about a rule or make a request (towels, yukata size, photos, tattoos)"]}
+    },
+    {
+      "id": "u13", "ja": "買い物", "en": "Shopping", "level": "N4",
+      "can": ["Ask for another size or colour", "Ask to try something on", "Compare two things", "Ask about tax-free and pay"],
+      "grammar": ["〜より〜のほうが", "〜の (one)", "potential (払えます)", "〜てもいいですか"],
+      "phrases": [
+        {"ja": "もう少し大きいのはありますか？", "kana": "もうすこしおおきいのはありますか", "en": "Do you have a slightly bigger one?"},
+        {"ja": "他の色はありますか？", "kana": "ほかのいろはありますか", "en": "Do you have other colours?"},
+        {"ja": "試着してもいいですか？", "kana": "しちゃくしてもいいですか", "en": "May I try it on?"},
+        {"ja": "こっちのほうがいいです。", "kana": "こっちのほうがいいです", "en": "This one is better."},
+        {"ja": "これはあれより安いですか？", "kana": "これはあれよりやすいですか", "en": "Is this cheaper than that one?"},
+        {"ja": "免税できますか？", "kana": "めんぜいできますか", "en": "Can I buy it tax-free?"},
+        {"ja": "これをください。カードでお願いします。", "kana": "これをください。かーどでおねがいします", "en": "I'll take this. By card, please."},
+        {"ja": "ちょっと考えます。", "kana": "ちょっとかんがえます", "en": "I'll think about it."},
+        {"ja": "見ているだけです。", "kana": "みているだけです", "en": "I'm just looking."},
+        {"ja": "プレゼント用に包んでもらえますか？", "kana": "ぷれぜんとようにつつんでもらえますか", "en": "Could you gift-wrap it?"}
+      ],
+      "focus": "Clothes and souvenir shops and department stores: the clerk greets (何かお探しですか), offers sizes and colours, the fitting room (試着室), tax-free (免税, パスポート), payment (カード, 一括), gift wrapping. The learner compares (より / ほうが), asks for alternatives with 〜の, and uses potential forms.",
+      "scene": {"role": "a clerk in a clothes shop in a Tokyo department store",
+        "open": "いらっしゃいませ。何かお探しですか？", "openEn": "Welcome. Looking for something?",
+        "goals": ["Say what you're looking for, or that you're just looking", "Ask for another size or colour", "Ask to try it on, or compare two items", "Ask about tax-free, or pay by card"]}
+    },
+    {
+      "id": "u14", "ja": "趣味の店", "en": "Hobby shops and events", "level": "N4",
+      "can": ["Ask a shop whether they have something", "Ask about used, limited and new items", "Buy event tickets and ask when things start", "Say what you've done before and what you plan"],
+      "grammar": ["〜を探しています", "〜はありますか", "〜たことがあります", "〜つもりです", "〜てみたい"],
+      "phrases": [
+        {"ja": "このゲームを探しています。", "kana": "このげーむをさがしています", "en": "I'm looking for this game."},
+        {"ja": "中古はありますか？", "kana": "ちゅうこはありますか", "en": "Do you have it second-hand?"},
+        {"ja": "これは限定ですか？", "kana": "これはげんていですか", "en": "Is this a limited edition?"},
+        {"ja": "新作はどこですか？", "kana": "しんさくはどこですか", "en": "Where are the new releases?"},
+        {"ja": "予約できますか？", "kana": "よやくできますか", "en": "Can I reserve it?"},
+        {"ja": "チケットはまだありますか？", "kana": "ちけっとはまだありますか", "en": "Are there still tickets?"},
+        {"ja": "何時に始まりますか？", "kana": "なんじにはじまりますか", "en": "What time does it start?"},
+        {"ja": "このアニメを見たことがありますか？", "kana": "このあにめをみたことがありますか", "en": "Have you seen this anime?"},
+        {"ja": "明日もまた来るつもりです。", "kana": "あしたもまたくるつもりです", "en": "I plan to come again tomorrow."},
+        {"ja": "ガチャをやってみたいです。", "kana": "がちゃをやってみたいです", "en": "I want to try a gacha machine."}
+      ],
+      "focus": "Hobby shopping in Akihabara or Nakano: anime, manga, figures, retro games, card shops; used (中古) or new, limited editions (限定), reservations (予約), store floors (〜階), event and concert tickets, start times, queues (列, 整理券). Use the learner's hobbies from About me.",
+      "scene": {"role": "a clerk at a big anime and game shop in Akihabara",
+        "open": "いらっしゃいませー！何かお探しですか？", "openEn": "Welcome! Looking for something?",
+        "goals": ["Say what you're looking for", "Ask whether they have it second-hand or as a limited edition", "Ask the price or which floor it's on", "Say you'll take it, or ask whether you can reserve it"]}
+    },
+    {
+      "id": "u15", "ja": "困ったとき", "en": "When something goes wrong", "level": "N4",
+      "can": ["Say you've lost or left something", "Describe a symptom at a pharmacy", "Ask for help in an emergency", "Answer follow-up questions (when, where, what colour)"],
+      "grammar": ["〜てしまいました", "〜が痛いです", "〜をなくしました / 忘れました", "〜たほうがいいです"],
+      "phrases": [
+        {"ja": "財布をなくしてしまいました。", "kana": "さいふをなくしてしまいました", "en": "I've lost my wallet."},
+        {"ja": "電車に傘を忘れました。", "kana": "でんしゃにかさをわすれました", "en": "I left my umbrella on the train."},
+        {"ja": "頭が痛いです。", "kana": "あたまがいたいです", "en": "I have a headache."},
+        {"ja": "熱があります。", "kana": "ねつがあります", "en": "I have a fever."},
+        {"ja": "風邪薬はありますか？", "kana": "かぜぐすりはありますか", "en": "Do you have cold medicine?"},
+        {"ja": "一日何回飲みますか？", "kana": "いちにちなんかいのみますか", "en": "How many times a day do I take it?"},
+        {"ja": "病院に行ったほうがいいですか？", "kana": "びょういんにいったほうがいいですか", "en": "Should I go to a hospital?"},
+        {"ja": "助けてください！", "kana": "たすけてください", "en": "Please help!"},
+        {"ja": "救急車を呼んでください。", "kana": "きゅうきゅうしゃをよんでください", "en": "Please call an ambulance."},
+        {"ja": "交番はどこですか？", "kana": "こうばんはどこですか", "en": "Where's the police box?"}
+      ],
+      "focus": "Problems: lost property at a station or police box (落とし物, いつ・どこで・何色・中に何が), things left on trains, feeling ill at a pharmacy (symptoms, how often to take medicine, 食後), emergencies (救急車, 119). The partner asks follow-up questions (いつですか？何色ですか？) and the learner describes.",
+      "scene": {"role": "staff at the lost property office of a big train station in Tokyo",
+        "open": "はい、どうしましたか？", "openEn": "Yes, what's the matter?",
+        "goals": ["Say what you lost and where (which train)", "Say when it happened", "Describe it (colour, size, what's inside)", "Ask what to do next, or thank them"]}
+    },
+    {
+      "id": "u16", "ja": "天気とおすすめ", "en": "Weather and local tips", "level": "N4",
+      "can": ["Make small talk about the weather", "Give an opinion with と思います", "Ask locals for recommendations", "Agree and react with ね and よ"],
+      "grammar": ["〜と思います", "〜でしょう", "〜ね / 〜よ", "〜そうです (looks like)", "〜てみます"],
+      "phrases": [
+        {"ja": "今日は暑いですね。", "kana": "きょうはあついですね", "en": "It's hot today, isn't it?"},
+        {"ja": "明日は雨でしょうか？", "kana": "あしたはあめでしょうか", "en": "Will it rain tomorrow, do you think?"},
+        {"ja": "この辺でおすすめの店はありますか？", "kana": "このへんでおすすめのみせはありますか", "en": "Is there a place you'd recommend around here?"},
+        {"ja": "地元の人はどこで食べますか？", "kana": "じもとのひとはどこでたべますか", "en": "Where do locals eat?"},
+        {"ja": "京都はとてもきれいだと思います。", "kana": "きょうとはとてもきれいだとおもいます", "en": "I think Kyoto is very beautiful."},
+        {"ja": "今の季節は何がおいしいですか？", "kana": "いまのきせつはなにがおいしいですか", "en": "What's good to eat this season?"},
+        {"ja": "そうですね。", "kana": "そうですね", "en": "That's right. / Let me see."},
+        {"ja": "それはいいですね。行ってみます。", "kana": "それはいいですね。いってみます", "en": "That sounds good. I'll try it."},
+        {"ja": "有名ですか？", "kana": "ゆうめいですか", "en": "Is it famous?"},
+        {"ja": "雨が降りそうですね。", "kana": "あめがふりそうですね", "en": "Looks like it's going to rain."}
+      ],
+      "focus": "Friendly small talk with locals: weather and seasons (in May: warm days, Golden Week crowds, the rainy season 梅雨 coming), opinions about places and food with と思います, asking for local recommendations (restaurants, sights, quiet spots) and reacting. Use ね / よ naturally.",
+      "scene": {"role": "a chatty local at the counter of a small izakaya in Fukuoka",
+        "open": "今日は暑かったですね。どこから来たんですか？", "openEn": "It was hot today, wasn't it. Where are you from?",
+        "goals": ["Reply about the weather", "Say where you're from and what you think of the city", "Ask for a recommendation (food or a place)", "React and say you'll try it"]}
+    },
+    {
+      "id": "u17", "ja": "どうして", "en": "Giving reasons", "level": "N4",
+      "can": ["Give reasons with から and ので", "Say why you came to Japan and study Japanese", "Soften what you say with 〜んです", "Ask why"],
+      "grammar": ["〜から", "〜ので", "〜んです / 〜んですか", "どうして"],
+      "phrases": [
+        {"ja": "どうして日本に来たんですか？", "kana": "どうしてにほんにきたんですか", "en": "Why did you come to Japan?"},
+        {"ja": "日本の文化が好きなので、来ました。", "kana": "にほんのぶんかがすきなので、きました", "en": "I came because I like Japanese culture."},
+        {"ja": "日本語を勉強しているので、話してみたいです。", "kana": "にほんごをべんきょうしているので、はなしてみたいです", "en": "I'm studying Japanese, so I want to try speaking it."},
+        {"ja": "アニメを見て、日本に興味を持ちました。", "kana": "あにめをみて、にほんにきょうみをもちました", "en": "Watching anime got me interested in Japan."},
+        {"ja": "実は、初めて来たんです。", "kana": "じつは、はじめてきたんです", "en": "Actually, it's my first time here."},
+        {"ja": "疲れたから、ホテルに帰ります。", "kana": "つかれたから、ほてるにかえります", "en": "I'm tired, so I'm going back to the hotel."},
+        {"ja": "道がわからないんですが…", "kana": "みちがわからないんですが", "en": "I'm not sure of the way…"},
+        {"ja": "どうしてですか？", "kana": "どうしてですか", "en": "Why is that?"},
+        {"ja": "ちょっと高いので、やめておきます。", "kana": "ちょっとたかいので、やめておきます", "en": "It's a bit expensive, so I'll pass."},
+        {"ja": "雨なので、美術館に行きます。", "kana": "あめなので、びじゅつかんにいきます", "en": "It's raining, so I'll go to a museum."}
+      ],
+      "focus": "Conversations where the learner explains reasons: why they came to Japan, why they study Japanese, why they like something, why they can't or won't do something; softening with 〜んですが. Use About me for real reasons. The partner asks どうして and follows up.",
+      "scene": {"role": "a curious Japanese university student chatting with the learner at a café in Tokyo; they only speak Japanese",
+        "open": "日本語、上手ですね！どうして日本語を勉強しているんですか？", "openEn": "Your Japanese is good! Why are you studying Japanese?",
+        "goals": ["Say why you study Japanese", "Say why you came to Japan", "Give a reason for something you like", "Ask them why about something"]}
+    },
+    {
+      "id": "u18", "ja": "予定", "en": "Making plans", "level": "N4",
+      "can": ["Say what you're planning to do", "Plan a day trip and ask how to get there", "Ask how long and how much", "Say what you'll do if… with たら"],
+      "grammar": ["〜つもりです", "〜予定です", "〜ようと思います", "〜たら", "どのくらいかかりますか"],
+      "phrases": [
+        {"ja": "明日は日光に行こうと思います。", "kana": "あしたはにっこうにいこうとおもいます", "en": "I'm thinking of going to Nikko tomorrow."},
+        {"ja": "何で行ったらいいですか？", "kana": "なんでいったらいいですか", "en": "How should I get there?"},
+        {"ja": "電車でどのくらいかかりますか？", "kana": "でんしゃでどのくらいかかりますか", "en": "How long does it take by train?"},
+        {"ja": "日帰りできますか？", "kana": "ひがえりできますか", "en": "Can I do it as a day trip?"},
+        {"ja": "来週、大阪に行く予定です。", "kana": "らいしゅう、おおさかにいくよていです", "en": "I'm planning to go to Osaka next week."},
+        {"ja": "雨だったら、買い物をします。", "kana": "あめだったら、かいものをします", "en": "If it rains, I'll go shopping."},
+        {"ja": "時間があったら、温泉にも行きたいです。", "kana": "じかんがあったら、おんせんにもいきたいです", "en": "If I have time, I'd like to go to an onsen too."},
+        {"ja": "地図をもらえますか？", "kana": "ちずをもらえますか", "en": "Could I have a map?"},
+        {"ja": "いくらぐらいかかりますか？", "kana": "いくらぐらいかかりますか", "en": "About how much does it cost?"},
+        {"ja": "京都では三日間過ごすつもりです。", "kana": "きょうとではみっかかんすごすつもりです", "en": "I intend to spend three days in Kyoto."}
+      ],
+      "focus": "Planning: a tourist information centre or hotel concierge helps plan a day trip; time and cost (どのくらい, いくらぐらい), transport options, conditions with たら (if it rains, if there's time), intentions with つもり / 予定 / 〜ようと思います. Also small talk about the rest of the trip.",
+      "scene": {"role": "staff at a tourist information centre in Tokyo",
+        "open": "こんにちは。どちらへ行かれますか？", "openEn": "Hello. Where are you heading?",
+        "goals": ["Say where you're thinking of going (〜ようと思います)", "Ask how to get there and how long it takes", "Ask about the cost, or whether it works as a day trip", "Say what you'll do if it rains or if there's time (〜たら)"]}
+    },
+    {
+      "id": "u19", "ja": "経験と一番", "en": "Experiences and favourites", "level": "N4",
+      "can": ["Say what you have and haven't done", "Say your favourite in a group", "Describe doing things together or in a list", "Keep a conversation going with questions"],
+      "grammar": ["〜たことがあります", "一番〜", "〜の中で", "〜ながら", "〜たり〜たりします"],
+      "phrases": [
+        {"ja": "日本酒を飲んだことがありますか？", "kana": "にほんしゅをのんだことがありますか", "en": "Have you ever had sake?"},
+        {"ja": "一度もありません。", "kana": "いちどもありません", "en": "Never."},
+        {"ja": "富士山を見たことがあります。", "kana": "ふじさんをみたことがあります", "en": "I've seen Mt Fuji."},
+        {"ja": "日本の食べ物の中で、何が一番好きですか？", "kana": "にほんのたべもののなかで、なにがいちばんすきですか", "en": "Of Japanese foods, which do you like best?"},
+        {"ja": "お寿司が一番好きです。", "kana": "おすしがいちばんすきです", "en": "I like sushi best."},
+        {"ja": "音楽を聞きながら、歩きます。", "kana": "おんがくをききながら、あるきます", "en": "I walk while listening to music."},
+        {"ja": "週末は映画を見たり、ゲームをしたりします。", "kana": "しゅうまつはえいがをみたり、げーむをしたりします", "en": "At weekends I watch films, play games and so on."},
+        {"ja": "今まで行った所で、どこが一番よかったですか？", "kana": "いままでいったところで、どこがいちばんよかったですか", "en": "Of the places you've been, which was best?"},
+        {"ja": "まだ食べたことがありません。", "kana": "まだたべたことがありません", "en": "I haven't eaten it yet."},
+        {"ja": "ぜひ行ってみてください。", "kana": "ぜひいってみてください", "en": "You should definitely go."}
+      ],
+      "focus": "Longer small talk about experiences (たことがある), favourites (一番, の中で), habits (たり〜たり, ながら). The partner shares their own experiences and asks follow-ups; the learner keeps the conversation going with questions and reactions. Use About me.",
+      "scene": {"role": "a Japanese traveller cooking dinner next to the learner in a hostel kitchen in Sapporo",
+        "open": "どこを旅行したんですか？", "openEn": "Where have you travelled?",
+        "goals": ["Say something you've done (or never done) in Japan", "Say your favourite food or place so far (一番)", "Ask them about an experience (〜たことがありますか)", "Describe your weekends at home with 〜たり〜たり"]}
+    },
+    {
+      "id": "u20", "ja": "仕事を説明", "en": "Explaining your work", "level": "N4",
+      "can": ["Explain your work in simple words", "Say who or what it's for (ために)", "Say what's easy or hard", "Answer follow-up questions"],
+      "grammar": ["〜ために", "〜やすい / 〜にくい", "〜ようになりました", "〜について", "〜たり〜たり"],
+      "phrases": [
+        {"ja": "会社のサーバーを管理しています。", "kana": "かいしゃのさーばーをかんりしています", "en": "I look after the company's servers."},
+        {"ja": "クラウドの仕事です。", "kana": "くらうどのしごとです", "en": "It's work with the cloud."},
+        {"ja": "お客さんのために、システムを作っています。", "kana": "おきゃくさんのために、しすてむをつくっています", "en": "I build systems for customers."},
+        {"ja": "サーバーを作ったり、直したりします。", "kana": "さーばーをつくったり、なおしたりします", "en": "I set up and fix servers, that kind of thing."},
+        {"ja": "チームで働いています。", "kana": "ちーむではたらいています", "en": "I work in a team."},
+        {"ja": "説明しにくいです。", "kana": "せつめいしにくいです", "en": "It's hard to explain."},
+        {"ja": "簡単に言うと、コンピューターの仕事です。", "kana": "かんたんにいうと、こんぴゅーたーのしごとです", "en": "Simply put, it's computer work."},
+        {"ja": "最近、日本語が少し話せるようになりました。", "kana": "さいきん、にほんごがすこしはなせるようになりました", "en": "Recently I've become able to speak a little Japanese."},
+        {"ja": "忙しいですが、楽しいです。", "kana": "いそがしいですが、たのしいです", "en": "It's busy, but fun."},
+        {"ja": "お仕事について聞いてもいいですか？", "kana": "おしごとについてきいてもいいですか", "en": "May I ask about your work?"}
+      ],
+      "focus": "Explaining the learner's IT and cloud work (see About me) to someone with no tech background: simple words, ために (purpose), やすい / にくい, ようになる, comparisons. The partner asks naive follow-ups (それは何ですか？大変ですか？) and talks about their own job.",
+      "scene": {"role": "a retired Japanese man, curious about the learner's job, chatting in the rest area of a public bath",
+        "open": "お仕事は何をしているんですか？", "openEn": "What do you do for work?",
+        "goals": ["Say what your job is in simple words", "Explain what it's for, or what you do in a day", "Say what's easy or hard about it", "Ask about their work (or past work)"]}
+    },
+    {
+      "id": "u21", "ja": "予約", "en": "Reservations", "level": "N4",
+      "can": ["Make a reservation", "Give the date, time, number of people and name", "Change or cancel a booking", "Follow a phone call in keigo"],
+      "grammar": ["〜たいんですが", "〜できますか", "〜でお願いします", "〜に変更できますか", "〜月〜日"],
+      "phrases": [
+        {"ja": "予約したいんですが。", "kana": "よやくしたいんですが", "en": "I'd like to make a reservation."},
+        {"ja": "明日の夜七時に、二人でお願いします。", "kana": "あしたのよるしちじに、ふたりでおねがいします", "en": "Tomorrow at 7 p.m., for two, please."},
+        {"ja": "五月十日は空いていますか？", "kana": "ごがつとおかはあいていますか", "en": "Is May 10th available?"},
+        {"ja": "{name}で予約しました。", "kana": "{name}でよやくしました", "en": "I booked under {name}."},
+        {"ja": "時間を八時に変更できますか？", "kana": "じかんをはちじにへんこうできますか", "en": "Can I change the time to eight?"},
+        {"ja": "予約をキャンセルしたいんですが。", "kana": "よやくをきゃんせるしたいんですが", "en": "I'd like to cancel my reservation."},
+        {"ja": "カウンター席でもいいです。", "kana": "かうんたーせきでもいいです", "en": "Counter seats are fine too."},
+        {"ja": "もう一度、日にちを言ってもらえますか？", "kana": "もういちど、ひにちをいってもらえますか", "en": "Could you say the date again?"},
+        {"ja": "少し遅れます。", "kana": "すこしおくれます", "en": "I'll be a little late."},
+        {"ja": "では、それでお願いします。", "kana": "では、それでおねがいします", "en": "Then that's fine, please."}
+      ],
+      "focus": "Making, changing and cancelling reservations at restaurants, ryokan and tours, as if on the phone (no gestures, faster speech): dates (〜月〜日; 一日 ついたち, 二日 ふつか, 十日 とおか, 二十日 はつか), times, party size, name, seating (カウンター, 個室, 禁煙), confirmations (かしこまりました, 確認いたします). The partner speaks phone keigo.",
+      "scene": {"role": "staff answering the phone at a popular sushi restaurant in Tokyo called さくら寿司; the learner is calling",
+        "open": "お電話ありがとうございます。さくら寿司でございます。", "openEn": "Thank you for calling. This is Sakura Sushi.",
+        "goals": ["Say you'd like to make a reservation", "Give the date, time and number of people", "Give your name, and ask for counter seats or a private room", "Confirm the details, or ask them to repeat the date"]}
+    },
+    {
+      "id": "u22", "ja": "聞き取り", "en": "Casual speech and fast keigo", "level": "N4",
+      "can": ["Follow casual speech from friendly locals", "Recognise staff keigo set phrases", "Answer politely when spoken to casually", "Ask what a word means"],
+      "grammar": ["plain forms", "〜てる / 〜じゃない / 〜んだ", "keigo set phrases", "〜ってどういう意味ですか"],
+      "phrases": [
+        {"ja": "「やばい」ってどういう意味ですか？", "kana": "やばいってどういういみですか", "en": "What does やばい mean?"},
+        {"ja": "もう一度、簡単な日本語で言ってもらえますか？", "kana": "もういちど、かんたんなにほんごでいってもらえますか", "en": "Could you say it again in simple Japanese?"},
+        {"ja": "ちょっと速くてわかりませんでした。", "kana": "ちょっとはやくてわかりませんでした", "en": "It was a bit fast; I didn't catch it."},
+        {"ja": "何してるの？", "kana": "なにしてるの", "en": "What are you up to? (casual)", "hear": true},
+        {"ja": "これ、めっちゃおいしいよ。", "kana": "これ、めっちゃおいしいよ", "en": "This is really tasty. (casual)", "hear": true},
+        {"ja": "少々お待ちくださいませ。", "kana": "しょうしょうおまちくださいませ", "en": "Please wait a moment. (very polite)", "hear": true},
+        {"ja": "こちらでお召し上がりですか？", "kana": "こちらでおめしあがりですか", "en": "Will you be eating here? (keigo)", "hear": true},
+        {"ja": "どうぞご覧ください。", "kana": "どうぞごらんください", "en": "Please have a look. (keigo)", "hear": true},
+        {"ja": "本当ですか？", "kana": "ほんとうですか", "en": "Really?"},
+        {"ja": "なるほど。", "kana": "なるほど", "en": "I see."}
+      ],
+      "focus": "Listening: the partner switches between casual speech (friendly locals: だよね, 〜てる, 〜じゃん, めっちゃ, マジで) and very formal staff keigo (〜でございます, お〜ください, かしこまりました). The cue asks the learner to show they understood by answering appropriately and politely, or to ask what something means.",
+      "scene": {"role": "two friendly young locals at a standing bar in Osaka who speak casual, lightly Kansai Japanese (keep it understandable); play both, and mark who speaks when it changes",
+        "open": "なあなあ、どこから来たん？日本語しゃべれるん？", "openEn": "Hey, where are you from? Can you speak Japanese?",
+        "goals": ["Answer where you're from (politely is fine)", "Ask what a word they used means", "Say something you liked about Osaka", "Keep the chat going with a question back"]}
+    },
+    {
+      "id": "u23", "ja": "一日の旅", "en": "Dress rehearsal: a day out", "level": "N4",
+      "can": ["Get through a whole travel day in Japanese", "Handle surprises without English", "Recover when you don't understand"],
+      "grammar": ["〜をください", "〜たいです", "〜てもいいですか", "〜はどこですか", "〜てもらえますか"],
+      "phrases": [
+        {"ja": "浅草までどうやって行きますか？", "kana": "あさくさまでどうやっていきますか", "en": "How do I get to Asakusa?"},
+        {"ja": "次の駅で乗り換えですか？", "kana": "つぎのえきでのりかえですか", "en": "Do I change at the next station?"},
+        {"ja": "二人ですが、入れますか？", "kana": "ふたりですが、はいれますか", "en": "There are two of us; can we get in?"},
+        {"ja": "待ち時間はどのくらいですか？", "kana": "まちじかんはどのくらいですか", "en": "How long is the wait?"},
+        {"ja": "一番人気はどれですか？", "kana": "いちばんにんきはどれですか", "en": "Which is the most popular?"},
+        {"ja": "別々に払えますか？", "kana": "べつべつにはらえますか", "en": "Can we pay separately?"},
+        {"ja": "Sサイズはありますか？", "kana": "えすさいずはありますか", "en": "Do you have a size S?"},
+        {"ja": "袋をもう一つもらえますか？", "kana": "ふくろをもうひとつもらえますか", "en": "Could I have another bag?"},
+        {"ja": "部屋の鍵をお願いします。", "kana": "へやのかぎをおねがいします", "en": "My room key, please."},
+        {"ja": "今日はとても楽しかったです。", "kana": "きょうはとてもたのしかったです", "en": "Today was a lot of fun."}
+      ],
+      "focus": "A full day out: getting to a sight by train, a busy lunch spot with a queue, a souvenir shop, back to the hotel. Mix everything from earlier units; the partner is whoever the learner meets. Add small surprises: sold out, a queue, the wrong platform, a question the learner didn't expect.",
+      "scene": {"role": "each person the learner meets on a day out in Tokyo, in turn: station staff, then a restaurant server, then a souvenir shop clerk, then hotel front desk staff. Play one at a time; when the learner is done in one place, move to the next with a short line in brackets saying where they are now, in Japanese",
+        "open": "（駅で）こんにちは。どうなさいましたか？", "openEn": "(At the station) Hello. How can I help?",
+        "goals": ["Station: find out how to get to your sight", "Restaurant: get a table and order", "Shop: buy a souvenir and ask about tax-free or a bag", "Hotel: get your key and ask one question about tomorrow"]}
+    },
+    {
+      "id": "u24", "ja": "旅館の夜", "en": "Dress rehearsal: a night at a ryokan", "level": "N4",
+      "can": ["Check in, eat and bathe at a ryokan in Japanese", "Hold a long chat with a stranger", "Talk about yourself without notes"],
+      "grammar": ["〜てもいいですか", "〜たことがあります", "〜と思います", "〜ので", "〜つもりです"],
+      "phrases": [
+        {"ja": "今日からお世話になります。", "kana": "きょうからおせわになります", "en": "Thank you for having me from today."},
+        {"ja": "夕食の前に温泉に入ってもいいですか？", "kana": "ゆうしょくのまえにおんせんにはいってもいいですか", "en": "May I use the onsen before dinner?"},
+        {"ja": "この料理は何ですか？", "kana": "このりょうりはなんですか", "en": "What's this dish?"},
+        {"ja": "地元のお酒はありますか？", "kana": "じもとのおさけはありますか", "en": "Do you have local sake?"},
+        {"ja": "お隣、いいですか？", "kana": "おとなり、いいですか", "en": "Mind if I sit next to you?"},
+        {"ja": "どちらから来られたんですか？", "kana": "どちらからこられたんですか", "en": "Where have you come from? (polite)", "hear": true},
+        {"ja": "日本に来て、一週間です。", "kana": "にほんにきて、いっしゅうかんです", "en": "It's been a week since I arrived in Japan."},
+        {"ja": "また日本に来たいと思います。", "kana": "またにほんにきたいとおもいます", "en": "I'd like to come to Japan again."},
+        {"ja": "お先に失礼します。", "kana": "おさきにしつれいします", "en": "Excuse me for leaving first."},
+        {"ja": "おやすみなさい。", "kana": "おやすみなさい", "en": "Good night."}
+      ],
+      "focus": "An evening at a ryokan: arrival and check-in, the okami explaining dinner and the baths, dinner (asking about dishes, local sake), then a long chat with another guest in the lounge about where the learner is from, their work, hobbies, their trip and plans. Use About me.",
+      "scene": {"role": "first the okami of a ryokan in Takayama, then, after check-in and dinner questions, a friendly Japanese guest in the lounge (switch with a short line in brackets, in Japanese)",
+        "open": "ようこそいらっしゃいました。お疲れでしょう。どうぞお上がりください。", "openEn": "Welcome. You must be tired. Please come in.",
+        "goals": ["Check in and ask when dinner and the baths are", "Ask about a dish or a local drink at dinner", "Chat with the guest: where you're from and your work", "Talk about your trip: what you've done and what's next"]}
+    }
+  ]
+}

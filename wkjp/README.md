@@ -21,7 +21,7 @@ is reachable only through the private gateway.
 
 The VM is rebuilt from Git, but what the app saved on it isn't: picture
 choices (`/opt/wkjp/pics`), practice-time logs (`stats`), mistake notebooks
-(`notebook`), the Anki word list (`anki`, also rebuilt by its sync) and
+(`notebook`), course progress and About me (`course`), the Anki word list (`anki`, also rebuilt by its sync) and
 recordings (`rec`). The Anthropic key
 (`secrets`) is left out on purpose; make a new one in the Console.
 
@@ -285,15 +285,57 @@ recordings (`rec`). The Anthropic key
 - **今日 Today** is the landing tab:
   - **Waiting:** WaniKani reviews due now (or when the next ones come) and
     new lessons, from `/v2/summary` fetched each time the tab opens; the
-    mistake notebook's count; a scene of the day for Talk (the seven scenes
+    mistake notebook's count; the course unit and its next step; a scene of the day for Talk (the seven scenes
     in turn); and the Anki deck's progress.
   - **Goal:** today's practice minutes (every browser added up) against a
     daily goal (15–90 min, default 30, `S.dailyGoal`), plus the streak.
   - **Next:** one button for the most useful thing to do: reviews if any
-    are due, else lessons, else the notebook, else today's scene ("Connect
-    WaniKani" without a token). The row buttons go to the same places:
+    are due, then the course's next step until it has had 5 minutes today,
+    then lessons, the notebook, the course, and last today's scene
+    ("Connect WaniKani" without a token). The row buttons go to the same places:
     Reviews and Lessons start once their data is loaded, Drill starts the
     notebook drill, and Play or 🗣 Live opens Talk in today's scene.
+- **講座 Course**, a card on Today under the summary: a 24-week course by
+  trip situation for a learner who is just starting to speak (はじめまして,
+  ordering, finding places, restaurants, trains, ryokan, shopping, small talk
+  about work, home and hobbies, reasons, plans, reservations, casual speech,
+  then two dress rehearsals). Units are in `site/course.json`: what you'll
+  be able to do, the grammar (N5 for units 1-10, N4 after, in step with
+  Bunpro), 10 phrases, drill notes for the model and a role-play scene.
+  - **Steps:** each unit has three, 5-10 minutes each.
+    - **Phrases:** hear and repeat each phrase (🎤 checks it: Whisper's
+      text against the phrase's kana, through VOICEVOX's reading when
+      Whisper writes kanji), then a recall round from the English ("hear"
+      phrases: from the audio). "Again" brings one back at the end;
+      finishing the round is the step.
+    - **Drill:** the Talk model writes 8 exchanges for the unit (the last 2
+      reuse earlier units' phrases): a line someone says, in Japanese and
+      read aloud, and an English cue for what to answer. The learner
+      answers by voice or typing; the model judges it good, close or
+      wrong, gives one fix and note, and misses go into the mistake
+      notebook. 💡 steps from the pattern to the first words to the whole
+      answer. Scored on the first try (good without hints 1, good with
+      hints or close ½), 75% passes.
+    - **Role-play test:** the unit's scene in Talk (also in Talk's scene
+      menu under "Course units"). While a unit scene is on, its JLPT level
+      and grammar points stand in for Settings' grammar focus, and the
+      model gets the unit's notes and phrases. Reaching every goal with 2
+      hints or fewer passes.
+  - **Hints in Talk:** 💡 by the input, in any conversation: what the other
+    person said, then what to say and how to start, then a whole reply to
+    hear and "use". In a unit scene each step counts toward the limit.
+  - **Which unit:** the one picked in the menu, until it's finished after
+    being picked; then the first unfinished one. Nothing is locked. The
+    pace line counts weeks from the first step.
+  - **About me:** name (katakana), where you're from (Japanese) and a few
+    English lines. They fill the {name} and {from} phrases (left out until
+    set) and go to the drills, Talk and its hints.
+  - **Storage:** one file per browser, `/opt/wkjp/course/cp-<id>.json`
+    (nginx `/course/`, like the notebook), saved 2 s after a change and
+    when the page hides. Merged: each step's latest time and the best drill
+    score from any browser; About me and the chosen unit from whichever
+    changed last.
+  - Time in a course step counts as **Course** in the practice-time log.
 - The 辞書 Dictionary tab is a Japanese-Japanese dictionary written, as far
   as it can be, in words the learner already knows:
   - **Writing:** the Talk model (Settings → Conversation partner; Claude,
@@ -387,8 +429,8 @@ recordings (`rec`). The Anthropic key
     Each browser keeps up to 500 entries.
 - The Stats tab's **Practice time** card is a rough log of active time:
   - **Counting:** a 15 s tick adds to today's total for the open tab's
-    activity (Lessons, Reviews, Talk, Speak, Dictionary, Practice; not Stats
-    or Settings). It counts only while the page is visible, and only if the
+    activity (Lessons, Reviews, a course step on Today, Talk, Speak,
+    Dictionary, Practice; not Stats, Settings or the rest of Today). It counts only while the page is visible, and only if the
     learner has pressed, clicked, scrolled or touched in the last 2 minutes,
     or the mic is open or audio is playing (hands-free Reviews, Live mode).
   - **Storage:** each browser has a random id (`wkl_device`) and its own

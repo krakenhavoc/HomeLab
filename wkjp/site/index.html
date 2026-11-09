@@ -252,6 +252,75 @@
   .tdRow .t{flex:1; font-size:.9rem; color:var(--muted); min-width:0;}
   .tdRow .t b{color:var(--text); font-weight:700;}
   .tdRow .acts{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  /* Course: one unit a week, three steps */
+  .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0;}
+  .crHead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
+  .crHead h2{margin:0; flex:1; font-size:.95rem; color:var(--muted); font-weight:700;}
+  .crHead select{width:auto; max-width:100%; padding:5px 10px; font-size:.84rem;}
+  .crTitle{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin:8px 0 2px;}
+  .crTitle .ja{font-family:var(--mincho); font-size:1.7rem; font-weight:700; line-height:1.3;}
+  .crTitle .en{color:var(--muted); font-size:.95rem;}
+  .crPace{font-size:.8rem; color:var(--muted);}
+  .crCan{list-style:none; margin:12px 0 0; font-size:.88rem; color:var(--muted);}
+  .crCan li{padding-left:1.1em; text-indent:-1.1em;}
+  .crCan li::before{content:"○ "; color:var(--accent);}
+  .crGram{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:12px 0 4px; font-size:.82rem; color:var(--muted);}
+  .crGram .g{font-family:var(--mincho); color:var(--text); background:var(--card2); border:1px solid var(--line); border-radius:7px; padding:1px 8px;}
+  .crSteps{list-style:none; margin:14px 0 0; counter-reset:st;}
+  .crSteps li{counter-increment:st; display:flex; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--line);}
+  .crSteps li::before{content:counter(st); flex:none; width:1.9em; height:1.9em; border-radius:50%; display:grid; place-items:center;
+    border:1.5px solid var(--line); color:var(--muted); font-weight:700; font-size:.85rem;}
+  .crSteps li.done::before{content:"✓"; border-color:var(--green); color:var(--green);}
+  .crSteps li.next::before{border-color:var(--accent); color:var(--accent);}
+  .crSteps .s{flex:1; min-width:0; font-size:.86rem; color:var(--muted);}
+  .crSteps .s b{display:block; color:var(--text); font-size:.95rem;}
+  .crSteps .st{font-size:.78rem; color:var(--green); white-space:nowrap;}
+  .crSteps .acts{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  #crMeBox{margin-top:12px; border-top:1px solid var(--line); padding-top:10px; font-size:.88rem;}
+  #crMeBox summary{cursor:pointer; color:var(--text); font-weight:700;}
+  #crMeBox summary span{color:var(--muted); font-weight:400; font-size:.8rem;}
+  #crMeBox .two{display:grid; grid-template-columns:1fr 1fr; gap:0 10px;}
+  @media (max-width:420px){ #crMeBox .two{grid-template-columns:1fr;} }
+  #crMeBox textarea{font-size:.92rem; line-height:1.5;}
+  .crTop{display:flex; align-items:center; gap:10px; font-size:.8rem; color:var(--muted); margin-bottom:12px;}
+  .crTop .grow{flex:1;}
+  .crPh{text-align:center; padding:6px 0 2px;}
+  .crPh .ja{font-family:var(--mincho); font-size:1.6rem; font-weight:700; line-height:1.5;}
+  .crPh .kana{color:var(--muted); font-size:.95rem; margin-top:2px;}
+  .crPh .en{margin-top:8px; font-size:1rem;}
+  .crPh .ask{margin-top:10px; color:var(--muted); font-size:.9rem;}
+  .crPh .back{margin-top:14px; background:var(--card2); border-radius:10px; padding:12px 14px;}
+  .crSay{background:var(--card2); border-radius:12px; padding:12px 14px; margin-bottom:12px;}
+  .crSay .who{font-size:.75rem; color:var(--muted); margin-bottom:2px;}
+  .crSay .ja{font-family:var(--mincho); font-size:1.25rem; line-height:1.7;}
+  .crSay .en{color:var(--muted); font-size:.88rem; margin-top:4px;}
+  .crSay .tools{display:flex; gap:4px; margin-top:6px;}
+  .crSay .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:7px; padding:2px 8px; cursor:pointer; font-size:.78rem;}
+  .crCue{font-size:1.02rem; margin:4px 0 12px; padding-left:12px; border-left:3px solid var(--accent);}
+  .crAns{display:flex; gap:8px;}
+  .crAns input{flex:1; min-width:0;}
+  #crHints > div, #crRes > div{margin-top:10px; font-size:.92rem;}
+  #crHints .k{font-size:.72rem; color:var(--muted); border:1px solid var(--line); border-radius:5px; padding:0 5px; margin-right:6px;}
+  #crHints b, #crRes b{font-family:var(--mincho); font-size:1.08rem;}
+  #crHints button, #crRes button.say{background:none; border:none; cursor:pointer; font-size:.95rem;}
+  #crRes .v{font-weight:700;}
+  #crRes .good{color:var(--green);} #crRes .close{color:var(--amber);} #crRes .wrong{color:var(--red);}
+  #crRes .why{color:var(--muted); font-size:.86rem; margin-top:2px;}
+  #crActions{flex-wrap:wrap;} #crActions .btn{white-space:nowrap;}
+  #crMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:10px; color:var(--muted);}
+  #crMsg.good{color:var(--green);} #crMsg.close{color:var(--amber);} #crMsg.bad{color:var(--red);}
+  #crLevel{height:6px; background:var(--bg); border-radius:99px; margin:10px auto 0; max-width:320px; overflow:hidden;}
+  #crLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
+  #crLevelFill.over{background:var(--green);}
+  .crSum{font-size:.9rem;}
+  .crSum .big{font-size:1.5rem; font-weight:700; margin:4px 0;}
+  .crSum li{margin:5px 0 5px 1.2em; color:var(--muted);}
+  .crSum li b{font-family:var(--mincho); color:var(--text); font-weight:700;}
+  #talkLog .hint{align-self:stretch; background:var(--card2); border:1px dashed var(--line); border-radius:10px; padding:8px 12px; font-size:.88rem; color:var(--muted);}
+  #talkLog .hint b{font-family:var(--mincho); color:var(--text); font-size:1.02rem;}
+  #talkLog .hint button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:7px; padding:1px 8px; cursor:pointer; font-size:.78rem; margin-left:4px;}
+  #talkLog .pass{border-color:var(--green);}
+  #sceneHints{font-size:.78rem; color:var(--muted);}
   /* Talk role-plays */
   .sceneBar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-2px 0 8px;}
   .sceneBar label{margin:0; font-size:.8rem;}
@@ -483,6 +552,36 @@
       </div>
       <button class="btn primary" id="btnTdNext" disabled>…</button>
       <div class="tdRows" id="tdRows"></div>
+    </section>
+
+    <section class="card hidden" id="crCard">
+      <div id="crView">
+        <div class="crHead"><h2 id="crHeadTxt">講座 Course</h2>
+          <label for="crSel" class="sr">unit</label><select id="crSel"></select></div>
+        <div class="crTitle"><span class="ja" lang="ja" id="crJa"></span><span class="en" id="crEn"></span></div>
+        <div class="crPace" id="crPace"></div>
+        <ul class="crCan" id="crCan"></ul>
+        <div class="crGram" id="crGram"></div>
+        <ol class="crSteps" id="crSteps"></ol>
+        <details id="crMeBox">
+          <summary>About me <span>· used by the drills, Talk and its hints</span></summary>
+          <div class="two">
+            <div><label for="crMeName">Your name, in katakana</label><input type="text" id="crMeName" lang="ja" placeholder="スミス" autocomplete="off"></div>
+            <div><label for="crMeFrom">Where you're from, in Japanese</label><input type="text" id="crMeFrom" lang="ja" placeholder="アメリカ" autocomplete="off"></div>
+          </div>
+          <label for="crMeAbout">About you, in English: work, hobbies, family, pets, why Japan, foods you can't eat</label>
+          <textarea id="crMeAbout" rows="3" placeholder="I work in IT (cloud servers) from home. I like anime and video games…"></textarea>
+          <div class="row" style="margin-top:8px;"><button class="btn small" id="btnCrMeSave">Save</button> <span class="note" id="crMeNote"></span></div>
+        </details>
+      </div>
+      <div id="crRun" class="hidden">
+        <div class="crTop"><span id="crProg"></span><span class="grow"></span><button class="btn small" id="btnCrStop">Stop</button></div>
+        <div id="crBody"></div>
+        <div id="crLevel" class="hidden"><div id="crLevelFill"></div></div>
+        <div id="crMsg" aria-live="polite"></div>
+        <div class="actionRow" id="crActions"></div>
+        <div class="kbd" id="crKeys"></div>
+      </div>
     </section>
   </main>
 
@@ -804,6 +903,7 @@
         <label for="talkScene">Scene</label>
         <select id="talkScene"></select>
         <button class="btn small hidden" id="btnSceneEnd">Finish &amp; debrief</button>
+        <span id="sceneHints" class="hidden"></span>
       </div>
       <ol id="sceneGoals" class="hidden"></ol>
       <div id="talkLog"></div>
@@ -817,6 +917,7 @@
       <div class="composer">
         <textarea id="talkInput" rows="1" placeholder="こんにちは！" title="enter sends · shift+enter new line"></textarea>
         <button class="btn hidden" id="btnTalkLive" title="Live conversation: speak, hear the reply, it listens again">🗣 Live</button>
+        <button class="btn" id="btnTalkHint" title="stuck? a hint: what they said, then how to start, then a whole reply">💡</button>
         <button class="btn hidden" id="btnTalkMic" title="record Japanese; click again to stop">🎤</button>
         <button class="btn primary" id="btnTalkSend">Send</button>
       </div>
@@ -1965,8 +2066,11 @@ function upcomingWords(known,n){
 }
 // the grammar points the learner listed, split on Japanese or Latin separators
 const grammarList=()=>(S.talkGrammarList||"").split(/[、,，;；\n]+/).map(x=>x.trim()).filter(Boolean).slice(0,30);
+// in a course unit's role-play, its level and grammar points stand in for Settings'
+const gLevel=()=>SCENE&&SCENE.unit?SCENE.unit.level:S.talkGrammar;
+const gList=()=>SCENE&&SCENE.unit?SCENE.unit.grammar:grammarList();
 function grammarLines(){
-  const lv=S.talkGrammar,list=grammarList();
+  const lv=gLevel(),list=gList();
   if(!lv&&!list.length) return ["Keep grammar simple."];
   return [
     lv?`The learner is studying JLPT ${lv} grammar. Use ${lv} grammar naturally, and nothing above ${lv} unless the reply can't do without it.`:"Keep grammar simple.",
@@ -2001,7 +2105,7 @@ const SCENES=[
    goals:["Answer whether to heat the bento","Ask for a bag (or say you don't need one)","Pay and ask for a receipt"]},
 ];
 let SCENE=null,sceneDone=new Set();
-const sceneOf=id=>SCENES.find(x=>x.id===id)||null;
+const sceneOf=id=>SCENES.find(x=>x.id===id)||crSceneOf(id);
 function sceneLines(){
   if(!SCENE) return [
     `You are a friendly Japanese conversation partner for a learner at WaniKani level ${wkLevel()}.`,
@@ -2013,6 +2117,8 @@ function sceneLines(){
     "Speak the way real staff or people there speak (polite, with the set phrases they use), but keep sentences short and simple. 1-2 sentences.",
     "Don't do the learner's tasks for them: answer and react naturally, and let them lead. If they seem stuck, or write English, help with a short hint in simple Japanese.",
     "The learner's goals in this scene: "+SCENE.goals.map((g,i)=>`${i+1}. ${g}`).join("; ")+".",
+    ...(SCENE.unit?[`This is the role-play test for unit ${crNum(SCENE.unit)} of the learner's course. Situation notes: ${SCENE.unit.focus}`,
+      "Phrases they've practised for it: "+crPhrases(SCENE.unit,crAll().me).map(p=>p.ja).join(" ")]:[]),
     "goals: the numbers of the goals the learner has achieved so far in this conversation, all of them, not only this turn."];
 }
 function sceneUI(){
@@ -2020,13 +2126,16 @@ function sceneUI(){
   const gl=$("sceneGoals");
   gl.classList.toggle("hidden",!SCENE);
   gl.innerHTML=SCENE?SCENE.goals.map((g,i)=>`<li class="${sceneDone.has(i+1)?"done":""}">${esc(g)}</li>`).join(""):"";
+  const hn=$("sceneHints");
+  hn.classList.toggle("hidden",!(SCENE&&SCENE.unit));
+  hn.textContent=SCENE&&SCENE.unit?`💡 ${sceneHints} of ${CR_HINTS} hints`+(scenePassed?"":" · test"):"";
 }
 // a new chat in the chosen scene: the other side speaks first (quiet: on page load)
 function sceneStart(id,quiet){
   if(LIVE) liveStop();
   stopAudio();
   TALK=[]; $("talkLog").innerHTML=""; $("talkErr").classList.add("hidden");
-  SCENE=sceneOf(id); sceneDone=new Set();
+  SCENE=sceneOf(id); sceneDone=new Set(); sceneHints=0; scenePassed=false; talkHintNow=null;
   S.talkScene=SCENE?SCENE.id:""; saveS();
   sceneUI();
   if(SCENE){
@@ -2039,6 +2148,7 @@ function sceneGoals(list){
   if(!SCENE||!Array.isArray(list)) return;
   list.forEach(n=>{ if(Number.isInteger(n)&&n>=1&&n<=SCENE.goals.length) sceneDone.add(n); });
   sceneUI();
+  sceneCheckPass();
 }
 const DEBRIEF_SCHEMA={type:"object",additionalProperties:false,required:["summary","went_well","fixes","phrases"],properties:{
   summary:str,went_well:{type:"array",items:str},
@@ -2086,6 +2196,7 @@ function talkSystem(){
       ?`Build replies mostly from the learner's known words below, but make about ${pct}% of your words new ones they haven't learned. Take new words from "New words" when one fits naturally; otherwise use a common everyday word. Write new words normally, kanji included: the app shows their reading. Any other kanji word they don't know: write it in hiragana.`
       :"Use only the learner's known words below. Write any kanji word they don't know in hiragana.",
     "If the learner writes English or romaji, just carry on the conversation in Japanese.",
+    crAboutLine(crAll().me),
     "english: an English translation of your reply, and nothing else: corrections of the learner's Japanese are handled separately.",
     words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words.",
     fresh.length?"New words: "+fresh.join("、"):""
@@ -2096,7 +2207,7 @@ function checkSystem(ja){
     "You check sentences written by a Japanese learner. You do not chat.",
     "Go through the sentence piece by piece: each particle (は が を に で へ と), verb form, conjugation, word choice and politeness.",
     "Common learner mistakes: を with 行く/来る/帰る (needs に or へ), に for where an action happens (needs で), wrong verb tense.",
-    ...(S.talkGrammar||grammarList().length?[`They are studying ${S.talkGrammar?"JLPT "+S.talkGrammar+" grammar":"grammar"}${grammarList().length?", especially "+grammarList().join("、"):""}. When a mistake is about a grammar point, name it (e.g. 〜てから) in the note; if they used one of their listed points correctly, say so in the note.`]:[]),
+    ...(gLevel()||gList().length?[`They are studying ${gLevel()?"JLPT "+gLevel()+" grammar":"grammar"}${gList().length?", especially "+gList().join("、"):""}. When a mistake is about a grammar point, name it (e.g. 〜てから) in the note; if they used one of their listed points correctly, say so in the note.`]:[]),
     "errors: each mistake found, in English. Empty list if none.",
     "correction: the corrected sentence only. Empty if there are no errors.",
     "note: one short English line about the main fix; empty if none."
@@ -2226,7 +2337,7 @@ const talkClean=t=>(t||"").replace(/\s*(english|translation)\s*[:：][\s\S]*$/i,
 function talkReply(r,by,opt={}){
   r.reply=talkClean(r.reply);
   const spk=opt.spk!=null?opt.spk:S.engine==="voicevox"?pickVvSpeaker():null;
-  const gp=(S.talkGrammar||grammarList().length)&&r.grammar?r.grammar.trim():"";
+  const gp=(gLevel()||gList().length)&&r.grammar?r.grammar.trim():"";
   const html=`<div class="ja">${esc(r.reply)}</div>${gp?`<div class="gp" lang="ja">文法: ${esc(gp)}</div>`:""}<div class="en hidden">${esc(r.english)}</div>
     <div class="tools"><button data-a="play">🔊</button><button data-a="slow">🐢</button><button data-a="en">EN</button><span class="by">${esc(by||"")}</span></div>`;
   let d=opt.el;
@@ -4240,7 +4351,7 @@ function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 // Each browser keeps its own file on the wkjp server (stats/time-<id>.json),
 // so devices never overwrite each other; the Stats tab adds them up.
 const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewDict:"dictionary"};
-const TIME_NAME={reviews:"Reviews",lessons:"Lessons",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice"};
+const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice"};
 const TIME_TICK=15,TIME_IDLE=120000;
 let DEVICE=load("wkl_device","");
 if(!/^[a-f0-9]{16}$/.test(DEVICE)){
@@ -4253,7 +4364,7 @@ let timeLast=Date.now(),timeDirty=false,timeSent=0;
 const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 ["keydown","pointerdown","wheel","touchstart"].forEach(ev=>addEventListener(ev,()=>{ timeLast=Date.now(); },{passive:true,capture:true}));
 function timeTick(){
-  const view=Object.values(views).find(v=>!$(v).classList.contains("hidden")),act=TIME_ACT[view];
+  const view=Object.values(views).find(v=>!$(v).classList.contains("hidden")),act=TIME_ACT[view]||(view==="viewToday"&&CRS?"course":"");
   const busy=Date.now()-timeLast<TIME_IDLE||!!MIC||!!(vvAudio&&!vvAudio.paused);
   if(!act||document.visibilityState!=="visible"||!busy) return;
   const k=dayKey(),d=TIMELOG.days[k]=TIMELOG.days[k]||{};
@@ -4343,7 +4454,7 @@ async function renderTime(){
   const rows=Object.keys(TIME_NAME).filter(a=>tot[a]).sort((a,b)=>tot[b]-tot[a]),max=Math.max(1,...rows.map(a=>tot[a]));
   $("tmBreak").innerHTML=rows.length?rows.map(a=>`<div class="trow"><span>${TIME_NAME[a]}</span>`+
     `<span class="b"><span style="width:${100*tot[a]/max}%"></span></span><span class="v">${fmtDur(tot[a])}</span></div>`).join("")
-    :`<p class="note">Nothing yet this week. Time counts while you use Lessons, Reviews, Talk, Speak, the dictionary or Practice.</p>`;
+    :`<p class="note">Nothing yet this week. Time counts while you use Lessons, Reviews, a course step, Talk, Speak, the dictionary or Practice.</p>`;
   $("tmNote").textContent=`Counted while a practice tab is in front and you've used it in the last 2 minutes (or the mic or audio is on), in 15-second steps.`+
     (devices>1?` Added up across ${devices} browsers.`:"");
 }
@@ -4522,7 +4633,7 @@ async function renderToday(){
   $("tdDate").textContent=new Date().toLocaleDateString([],{weekday:"long",month:"long",day:"numeric"});
   const goal=+S.dailyGoal||30;
   $("tdGoalSel").value=String(goal);
-  const [sum,nb,tm]=await Promise.all([tdSummary(),nbLoadAll().catch(()=>null),timeAll().catch(()=>null),ankiLoad()]);
+  const [sum,nb,tm]=await Promise.all([tdSummary(),nbLoadAll().catch(()=>null),timeAll().catch(()=>null),ankiLoad(),crRefresh().catch(()=>null)]);
   if(my!==tdSeq) return;
   const today=tm?Math.round(sumDay(tm.days[dayKey()])/60):0,streak=tm?timeStreak(tm.days):0;
   $("tdStreak").textContent=streak?`${streak}-day streak`:"";
@@ -4539,6 +4650,10 @@ async function renderToday(){
       rv?`<button class="btn small" data-go="reviews">Start</button>`:""]);
     rows.push(["学習",ls?`<b>${plural(ls,"new item")}</b> to learn`:"No new lessons waiting",ls?`<button class="btn small" data-go="lessons">Learn</button>`:""]);
   }
+  const ca=COURSE?crAll():null,cu=ca&&crCurrent(ca),cs=cu&&crNext(ca,cu);
+  if(cu) rows.push(["講座",`Unit ${crNum(cu)}: <b lang="ja">${esc(cu.ja)}</b> ${esc(cu.en)}. `+(cs?`Next: ${CR_STEP[cs]}`:"All three steps done ✓"),
+    cs?`<button class="btn small" data-go="course:${cs}">${cs==="rp"?"Play":"Start"}</button>`:""]);
+  else if(ca) rows.push(["講座","<b>Course complete.</b> Replay any unit below, or keep talking in Talk.",""]);
   rows.push(["ノート",nbn?`<b>${plural(nbn,"mistake")}</b> in your notebook`:"Mistake notebook is clear",nbn?`<button class="btn small" data-go="drill">Drill</button>`:""]);
   rows.push(["会話",`Scene of the day: <b lang="ja">${esc(sc.ja)}</b> ${esc(sc.en)}`,
     `<button class="btn small" data-go="scene">Play</button>`+(canRecord?`<button class="btn small" data-go="live">🗣 Live</button>`:"")]);
@@ -4547,8 +4662,10 @@ async function renderToday(){
   $("tdRows").innerHTML=rows.map(([k,t,a])=>`<div class="tdRow"><span class="k" lang="ja">${k}</span><span class="t">${t}</span><span class="acts">${a}</span></div>`).join("");
   // the next thing to do
   const nx=$("btnTdNext");
-  const [go,label]=!TOKEN?["setup","Connect WaniKani ▸"]:rv?["reviews",`Start ${plural(rv,"review")} ▸`]:ls?["lessons",`Learn ${plural(ls,"new item")} ▸`]
-    :nbn?["drill",`Drill ${plural(nbn,"mistake")} ▸`]:["scene",`Play today's scene: ${sc.ja} ▸`];
+  // the course right after reviews until it's had 5 minutes today, after lessons and the notebook once it has
+  const course=cs?["course:"+cs,`${CR_STEP[cs]}: ${cu.ja} ▸`]:null,courseFirst=course&&(tm?(tm.days[dayKey()]||{}).course||0:0)<300;
+  const [go,label]=!TOKEN?["setup","Connect WaniKani ▸"]:rv?["reviews",`Start ${plural(rv,"review")} ▸`]:courseFirst?course
+    :ls?["lessons",`Learn ${plural(ls,"new item")} ▸`]:nbn?["drill",`Drill ${plural(nbn,"mistake")} ▸`]:course||["scene",`Play today's scene: ${sc.ja} ▸`];
   nx.dataset.go=go; nx.textContent=label; nx.disabled=false;
 }
 // press a button once it's ready (the tab loads its own data first)
@@ -4560,6 +4677,7 @@ function tdPressWhenReady(id,ms=8000){
   },150);
 }
 function tdGo(go){
+  if(go.startsWith("course:")){ crGo(go.slice(7)); return; }
   if(go==="setup"){ $("tabPractice").click(); show("setupCard"); return; }
   if(go==="reviews"){ $("tabReviews").click(); tdPressWhenReady("btnRvStart"); return; }
   if(go==="lessons"){ $("tabLessons").click(); tdPressWhenReady("btnLsStart"); return; }
@@ -4575,6 +4693,589 @@ function tdGo(go){
   }
 }
 
+/* ---------- Course ---------- */
+// A course by trip situation (site/course.json), one unit a week, for a
+// learner who is starting to speak. Each unit has three steps: Phrases (hear,
+// repeat, recall), a cued speaking Drill with a hint ladder, and a Role-play
+// test in Talk. Progress and the About-me notes are kept per browser on the
+// wkjp server (course/cp-<id>.json) and merged, like the notebook.
+let COURSE=null,CP_REMOTE=[],cpDirty=false,cpTimer=null,CRS=null,crMicSeq=0;
+let CP=load("wkl_course",null);
+if(!CP||typeof CP.units!=="object") CP={v:1,units:{},me:{name:"",from:"",about:"",at:0},cur:"",curAt:0,start:""};
+const CR_PASS=0.75,CR_HINTS=2;
+async function crLoad(){
+  if(COURSE) return COURSE;
+  try{
+    const r=await fetch("course.json",{cache:"no-cache"});
+    if(r.ok){ const j=await r.json(); if(Array.isArray(j.units)&&j.units.length) COURSE=j; }
+  }catch(e){}
+  return COURSE;
+}
+const crUnits=()=>COURSE?COURSE.units:[];
+const crUnit=id=>crUnits().find(u=>u.id===id)||null;
+const crNum=u=>crUnits().indexOf(u)+1;
+// the other browsers' files, fetched now and then; crAll() merges them with this one
+async function cpFetchAll(){
+  if(location.protocol==="file:") return;
+  try{
+    const r=await fetch("course/",{cache:"no-store"});
+    if(!r.ok) return;
+    const files=(await r.json()).map(f=>f.name).filter(n=>/^cp-[a-f0-9]{16}\.json$/.test(n)&&n!==`cp-${DEVICE}.json`);
+    CP_REMOTE=(await Promise.all(files.map(n=>fetch("course/"+n,{cache:"no-store"}).then(x=>x.ok?x.json():null,()=>null))))
+      .filter(d=>d&&typeof d.units==="object");
+  }catch(e){}
+}
+// each step keeps its latest time and the best drill score; About me and the
+// chosen unit go by whichever browser changed them last
+function crAll(){
+  const units={},me={name:"",from:"",about:"",at:0};
+  let cur="",curAt=0,start="";
+  for(const d of CP_REMOTE.concat([CP])){
+    for(const [id,p] of Object.entries(d.units||{})){
+      if(!p||typeof p!=="object") continue;
+      const o=units[id]=units[id]||{};
+      for(const k of ["ph","dr","drBest","rp"]) if(+p[k]>(o[k]||0)) o[k]=+p[k];
+    }
+    const m=d.me;
+    if(m&&+m.at>me.at) Object.assign(me,{name:String(m.name||""),from:String(m.from||""),about:String(m.about||"").slice(0,2000),at:+m.at});
+    if(+d.curAt>curAt){ curAt=+d.curAt; cur=String(d.cur||""); }
+    if(/^\d{4}-\d\d-\d\d$/.test(d.start||"")&&(!start||d.start<start)) start=d.start;
+  }
+  return {units,me,cur,curAt,start};
+}
+function cpStore(){
+  store("wkl_course",CP);
+  cpDirty=true;
+  clearTimeout(cpTimer); cpTimer=setTimeout(cpSave,2000);
+}
+function cpSave(keepalive){
+  if(!cpDirty||location.protocol==="file:") return;
+  cpDirty=false;
+  fetch(`course/cp-${DEVICE}.json`,{method:"PUT",keepalive:!!keepalive,headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({v:1,device:DEVICE,at:new Date().toISOString(),units:CP.units,me:CP.me,cur:CP.cur,curAt:CP.curAt,start:CP.start})})
+    .then(r=>{ if(!r.ok) cpDirty=true; },()=>{ cpDirty=true; });
+}
+addEventListener("pagehide",()=>cpSave(true));
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden") cpSave(true); });
+// a step done now (v: a score, kept if it's the best)
+function crMark(id,k,v){
+  const o=CP.units[id]=CP.units[id]||{};
+  o[k]=v==null?Date.now():Math.max(+o[k]||0,v);
+  if(!CP.start) CP.start=dayKey();
+  cpStore();
+}
+const crDone=(a,u)=>{ const p=a.units[u.id]||{}; return !!(p.ph&&p.dr&&p.rp); };
+const crDoneAt=(a,u)=>{ const p=a.units[u.id]||{}; return Math.max(p.ph||0,p.dr||0,p.rp||0); };
+// the unit picked in the menu, until it's finished after being picked (then
+// the first unfinished one); null once the whole course is done
+function crCurrent(a){
+  const u=crUnit(a.cur);
+  if(u&&(!crDone(a,u)||a.curAt>crDoneAt(a,u))) return u;
+  return crUnits().find(x=>!crDone(a,x))||null;
+}
+const crNext=(a,u)=>{ const p=a.units[u.id]||{}; return !p.ph?"ph":!p.dr?"dr":!p.rp?"rp":null; };
+const CR_STEP={ph:"Phrases",dr:"Drill",rp:"Role-play"};
+const crFill=(t,me)=>t.replace(/\{name\}/g,me.name).replace(/\{from\}/g,me.from);
+// the unit's phrases with About me filled in; ones that need a missing field are left out
+function crPhrases(u,me){
+  return u.phrases.filter(p=>(!p.ja.includes("{name}")||me.name)&&(!p.ja.includes("{from}")||me.from))
+    .map(p=>({...p,ja:crFill(p.ja,me),kana:crFill(p.kana,me),en:crFill(p.en,me)}));
+}
+function crAboutLine(me){
+  const bits=[me.name&&`name ${me.name}`,me.from&&`from ${me.from}`,me.about].filter(Boolean);
+  return bits.length?"About the learner (for anything about them; don't contradict it): "+bits.join("; "):"";
+}
+const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const crDate=t=>new Date(t).toLocaleDateString([],{month:"short",day:"numeric"});
+
+async function crRefresh(){
+  await Promise.all([crLoad(),cpFetchAll()]);
+  crPicker();
+  crRender();
+}
+function crRender(){
+  const card=$("crCard");
+  if(!COURSE){ card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  if(CRS) return;
+  const a=crAll(),units=crUnits(),N=units.length,doneN=units.filter(x=>crDone(a,x)).length;
+  const u=crCurrent(a)||units[N-1],n=crNum(u),p=a.units[u.id]||{},nx=crNext(a,u);
+  $("crSel").innerHTML=units.map((x,i)=>`<option value="${x.id}"${x===u?" selected":""}>${crDone(a,x)?"✓ ":""}${i+1}. ${esc(x.ja)}  ${esc(x.en)}</option>`).join("");
+  $("crHeadTxt").textContent=`講座 Course · unit ${n} of ${N}`;
+  $("crJa").textContent=u.ja; $("crEn").textContent=u.en;
+  const wk=a.start?Math.floor((new Date(dayKey())-new Date(a.start))/604800000)+1:0;
+  $("crPace").textContent=!a.start?`One unit a week gets through all ${N} by the trip. Start with step 1.`
+    :doneN>=N?`All ${N} units done. Replay any unit, or keep chatting in Talk.`
+    :`${plural(doneN,"unit")} done · week ${wk} of the plan`+(doneN>=wk-1?", on pace":`, ${wk-1-doneN} behind`);
+  $("crCan").innerHTML=u.can.map(c=>`<li>${esc(c)}</li>`).join("");
+  $("crGram").innerHTML=`<span>Grammar (${esc(u.level)}):</span>`+u.grammar.map(g=>`<span class="g" lang="ja">${esc(g)}</span>`).join("");
+  const missing=u.phrases.length-crPhrases(u,a.me).length;
+  const step=(k,title,what,status)=>`<li class="${p[k]?"done":k===nx?"next":""}"><div class="s"><b>${title}</b>${what}</div>`+
+    `<span class="st">${status}</span><span class="acts">${k==="rp"
+      ?`<button class="btn small${k===nx?" primary":""}" data-cr="rp">Play</button>`+(canRecord?`<button class="btn small" data-cr="live">🗣 Live</button>`:"")
+      :`<button class="btn small${k===nx?" primary":""}" data-cr="${k}">${p[k]?"Again":"Start"}</button>`}</span></li>`;
+  $("crSteps").innerHTML=
+    step("ph","Phrases",`Hear and repeat ${crPhrases(u,a.me).length} phrases, then say them from the English`+
+      (missing?`. ${plural(missing,"phrase")} need About me, below`:""),p.ph?`✓ ${crDate(p.ph)}`:"")+
+    step("dr","Drill","Answer by voice; 💡 if you're stuck. Pass: 75%",p.drBest?`${p.dr?"✓ ":""}best ${Math.round(p.drBest*100)}%`:"")+
+    step("rp","Role-play test",`In Talk: reach every goal, ${CR_HINTS} hints or fewer`,p.rp?`✓ ${crDate(p.rp)}`:"");
+  if(!$("crMeBox").open||!$("crMeName").value&&!$("crMeAbout").value){
+    $("crMeName").value=a.me.name; $("crMeFrom").value=a.me.from; $("crMeAbout").value=a.me.about;
+  }
+  if(missing&&!a.me.name&&!a.me.from&&!a.me.about) $("crMeBox").open=true;
+}
+// the unit scenes in Talk's picker, after the travel ones
+function crPicker(){
+  const sel=$("talkScene");
+  if(!COURSE||sel.querySelector("optgroup")) return;
+  const g=document.createElement("optgroup");
+  g.label="Course units";
+  g.innerHTML=crUnits().map((u,i)=>`<option value="${u.id}">${i+1}. ${esc(u.ja)}  ${esc(u.en)}</option>`).join("");
+  sel.appendChild(g);
+  // a unit scene saved from last time, now that it exists
+  if(!SCENE&&!TALK.some(m=>m.role==="user")&&crUnit(S.talkScene)){ sel.value=S.talkScene; sceneStart(S.talkScene,true); }
+}
+function crSceneOf(id){
+  const u=crUnit(id);
+  return u?{id:u.id,ja:u.ja,en:`Unit ${crNum(u)}: ${u.en}`,role:u.scene.role,open:u.scene.open,openEn:u.scene.openEn,goals:u.scene.goals,unit:u}:null;
+}
+function crPlay(u,live){
+  $("tabTalk").click();
+  if(!SCENE||SCENE.id!==u.id){
+    if(TALK.some(m=>m.role==="user")&&!confirm(`Start the unit ${crNum(u)} role-play? The current conversation will be cleared.`)) return;
+    $("talkScene").value=u.id; sceneStart(u.id);
+  }
+  if(live&&!LIVE) liveStart();
+}
+function crGo(k){
+  const a=crAll(),u=crCurrent(a)||crUnits()[crUnits().length-1];
+  if(!u) return;
+  if(k==="ph") crPhStart(u);
+  else if(k==="dr") crDrStart(u);
+  else crPlay(u,k==="live");
+}
+
+/* the running step: one card at a time; actions also bound to keys */
+function crOpen(s){
+  CRS=s;
+  $("crView").classList.add("hidden"); $("crRun").classList.remove("hidden");
+  $("todayCard").classList.add("hidden");
+  $("crCard").scrollIntoView({block:"start"});
+  unlockAudio();
+}
+function crClose(){
+  if(!CRS) return;
+  CRS=null; crMicSeq++;
+  stopAudio(); micClose();
+  $("crRun").classList.add("hidden"); $("crView").classList.remove("hidden");
+  $("todayCard").classList.remove("hidden");
+  crMsg("");
+  crRender();
+}
+// leaving Today mid-step: quiet, mic off; coming back carries on
+function crLeave(){
+  if(!CRS) return;
+  crMicSeq++; stopAudio(); micClose(); crMicUI(false);
+  if(CRS.listening){ CRS.listening=false; crMsg(""); }
+}
+const crProg=t=>{ $("crProg").textContent=t; };
+function crMsg(t,cls){ const m=$("crMsg"); m.textContent=t||""; m.className=cls||""; }
+// list of {t: label, f: action, k: key, primary}
+function crActions(list){
+  const row=$("crActions"),keys={},names={space:"space",enter:"enter"};
+  row.innerHTML="";
+  list.filter(Boolean).forEach(b=>{
+    if(b.k) keys[b.k]=b.f;
+    // keyOnly: the button is elsewhere on the card (the mic by the box, 🔊 on the bubble)
+    if(b.keyOnly) return;
+    const el=document.createElement("button");
+    el.className="btn"+(b.primary?" primary":""); el.textContent=b.t;
+    if(b.id) el.id=b.id;
+    el.onclick=b.f;
+    row.appendChild(el);
+  });
+  if(CRS) CRS.keys=keys;
+  const lbl={space:"say it",enter:"next",p:"hear it",h:"hint","1":"again","2":"got it"};
+  $("crKeys").innerHTML=Object.keys(keys).map(k=>`<b>${names[k]||k}</b> ${list.find(b=>b&&b.k===k).kt||lbl[k]||""}`).join(" · ")+(Object.keys(keys).length?" · ":"")+"<b>esc</b> stop";
+}
+function crMicUI(on){
+  $("crLevel").classList.toggle("hidden",!on);
+  const b=$("crMic");
+  if(b) b.textContent=on?"⏹":"🎤";
+}
+// one spoken answer: the mic stays open for the step (one permission prompt),
+// listening ends after a short pause or a second press
+async function crListen(){
+  const s=CRS;
+  if(!s||!canRecord) return null;
+  if(s.listening){ s.stopNow=true; return null; }
+  stopAudio();
+  try{ await micOpen(); }catch(e){ crMsg("Mic blocked: "+(e.message||e.name),"bad"); return null; }
+  const my=++crMicSeq,alive=()=>CRS===s&&crMicSeq===my;
+  s.listening=true; s.stopNow=false; crMicUI(true); crMsg("Listening…");
+  const blob=await micUtterance(alive,{fill:$("crLevelFill"),stopNow:()=>alive()&&s.stopNow,quietMs:900,maxMs:15000});
+  if(alive()){ s.listening=false; crMicUI(false); }
+  if(!alive()) return null;
+  if(!blob){ crMsg("Didn't hear anything. Press 🎤 (or space) and speak."); return null; }
+  crMsg("…");
+  try{
+    const t=sttClean(await sttTranscribe(blob,"ja",STT_PROMPT,{retry:true,alive,onWait:n=>{ if(alive()) crMsg(`${STT_BUSY} Trying again (${n})…`); }}));
+    if(!alive()) return null;
+    if(!t){ crMsg("Didn't catch that. Try again, a little closer to the mic."); return null; }
+    crMsg("");
+    return t;
+  }catch(e){ if(alive()) crMsg("⚠ "+(e.message||"speech-to-text failed"),"bad"); return null; }
+}
+// how close what was heard is to a phrase, 0 to 1: kana against kana, so
+// Whisper's choice of kanji doesn't matter (VOICEVOX reads its kanji)
+const crSquash=t=>kataToHira(String(t||"")).toLowerCase().replace(/[\s。、，,．.！!？?「」『』（）()…・〜~ー]/g,"");
+function crSim(a,b){
+  if(!a||!b) return 0;
+  let prev=Array.from({length:b.length+1},(_,j)=>j);
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev=cur;
+  }
+  return 1-prev[b.length]/Math.max(a.length,b.length);
+}
+async function crMatch(heard,p){
+  const h=crSquash(heard);
+  let best=Math.max(crSim(h,crSquash(p.kana)),crSim(h,crSquash(p.ja)));
+  if(best<0.85&&hasKanji(heard)){ const k=await vvKana(heard); if(k) best=Math.max(best,crSim(crSquash(k),crSquash(p.kana))); }
+  return best;
+}
+const crVerdict=sim=>sim>=0.8?["good","✓ That sounded right."]:sim>=0.55?["close","Close. Listen once more and try again."]:["bad","Not quite. Listen and try again."];
+
+/* Phrases: hear and repeat each one, then recall them in a shuffled round
+   ("Again" brings a phrase back at the end). Finishing the round is the step. */
+function crPhStart(u){
+  const a=crAll(),list=crPhrases(u,a.me);
+  if(!list.length) return;
+  crOpen({kind:"ph",u,list,stage:"listen",i:0,q:[],got:0,again:0,shown:false,matched:false});
+  crPhCard();
+}
+const crHearIt=p=>speakText(p.ja,false);
+function crPhCard(){
+  const s=CRS;
+  if(!s||s.kind!=="ph") return;
+  crMsg("");
+  if(s.stage==="listen"&&s.i>=s.list.length){ s.stage="recall"; s.q=shuffle(s.list.slice()); s.i=0; }
+  if(s.stage==="recall"&&s.i>=s.q.length){ crPhEnd(); return; }
+  const p=s.stage==="listen"?s.list[s.i]:s.q[s.i];
+  s.shown=false; s.matched=false;
+  const kana=hasKanji(p.ja)?`<div class="kana" lang="ja">${esc(p.kana)}</div>`:"";
+  if(s.stage==="listen"){
+    crProg(`${s.u.ja} · listen and repeat · ${s.i+1} of ${s.list.length}`);
+    $("crBody").innerHTML=`<div class="crPh"><div class="ja" lang="ja">${esc(p.ja)}</div>${kana}<div class="en">${esc(p.en)}</div>`+
+      `<div class="ask">${p.hear?"You'll hear this. Say it along to get used to it.":"Say it after the voice."}</div></div>`;
+    crActions([
+      {t:"🔊",f:()=>crHearIt(p),k:"p"},
+      {t:"🐢",f:()=>speakText(p.ja,true)},
+      canRecord&&{t:"🎤",id:"crMic",f:()=>crPhSay(p),k:"space"},
+      {t:"Next ▸",f:()=>{ s.i++; crPhCard(); },k:"enter",primary:true}]);
+    crHearIt(p);
+    return;
+  }
+  crProg(`${s.u.ja} · recall · ${s.i+1} of ${s.q.length}`);
+  $("crBody").innerHTML=`<div class="crPh">`+(p.hear
+      ?`<div class="ask">What does it mean? 🔊</div>`
+      :`<div class="en">${esc(p.en)}</div><div class="ask">Say it in Japanese</div>`)+
+    `<div class="back hidden" id="crBack"><div class="ja" lang="ja">${esc(p.ja)}</div>${kana}${p.hear?`<div class="en">${esc(p.en)}</div>`:""}</div></div>`;
+  crActions([
+    p.hear?{t:"🔊",f:()=>crHearIt(p),k:"p"}:canRecord&&{t:"🎤",id:"crMic",f:()=>crPhSay(p),k:"space"},
+    {t:"Show ▸",f:crPhShow,k:"enter",primary:true}]);
+  if(p.hear) crHearIt(p);
+}
+async function crPhSay(p){
+  const s=CRS,at=s&&s.stage+s.i;
+  const t=await crListen();
+  if(!t||CRS!==s||s.stage+s.i!==at) return;
+  const sim=await crMatch(t,p),[cls,txt]=crVerdict(sim);
+  if(CRS!==s||s.stage+s.i!==at) return;
+  crMsg(`Heard: ${t}. ${txt}`,cls);
+  if(s.stage==="recall"){ s.matched=cls==="good"; crPhShow(); crMsg(`Heard: ${t}. ${txt}`,cls); }
+  else if(cls!=="good") setTimeout(()=>{ if(CRS===s&&s.stage+s.i===at) crHearIt(p); },600);
+}
+function crPhShow(){
+  const s=CRS;
+  if(!s||s.kind!=="ph"||s.stage!=="recall"||s.shown) return;
+  s.shown=true;
+  const p=s.q[s.i];
+  $("crBack").classList.remove("hidden");
+  crActions([
+    {t:"🔊",f:()=>crHearIt(p),k:"p"},
+    {t:"Again (1)",f:()=>crPhGrade(false),k:"1"},
+    {t:"Got it (2)",f:()=>crPhGrade(true),k:"2",primary:true}]);
+  // enter: got it when the mic heard it right, otherwise it isn't bound
+  if(s.matched) CRS.keys.enter=()=>crPhGrade(true);
+  crHearIt(p);
+}
+function crPhGrade(ok){
+  const s=CRS;
+  if(!s||!s.shown) return;
+  const p=s.q[s.i];
+  if(ok) s.got++;
+  else{ s.again++; if(s.q.length<s.list.length*3) s.q.push(p); }
+  s.i++;
+  crPhCard();
+}
+function crPhEnd(){
+  const s=CRS;
+  crMark(s.u.id,"ph");
+  crMicSeq++; micClose(); crMicUI(false);
+  crProg(`${s.u.ja} · phrases done`);
+  $("crBody").innerHTML=`<div class="crSum"><div class="big">✓ Phrases done</div>`+
+    `<p>${plural(s.list.length,"phrase")} recalled${s.again?`, ${plural(s.again,"repeat")} on the way`:" first time"}. Next: the drill, where people say things and you answer.</p></div>`;
+  crActions([{t:"Back",f:crClose},{t:"Drill ▸",f:()=>{ const u=s.u; crClose(); crDrStart(u); },k:"enter",primary:true}]);
+}
+
+/* Drill: someone in the unit's situation says a line, an English cue says
+   what to get across, and the learner answers by voice or typing. Hints go
+   pattern → first words → the whole answer. Scored on the first try: good
+   without hints 1, good with hints or close ½, wrong 0; 75% passes. Misses
+   go into the mistake notebook. Some exchanges review earlier units. */
+const DRILL_SCHEMA={type:"object",additionalProperties:false,required:["items"],properties:{items:{type:"array",items:{type:"object",additionalProperties:false,
+  required:["partner","partner_en","cue","answer","start","point","review"],
+  properties:{partner:str,partner_en:str,cue:str,answer:str,start:str,point:str,review:{type:"boolean"}}}}}};
+const JUDGE_SCHEMA={type:"object",additionalProperties:false,required:["verdict","fix","note"],
+  properties:{verdict:{type:"string",enum:["good","close","wrong"]},fix:str,note:str}};
+function crDrillSystem(u,me,review){
+  const known=knownWords().slice(0,800),n=8,r=review.length?2:0;
+  return [
+    `You write a short speaking drill for a Japanese learner at WaniKani level ${wkLevel()} who is travelling to Japan and is just starting to speak. They're studying JLPT ${u.level} grammar.`,
+    `Unit ${crNum(u)}: ${u.ja} (${u.en}). Situation: ${u.focus}`,
+    `This unit's grammar: ${u.grammar.join("、")}.`,
+    "This unit's phrases: "+crPhrases(u,me).map(p=>`${p.ja} (${p.en})`).join("; "),
+    review.length?"Phrases from earlier units, for review: "+review.map(p=>`${p.ja} (${p.en})`).join("; "):"",
+    crAboutLine(me),
+    `Write ${n} exchanges${r?`: the first ${n-r} for this unit (review: false), the last ${r} using the earlier units' phrases in this unit's situation where they fit (review: true)`:", all review: false"}. In each, someone the learner would meet says one short line and the learner replies.`,
+    "partner: that person's line in natural Japanese, the way people there really say it (staff use their polite set phrases). One or two short sentences. Empty only when the learner speaks first, e.g. to call the staff over.",
+    "partner_en: its English translation.",
+    'cue: in English, what the learner wants to get across in reply: the intention, not a translation, and never any Japanese. Specific, e.g. "Say there are two of you, and ask for a table by the window."',
+    "answer: one natural, polite (です/ます) reply that does the cue, as short as a real reply, using this unit's grammar or phrases where they fit. Kanji only for common words.",
+    "start: the first word or two of answer, as a hint.",
+    "point: the grammar point or phrase pattern the answer practises, written like 〜をください.",
+    "Vary the situations and go from easier to harder; keep the replies to what a beginner can say. When a cue is about the learner, use About the learner; if it doesn't say, pick something ordinary.",
+    known.length?"Words the learner knows (use them in answers where you can): "+known.join("、"):""
+  ].filter(Boolean).join("\n");
+}
+function crJudgeSystem(it,spoken){
+  return [
+    "You check a Japanese learner's reply in a speaking drill. You do not chat.",
+    it.partner?`They heard: 「${it.partner}」`:"They speak first.",
+    `What they wanted to get across: ${it.cue}`,
+    `A model answer: 「${it.answer}」`,
+    spoken?"Their reply came through speech-to-text, so ignore punctuation, the choice of kanji or kana, and slips between words that sound alike.":"",
+    'verdict: "good" if it gets the message across naturally and politely enough for a real conversation in Japan (other wordings than the model are fine, and so is leaving out what Japanese usually leaves out); "close" if it would be understood but has a mistake worth fixing (a particle, a verb form, a wrong word, too casual); "wrong" if it doesn\'t do what they wanted, can\'t be understood, or isn\'t Japanese.',
+    "fix: for close, their reply corrected, keeping their wording where possible; for wrong, a natural reply that does it; empty for good.",
+    "note: one short English line: for good, brief praise or a tip; otherwise the one most important thing to fix."
+  ].filter(Boolean).join("\n");
+}
+async function crDrStart(u){
+  const a=crAll();
+  // earlier units whose phrases have been learned, a few of their phrases
+  const prev=crUnits().slice(0,crNum(u)-1).filter(x=>(a.units[x.id]||{}).ph);
+  const review=shuffle(prev.flatMap(x=>crPhrases(x,a.me).filter(p=>!p.hear))).slice(0,6);
+  const s={kind:"dr",u,items:null,i:0,busy:false};
+  crOpen(s);
+  crProg(`${u.ja} · drill`);
+  $("crBody").innerHTML=`<p class="note" style="text-align:center;">Writing your drill…</p>`;
+  crActions([]);
+  try{
+    const {out}=await talkLLM("reply",crDrillSystem(u,a.me,review),[{role:"user",content:"Write the drill."}],DRILL_SCHEMA,0.8);
+    if(CRS!==s) return;
+    s.items=(out.items||[]).filter(it=>it&&it.cue&&it.answer).slice(0,10)
+      .map(it=>({...it,partner:talkClean(it.partner||""),hint:0,tries:0,score:null,said:"",verdict:""}));
+    if(!s.items.length) throw new Error("the drill came back empty");
+  }catch(e){
+    if(CRS!==s) return;
+    $("crBody").innerHTML=`<p class="err">⚠ Couldn't write the drill: ${esc(e.message||e)}. Check Settings → Conversation partner and try again.</p>`;
+    crActions([{t:"Back",f:crClose},{t:"Try again",f:()=>{ crClose(); crDrStart(u); },primary:true}]);
+    return;
+  }
+  crDrItem();
+}
+function crDrItem(){
+  const s=CRS;
+  if(!s||s.kind!=="dr") return;
+  if(s.i>=s.items.length){ crDrEnd(); return; }
+  const it=s.items[s.i];
+  crMsg("");
+  crProg(`${s.u.ja} · drill · ${s.i+1} of ${s.items.length}${it.review?" · review":""}`);
+  $("crBody").innerHTML=(it.partner
+      ?`<div class="crSay"><div class="ja" lang="ja">${esc(it.partner)}</div><div class="en hidden">${esc(it.partner_en)}</div>`+
+        `<div class="tools"><button data-a="play" title="hear it again (p)">🔊</button><button data-a="slow" title="slowly">🐢</button><button data-a="en" title="English">EN</button></div></div>`
+      :`<div class="crSay"><div class="who">You speak first.</div></div>`)+
+    `<div class="crCue">${esc(it.cue)}</div>`+
+    `<div class="crAns"><input type="text" id="crInput" lang="ja" placeholder="${canRecord?"or type it":"type it"}" autocomplete="off" autocapitalize="off" spellcheck="false">`+
+    (canRecord?`<button class="btn" id="crMic" title="answer by voice (space)">🎤</button>`:"")+`<button class="btn primary" id="crSend">Check</button></div>`+
+    `<div id="crHints"></div><div id="crRes"></div>`;
+  const say=$("crBody").querySelector(".crSay");
+  say.querySelectorAll("[data-a]").forEach(b=>{ b.onclick=()=>{
+    if(b.dataset.a==="en") say.querySelector(".en").classList.toggle("hidden");
+    else speakText(it.partner,b.dataset.a==="slow");
+  }; });
+  if(canRecord) $("crMic").onclick=crDrVoice;
+  $("crSend").onclick=()=>crDrCheck($("crInput").value,false);
+  // enter checks; on an empty box once it's checked, it goes on
+  $("crInput").onkeydown=e=>{
+    if(e.key!=="Enter"||e.isComposing) return;
+    e.preventDefault();
+    if(!e.target.value.trim()&&it.score!=null) crDrNextItem(); else crDrCheck(e.target.value,false);
+  };
+  crDrButtons();
+  if(it.partner) speakText(it.partner,false);
+}
+function crDrButtons(){
+  const s=CRS,it=s.items[s.i];
+  const done=it.score!=null;
+  crActions([
+    it.partner&&{t:"🔊",f:()=>speakText(it.partner,false),k:"p",kt:"hear them",keyOnly:true},
+    !done&&it.hint<3&&{t:"💡 Hint",f:crDrHint,k:"h"},
+    canRecord&&{t:"🎤",f:crDrVoice,k:"space",kt:done?"say it again":"say it",keyOnly:true},
+    {t:done?"Next ▸":"Skip ▸",f:crDrNextItem,k:done?"enter":null,primary:done}]);
+}
+function crDrHint(){
+  const s=CRS,it=s&&s.items&&s.items[s.i];
+  if(!it||it.score!=null||it.hint>=3) return;
+  it.hint++;
+  const h=[
+    `<div><span class="k">pattern</span><b lang="ja">${esc(it.point||"—")}</b>${it.partner?`<div class="note">They said: ${esc(it.partner_en)}</div>`:""}</div>`,
+    `<div><span class="k">starts</span><b lang="ja">${esc(it.start)}…</b></div>`,
+    `<div><span class="k">say</span><b lang="ja">${esc(it.answer)}</b> <button data-say title="hear it">🔊</button></div>`];
+  $("crHints").innerHTML=h.slice(0,it.hint).join("");
+  const b=$("crHints").querySelector("[data-say]");
+  if(b) b.onclick=()=>speakText(it.answer,false);
+  if(it.hint===3) speakText(it.answer,false);
+  crDrButtons();
+}
+async function crDrVoice(){
+  const s=CRS,at=s&&s.i;
+  if(!s||s.busy) return;
+  const t=await crListen();
+  if(!t||CRS!==s||s.i!==at) return;
+  $("crInput").value=t;
+  crDrCheck(t,true);
+}
+async function crDrCheck(text,spoken){
+  const s=CRS,it=s&&s.items&&s.items[s.i],at=s&&s.i;
+  text=(text||"").trim();
+  if(!it||!text||s.busy) return;
+  s.busy=true; crMsg("Checking…");
+  $("crSend").disabled=true;
+  let out;
+  try{ out=(await talkLLM("check",crJudgeSystem(it,spoken),[{role:"user",content:text}],JUDGE_SCHEMA,0)).out; }
+  catch(e){
+    if(CRS===s){ s.busy=false; $("crSend").disabled=false; crMsg("⚠ Couldn't check it: "+(e.message||e),"bad"); }
+    return;
+  }
+  if(CRS!==s||s.i!==at) return;
+  s.busy=false; $("crSend").disabled=false; crMsg("");
+  const v=["good","close","wrong"].includes(out.verdict)?out.verdict:"wrong",first=it.score==null;
+  it.tries++;
+  if(first){
+    it.score=v==="good"?(it.hint?0.5:1):v==="close"?0.5:0;
+    it.said=text; it.verdict=v; it.fix=out.fix||"";
+    if(v!=="good"&&isJa(text)&&out.fix&&out.fix.trim()!==text) nbAddTalk(text,out.fix.trim(),out.note||"");
+  }
+  const fix=(out.fix||"").trim();
+  const head={good:first?(it.hint?"✓ Good, with a hint.":"✓ Natural!"):"✓ That's it.",close:"✏️ Close.",wrong:"✗ Not quite."}[v];
+  $("crRes").innerHTML=`<div><span class="v ${v}">${head}</span> <span lang="ja">${esc(text)}</span>`+
+    (fix&&v!=="good"?`<div>→ <b lang="ja">${esc(fix)}</b> <button class="say" data-say="${esc(fix)}" title="hear it">🔊</button></div>`:"")+
+    (v==="good"&&crSquash(text)!==crSquash(it.answer)?`<div class="why">Also: <span lang="ja">${esc(it.answer)}</span></div>`:"")+
+    (out.note?`<div class="why">${esc(out.note)}</div>`:"")+
+    (v!=="good"?`<div class="why">${canRecord?"Say it again (space) to practise it, or go on.":"Type it again to practise it, or go on."}</div>`:"")+`</div>`;
+  const sb=$("crRes").querySelector("[data-say]");
+  if(sb) sb.onclick=()=>speakText(fix,false);
+  if(v!=="good"&&fix) speakText(fix,false);
+  // out of the box, so space and the other keys work again (click it to type)
+  $("crInput").value=""; $("crInput").blur();
+  crDrButtons();
+}
+function crDrNextItem(){
+  const s=CRS;
+  if(!s||s.kind!=="dr"||s.busy) return;
+  const it=s.items[s.i];
+  if(it.score==null){ it.score=0; it.verdict="skipped"; }
+  s.i++;
+  crDrItem();
+}
+function crDrEnd(){
+  const s=CRS,items=s.items;
+  const pts=items.reduce((a,it)=>a+(it.score||0),0),pct=pts/items.length,pass=pct>=CR_PASS-1e-9;
+  crMark(s.u.id,"drBest",Math.round(pct*100)/100);
+  if(pass) crMark(s.u.id,"dr");
+  crMicSeq++; micClose(); crMicUI(false);
+  crProg(`${s.u.ja} · drill done`);
+  const mark={good:"✓",close:"✏️",wrong:"✗",skipped:"–"};
+  $("crBody").innerHTML=`<div class="crSum"><div class="big">${Math.round(pct*100)}%${pass?" · passed ✓":""}</div>`+
+    `<p>${pts} of ${items.length} points. ${pass?"Next: the role-play test in Talk.":`The pass mark is ${Math.round(CR_PASS*100)}%. Each drill is new, so go again when you're ready.`}</p>`+
+    `<ul>${items.map(it=>`<li>${mark[it.verdict]||"–"} ${esc(it.cue)}<br><b lang="ja">${esc(it.verdict==="good"?it.said:it.fix||it.answer)}</b></li>`).join("")}</ul></div>`;
+  crActions([{t:"Back",f:crClose},{t:"New drill",f:()=>{ const u=s.u; crClose(); crDrStart(u); },k:pass?null:"enter",primary:!pass},
+    pass&&{t:"Role-play ▸",f:()=>{ const u=s.u; crClose(); crPlay(u); },k:"enter",primary:true}]);
+}
+function crKey(e){
+  if(!CRS||!CRS.keys||$("viewToday").classList.contains("hidden")) return;
+  if(e.key==="Escape"){ e.preventDefault(); crClose(); return; }
+  if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if(e.key==="Enter"&&e.target&&e.target.tagName==="BUTTON") return;
+  const k=e.key===" "?"space":e.key==="Enter"?"enter":e.key.toLowerCase(),f=CRS.keys[k];
+  if(f){ e.preventDefault(); f(); }
+}
+
+/* Talk's hint ladder: what they said, then what to say and how to start,
+   then a whole reply to repeat. Each step counts toward a unit test's limit. */
+const HINT_SCHEMA={type:"object",additionalProperties:false,required:["meaning","idea","start","full"],properties:{meaning:str,idea:str,start:str,full:str}};
+let talkHintNow=null,sceneHints=0,scenePassed=false;
+function hintSystem(){
+  return [
+    "A Japanese learner who is just starting to speak is stuck in a conversation and asks for a hint about what to say next.",
+    SCENE?`It's a role-play: they're talking to ${SCENE.role}. Their goals: ${SCENE.goals.map((g,i)=>`${i+1}. ${g}${sceneDone.has(i+1)?" (done)":""}`).join("; ")}. Aim at the first goal not done, where it fits.`
+      :"It's a free conversation.",
+    crAboutLine(crAll().me),
+    "meaning: an English translation of the other person's last line; empty if there isn't one.",
+    "idea: in English, in a few words, what the learner could say next.",
+    "start: the first word or two of a good reply, in Japanese.",
+    `full: one short, natural, polite (です/ます) reply in simple Japanese that a WaniKani level ${wkLevel()} learner can say.`
+  ].filter(Boolean).join("\n");
+}
+async function talkHint(){
+  if(talkBusy) return;
+  const turn=TALK.length;
+  let h=talkHintNow;
+  if(!h||h.turn!==turn||!h.el.isConnected){
+    h=talkHintNow={turn,step:0,data:null,el:talkAdd("hint","💡 …")};
+    const transcript=TALK.map(m=>(m.role==="user"?"Learner: ":"Them: ")+m.content).join("\n")||"(nothing said yet)";
+    try{ h.data=(await talkLLM("reply",hintSystem(),[{role:"user",content:transcript}],HINT_SCHEMA,0.3)).out; }
+    catch(e){ h.el.remove(); talkHintNow=null; talkErr("hint failed: "+(e.message||e)); return; }
+    if(talkHintNow!==h) return;
+  }
+  if(!h.data||h.step>=3) return;
+  h.step++;
+  if(SCENE){ sceneHints++; sceneUI(); }
+  const d=h.data;
+  h.el.innerHTML=`💡 `+(d.meaning?`They said: ${esc(d.meaning)}. `:"")+`You could: ${esc(d.idea)}`+
+    (h.step>=2?`<div>Start with <b lang="ja">${esc(d.start)}…</b></div>`:"")+
+    (h.step>=3?`<div><b lang="ja">${esc(d.full)}</b><button data-a="play" title="hear it">🔊</button><button data-a="use" title="put it in the box">use</button></div>`:
+      `<div class="note">💡 again for more</div>`);
+  const pb=h.el.querySelector("[data-a=play]"),ub=h.el.querySelector("[data-a=use]");
+  if(pb) pb.onclick=()=>speakText(d.full,false);
+  if(ub) ub.onclick=()=>{ const box=$("talkInput"); box.value=d.full; talkGrow(); box.focus(); };
+  if(h.step>=3) speakText(d.full,false);
+  talkScroll();
+}
+// a unit's test: every goal reached with few enough hints
+function sceneCheckPass(){
+  if(!SCENE||!SCENE.unit||scenePassed||sceneDone.size<SCENE.goals.length) return;
+  scenePassed=true;
+  const u=SCENE.unit,n=crNum(u);
+  if(sceneHints<=CR_HINTS){
+    crMark(u.id,"rp");
+    talkAdd("debrief pass",`<h3>✓ Unit ${n} role-play passed</h3><div>Every goal reached${sceneHints?` with ${plural(sceneHints,"hint")}`:" without hints"}. Finish &amp; debrief for feedback on what you said.</div>`);
+  }else talkAdd("debrief",`<h3>Every goal reached</h3><div>With ${plural(sceneHints,"hint")}: the test needs ${CR_HINTS} or fewer. Finish &amp; debrief for feedback, then New chat to try again.</div>`);
+}
+
 /* ---------- tabs & wiring ---------- */
 const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
@@ -4585,6 +5286,7 @@ Object.keys(views).forEach(t=>{
     if(was===rvHome&&to!==rvHome) rvPause();
     if(was==="viewLessons"&&to!=="viewLessons") stopAudio();
     if(was==="viewTalk"&&to!=="viewTalk") liveStop();
+    if(was==="viewToday"&&to!=="viewToday") crLeave();
     if(t!=="tabSpeak") pcPause();
     if(t==="tabSpeak"&&!PC) pcSrcNote();
     if(to==="viewReviews"&&was!=="viewReviews"){
@@ -4933,6 +5635,18 @@ $("talkScene").onchange=e=>{
   sceneStart(e.target.value);
 };
 $("btnSceneEnd").onclick=sceneEnd;
+$("btnTalkHint").onclick=talkHint;
+document.addEventListener("keydown",crKey);
+$("crSteps").onclick=e=>{ const b=e.target.closest("[data-cr]"); if(b) crGo(b.dataset.cr); };
+$("crSel").onchange=e=>{ CP.cur=e.target.value; CP.curAt=Date.now(); cpStore(); crRender(); };
+$("btnCrStop").onclick=crClose;
+$("btnCrMeSave").onclick=()=>{
+  CP.me={name:$("crMeName").value.trim().slice(0,40),from:$("crMeFrom").value.trim().slice(0,60),about:$("crMeAbout").value.trim().slice(0,2000),at:Date.now()};
+  cpStore();
+  $("crMeNote").textContent="Saved.";
+  setTimeout(()=>{ $("crMeNote").textContent=""; },2500);
+  crRender();
+};
 if(sceneOf(S.talkScene)){ $("talkScene").value=S.talkScene; sceneStart(S.talkScene,true); }
 $("talkInput").addEventListener("input",talkGrow);
 // hover with a mouse, tap on touch

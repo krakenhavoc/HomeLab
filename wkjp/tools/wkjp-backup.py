@@ -10,6 +10,7 @@ takes a restic snapshot of it on the NFS backups share (/mnt/backups):
     /stats/time-*.json      practice-time logs, one per browser
     /anki/known.json        started Anki words (also rebuilt by anki-sync)
     /notebook/nb-*.json     the mistake notebook, one per browser
+    /course/cp-*.json       course progress and About-me, one per browser
     /rec/<session>/*        saved review and pronunciation-check recordings
 
 Not backed up: the Anthropic API key (/opt/wkjp/secrets, never served over
@@ -82,6 +83,12 @@ def mirror(base, stage):
             r"nb-[a-f0-9]{16}\.json", f["name"]
         ):
             one("notebook/" + f["name"], get(base + "/notebook/" + f["name"]))
+    # optional too: the course came later still
+    for f in json.loads(get_or_none(base + "/course/") or b"[]"):
+        if f.get("type") == "file" and re.fullmatch(
+            r"cp-[a-f0-9]{16}\.json", f["name"]
+        ):
+            one("course/" + f["name"], get(base + "/course/" + f["name"]))
     # recordings: only files not already staged at the same size
     for d in json.loads(get(base + "/rec/")):
         if d.get("type") != "directory" or not re.fullmatch(r"\d{8}-\d{6}", d["name"]):
