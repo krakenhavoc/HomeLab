@@ -4087,10 +4087,23 @@ async function pcJudge(text,w){
   }
   return text?judgeReading(c.filter(Boolean),[{r:w.r,acc:true}]):{v:"none"};
 }
-// a long vowel only counts as short if the kana heard is shorter: VOICEVOX
-// spells 学校 as がっこお, which is the same length as がっこう
-const pcShort=(v,w)=>!!v.len&&kanaKey(v.heard).length<kanaKey(w.r).length;
-const pcGrade=(v,w)=>v.v==="ok"&&!pcShort(v,w)?"ok":v.v==="ok"||v.v==="near"?"near":"bad";
+// The word's beats with long vowels spelled one way: VOICEVOX writes 学校 as
+// がっこお and Whisper ギョー for ぎょう, and those aren't mistakes.
+function moraKey(s){
+  let out="",prev="";
+  for(const ch of kanaKey(s)){
+    if(ch==="ー"){ out+={a:"あ",i:"い",u:"う",e:"え",o:"お"}[prev]||""; continue; }
+    if(prev==="o"&&ch==="う"){ out+="お"; continue; }
+    if(prev==="e"&&ch==="い"){ out+="え"; continue; }
+    out+=ch; prev=KANA_VOWEL[ch]||"";
+  }
+  return out.replace(/っ+$/,"");
+}
+// vowel length is the only difference, and it's a real one: a long vowel cut
+// short, added, or in the wrong place (りょこう heard as りょうこ or りょうこう)
+const pcLenOff=(v,w)=>!!v.len&&moraKey(v.heard)!==moraKey(w.r);
+const pcShort=(v,w)=>pcLenOff(v,w)&&moraKey(v.heard).length<moraKey(w.r).length;
+const pcGrade=(v,w)=>v.v==="ok"&&!pcLenOff(v,w)?"ok":v.v==="ok"||v.v==="near"?"near":"bad";
 // a take passes if either recogniser heard it (Whisper on base-station, ReazonSpeech on the VM)
 const pcBest=(a,b)=>a==="ok"||b==="ok"?"ok":a==="near"||b==="near"?"near":"bad";
 const pcMark=g=>g==="ok"?"✓":g==="near"?"≈":"✗";
@@ -4226,7 +4239,7 @@ async function pcListen(){
   const rv=rz?await pcJudge(sttClean(rz),w):{v:"none"};
   if(my!==pcSeq||!PC) return;
   const n=pcWordTakes().length+1,wg=pcGrade(v,w),rzg=rz?pcGrade(rv,w):"bad";
-  const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,wg,rz,rzg,g:pcBest(wg,rzg),len:pcShort(v,w),rdrop:!!v.rdrop,
+  const t={i:PC.i,take:n,c:w.c,r:w.r,src:w.src,heard,v:v.v,wg,rz,rzg,g:pcBest(wg,rzg),len:pcShort(v,w),long:pcLenOff(v,w)&&!pcShort(v,w),as:pcLenOff(v,w)?v.heard:"",rdrop:!!v.rdrop,
     ja:d?d.ja:0,top:d?d.top:[],wErr,stock,snr:mic?mic.snr:null,gated:mic?mic.gated:null,
     mime:blob.type,bytes:blob.size,at:new Date().toISOString(),file:`${String(PC.i+1).padStart(2,"0")}-${n}.${recExt(blob.type)}`,
     url:URL.createObjectURL(blob)};
@@ -4246,6 +4259,7 @@ async function pcResult(t,my){
   const who=t.wg==="ok"&&t.rzg==="ok"?"":t.wg==="ok"?" (Whisper only)":" (ReazonSpeech only)";
   const msg=t.g==="ok"?`✓ Heard ${w.r}${who}`
     :t.wg==="near"&&t.len?`≈ Heard ${raw}: a long vowel came out short`
+    :t.wg==="near"&&t.long?`≈ Heard ${raw}${t.as&&t.as!==raw?` (${t.as})`:""}: a vowel came out long, or the long one is in the wrong place`
     :t.wg==="near"&&t.rdrop?`≈ Heard ${raw}: the r went missing`
     :t.g==="near"?`≈ Close: heard ${t.wg==="near"?raw:rzRaw}`
     :`✗ Neither recogniser heard ${w.r}`;
