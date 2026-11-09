@@ -457,6 +457,10 @@ recordings (`rec`). The Anthropic key
     each side because Whisper clips a bare word, and goes through the same
     call. When Whisper misses VOICEVOX too, the page says the word is hard
     for Whisper.
+  - **Vowel length:** Reviews ignore it, but here a real difference shows
+    as ≈ (cut short, added, or in the wrong place: りょこう heard as
+    りょうこう or りょうこ). The beats are compared with long vowels spelled
+    one way, so がっこお and ギョー aren't mistakes.
   - **Mic:** each take shows how far the voice stands above the
     background, measured from the clip. It also flags 0.3 s or more of
     exact digital silence, which means a gate in the browser or headset
