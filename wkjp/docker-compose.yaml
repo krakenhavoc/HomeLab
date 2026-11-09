@@ -25,6 +25,8 @@ services:
       - /opt/wkjp/anki:/srv/anki
       # Mistake notebook, one file per browser (nginx /notebook/).
       - /opt/wkjp/notebook:/srv/notebook
+      # Course progress and About-me, one file per browser (nginx /course/).
+      - /opt/wkjp/course:/srv/course
       # The Anthropic API key for Talk (nginx /claude/), placed by hand on the
       # VM and never in git; see the README.
       - /opt/wkjp/secrets:/etc/nginx/secrets:ro

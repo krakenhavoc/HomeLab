@@ -15,6 +15,7 @@ PICS_DIR=/opt/wkjp/pics
 STATS_DIR=/opt/wkjp/stats
 ANKI_DIR=/opt/wkjp/anki
 NOTEBOOK_DIR=/opt/wkjp/notebook
+COURSE_DIR=/opt/wkjp/course
 SECRETS_DIR=/opt/wkjp/secrets
 SRC_DIR="${REPO_DIR}/wkjp"
 
@@ -86,6 +87,11 @@ chmod 0750 "${ANKI_DIR}"
 mkdir -p "${NOTEBOOK_DIR}"
 chown 101:101 "${NOTEBOOK_DIR}"
 chmod 0750 "${NOTEBOOK_DIR}"
+
+# Course progress: nginx writes one cp-<id>.json per browser. Never pruned.
+mkdir -p "${COURSE_DIR}"
+chown 101:101 "${COURSE_DIR}"
+chmod 0750 "${COURSE_DIR}"
 
 # Secrets nginx includes (the Anthropic API key for Talk), placed by hand.
 # Root only: the nginx master reads config as root. The files are left alone.
