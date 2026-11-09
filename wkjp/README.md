@@ -133,8 +133,13 @@ recordings (`rec`). The Anthropic key
   glosses don't stream. An Ollama reply comes whole and is read the old way.
 - **Live mode** (🗣 Live) is hands-free conversation:
   - It listens with the Reviews mic detector (room-relative threshold, level
-    meter), ends the turn after a 0.9 s pause (20 s at most), transcribes it,
-    sends it, reads the streamed reply aloud, then listens again.
+    meter), ends the turn after a pause, transcribes it, sends it, reads the
+    streamed reply aloud, then listens again.
+  - **The pause** that ends a turn is a setting (Settings → Talk, and on a
+    course step): 0.9, 1.5, 2.5 (default) or 4 s, or only when you press
+    space or ⏹, for when you stop to think mid-sentence. It applies to Live
+    mode and the course mic; Reviews keep their quick 0.8 s for single
+    words. A turn waits up to 20 s for you to start.
   - The mic is off while the reply plays, so it doesn't hear itself.
   - Space while it speaks interrupts and listens; space while you talk ends
     your turn now; Esc, the button or leaving the tab stops it.
