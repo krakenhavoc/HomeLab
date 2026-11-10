@@ -470,9 +470,14 @@ recordings (`rec`). The Anthropic key
   speaking is the learner's main gap:
   - **Types:** every kind of time is output (Talk, Speak, course steps,
     tutor), input (Practice and stories, outside input) or study (reviews,
-    lessons, dictionary, Anki and Bunpro) (`TIME_GROUP`). The week's rows
-    are grouped that way, and the 14-day chart stacks output (blue) at the
-    base of each bar under everything else (gold).
+    lessons, dictionary, Anki and Bunpro) (`TIME_GROUP`), each with its own
+    colour: output blue `#3987e5`, input amber `#c98500`, study magenta
+    `#d55181` (`--c-out`, `--c-in`, `--c-study`). The three were checked
+    with a colour-blindness validator on the card surface (all pairs: worst
+    CVD ΔE 13.2, normal 19.3, each at least 3:1); green stays the "target
+    met" colour. The 14-day chart stacks output at the base of each bar,
+    then input, then study; the week shows a split bar with each type's
+    time and share, then the activities under each type.
   - **Target:** output today against a daily target (`S.outputGoal`,
     default 45 min), with the 7-day average and days at target. Today shows
     the same bar under the daily goal.
