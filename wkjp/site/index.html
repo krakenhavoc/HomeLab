@@ -183,9 +183,9 @@
   .fix{align-self:flex-end; max-width:85%; background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
   #talkInput{font-size:1rem;}
-  .msg .w{border-radius:3px; cursor:help;}
-  .msg .w:hover,.msg .w.on{background:#33407a;}
-  .msg .w.new{border-bottom:1px dotted var(--soft);}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w{border-radius:3px; cursor:help;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w:hover,:is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w.on{background:#33407a;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w.new{border-bottom:1px dotted var(--soft);}
   #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
     border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
   #glossTip .r{color:var(--muted); font-size:.78rem;}
@@ -1479,7 +1479,7 @@ function stopAudio(){
 function webSpeak(text,slow){
   if(!("speechSynthesis" in window)) return;
   speakTimer=setTimeout(()=>{
-    const u=new SpeechSynthesisUtterance(text);
+    const u=new SpeechSynthesisUtterance(sayFix(text));
     u.lang="ja-JP";
     if(voice) u.voice=voice;
     u.rate=(S.rate||1)*(slow?0.6:1);
@@ -1530,6 +1530,10 @@ function pickVvSpeaker(){
 // Same-origin proxy when served; the local engine when opened as a file.
 const VV_DEFAULT=location.protocol==="file:"?"http://localhost:50021":location.origin+"/vv";
 const vvBase=()=>((S.vvUrl||VV_DEFAULT).trim()||VV_DEFAULT).replace(/\/+$/,"");
+// What the voice reads, not what's shown. OpenJTalk (VOICEVOX, and some
+// browser voices) reads Xはいります/いりません as 入ります after a noun:
+// 袋はいりません came out ふくろ はいりません. A pause after は fixes it.
+const sayFix=t=>String(t||"").replace(/(?<![にでと])は(?=いりま)/g,"は、");
 async function vvFetchAudio(text,slow,spk){
   if(spk==null) spk=pickVvSpeaker();
   const rate=(S.rate||1)*(slow?0.6:1);
@@ -1541,7 +1545,7 @@ async function vvFetchAudio(text,slow,spk){
   try{ return await p; } finally{ vvInflight.delete(key); }
 }
 async function vvSynth(text,spk,rate,key){
-  const q=await fetch(vvBase()+"/audio_query?speaker="+spk+"&text="+encodeURIComponent(text),{method:"POST"});
+  const q=await fetch(vvBase()+"/audio_query?speaker="+spk+"&text="+encodeURIComponent(sayFix(text)),{method:"POST"});
   if(!q.ok) throw new Error("VOICEVOX audio_query failed ("+q.status+")");
   const query=await q.json();
   query.speedScale=rate;
@@ -1671,7 +1675,7 @@ function playChunks(chunks,i,my,slow,spk){
     if(!("speechSynthesis" in window)) return;
     speakTimer=setTimeout(()=>{
       if(my!==queueToken) return;
-      const u=new SpeechSynthesisUtterance(chunks[i]);
+      const u=new SpeechSynthesisUtterance(sayFix(chunks[i]));
       u.lang="ja-JP";
       if(voice) u.voice=voice;
       u.rate=(S.rate||1)*(slow?0.6:1);
@@ -2354,8 +2358,27 @@ function talkReply(r,by,opt={}){
   d.querySelector("[data-a=en]").onclick=()=>{ d.querySelector(".en").classList.toggle("hidden"); talkScroll(); };
   if(S.talkSpeak&&!opt.spoken) speakText(r.reply,false,spk);
   prefetchSpeech(r.reply,spk);
-  talkLLM("gloss",GLOSS_SYSTEM,[{role:"user",content:r.reply}],GLOSS_SCHEMA,0)
-    .then(g=>glossWrap(d.querySelector(".ja"),r.reply,g.out.words)).catch(()=>{});
+  glossLater(d.querySelector(".ja"),r.reply);
+}
+// Readings and meanings on hover for Japanese anywhere they're shown (Talk
+// replies, hints and corrections, the course's drills and phrases): one
+// Haiku call per text, kept for the page's life so a repeat costs nothing.
+const GLOSS_CACHE=new Map();
+function glossLater(el,text){
+  text=(text||"").trim();
+  if(!el||!text||!isJa(text)) return;
+  let p=GLOSS_CACHE.get(text);
+  if(!p){
+    p=talkLLM("gloss",GLOSS_SYSTEM,[{role:"user",content:text}],GLOSS_SCHEMA,0).then(g=>g.out.words);
+    p.catch(()=>{ GLOSS_CACHE.delete(text); });
+    GLOSS_CACHE.set(text,p);
+    if(GLOSS_CACHE.size>300) GLOSS_CACHE.delete(GLOSS_CACHE.keys().next().value);
+  }
+  p.then(words=>{ if(el.isConnected&&el.textContent.trim()===text) glossWrap(el,text,words); }).catch(()=>{});
+}
+// every plain Japanese text element under root (lang="ja", no child elements)
+function glossAll(root){
+  if(root) root.querySelectorAll('[lang="ja"]').forEach(e=>{ if(!e.children.length&&e.tagName!=="INPUT") glossLater(e,e.textContent); });
 }
 // Wrap each glossed word in a span. The model's split doesn't always match
 // the text exactly, so anything it can't place stays plain.
@@ -2444,7 +2467,7 @@ function talkSpeaker(spk,onStart){
         go(); vvPlay(url,next); vvPlayer.onerror=()=>next();
       });
     }else if("speechSynthesis" in window){
-      const u=new SpeechSynthesisUtterance(it.text);
+      const u=new SpeechSynthesisUtterance(sayFix(it.text));
       u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
       u.onend=next; u.onerror=next;
       go(); speechSynthesis.speak(u);
@@ -2479,8 +2502,9 @@ async function talkSend(opt){
     if(ja) nbAddTalk(text,c.correction.trim(),c.note||"");
     const d=document.createElement("div");
     d.className="fix";
-    d.innerHTML=`${ja?"✏️":"🇯🇵"} ${esc(c.correction)}${c.note?`<div class="why">${esc(c.note)}</div>`:""}`;
+    d.innerHTML=`${ja?"✏️":"🇯🇵"} <span lang="ja">${esc(c.correction)}</span>${c.note?`<div class="why">${esc(c.note)}</div>`:""}`;
     me.after(d);
+    glossAll(d);
     talkScroll();
   }).catch(()=>{});
   // The reply streams into the "…" bubble, and each sentence is read aloud as
@@ -2877,7 +2901,7 @@ function rvSay(text){
       const my=vvSeq;
       vvFetchAudio(text,false).then(url=>{ if(my!==vvSeq) done(); else vvPlay(url,done); }).catch(e=>{ vvError(e); done(); });
     }else if("speechSynthesis" in window){
-      const u=new SpeechSynthesisUtterance(text);
+      const u=new SpeechSynthesisUtterance(sayFix(text));
       u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
       u.onend=done; u.onerror=done;
       speechSynthesis.speak(u);
@@ -4998,6 +5022,7 @@ function crPhCard(){
     crProg(`${s.u.ja} · listen and repeat · ${s.i+1} of ${s.list.length}`);
     $("crBody").innerHTML=`<div class="crPh"><div class="ja" lang="ja">${esc(p.ja)}</div>${kana}<div class="en">${esc(p.en)}</div>`+
       `<div class="ask">${p.hear?"You'll hear this. Say it along to get used to it.":"Say it after the voice."}</div></div>`;
+    glossAll($("crBody"));
     crActions([
       {t:"🔊",f:()=>crHearIt(p),k:"p"},
       {t:"🐢",f:()=>speakText(p.ja,true)},
@@ -5007,6 +5032,7 @@ function crPhCard(){
     return;
   }
   crProg(`${s.u.ja} · recall · ${s.i+1} of ${s.q.length}`);
+  setTimeout(()=>glossAll($("crBody")),0);
   $("crBody").innerHTML=`<div class="crPh">`+(p.hear
       ?`<div class="ask">What does it mean? 🔊</div>`
       :`<div class="en">${esc(p.en)}</div><div class="ask">Say it in Japanese</div>`)+
@@ -5141,6 +5167,7 @@ function crDrItem(){
     (canRecord?`<button class="btn" id="crMic" title="answer by voice (space)">🎤</button>`:"")+`<button class="btn primary" id="crSend">Check</button></div>`+
     `<div id="crHints"></div><div id="crRes"></div>`;
   const say=$("crBody").querySelector(".crSay");
+  glossAll(say);
   say.querySelectorAll("[data-a]").forEach(b=>{ b.onclick=()=>{
     if(b.dataset.a==="en") say.querySelector(".en").classList.toggle("hidden");
     else speakText(it.partner,b.dataset.a==="slow");
@@ -5171,9 +5198,10 @@ function crDrHint(){
   it.hint++;
   const h=[
     `<div><span class="k">pattern</span><b lang="ja">${esc(it.point||"—")}</b>${it.partner?`<div class="note">They said: ${esc(it.partner_en)}</div>`:""}</div>`,
-    `<div><span class="k">starts</span><b lang="ja">${esc(it.start)}…</b></div>`,
+    `<div><span class="k">starts</span><b lang="ja">${esc(it.start)}</b>…</div>`,
     `<div><span class="k">say</span><b lang="ja">${esc(it.answer)}</b> <button data-say title="hear it">🔊</button></div>`];
   $("crHints").innerHTML=h.slice(0,it.hint).join("");
+  glossAll($("crHints"));
   const b=$("crHints").querySelector("[data-say]");
   if(b) b.onclick=()=>speakText(it.answer,false);
   if(it.hint===3) speakText(it.answer,false);
@@ -5215,6 +5243,7 @@ async function crDrCheck(text,spoken){
     (v==="good"&&crSquash(text)!==crSquash(it.answer)?`<div class="why">Also: <span lang="ja">${esc(it.answer)}</span></div>`:"")+
     (out.note?`<div class="why">${esc(out.note)}</div>`:"")+
     (v!=="good"?`<div class="why">${canRecord?"Say it again (space) to practise it, or go on.":"Type it again to practise it, or go on."}</div>`:"")+`</div>`;
+  glossAll($("crRes"));
   const sb=$("crRes").querySelector("[data-say]");
   if(sb) sb.onclick=()=>speakText(fix,false);
   if(v!=="good"&&fix) speakText(fix,false);
@@ -5285,9 +5314,10 @@ async function talkHint(){
   if(SCENE){ sceneHints++; sceneUI(); }
   const d=h.data;
   h.el.innerHTML=`💡 `+(d.meaning?`They said: ${esc(d.meaning)}. `:"")+`You could: ${esc(d.idea)}`+
-    (h.step>=2?`<div>Start with <b lang="ja">${esc(d.start)}…</b></div>`:"")+
+    (h.step>=2?`<div>Start with <b lang="ja">${esc(d.start)}</b>…</div>`:"")+
     (h.step>=3?`<div><b lang="ja">${esc(d.full)}</b><button data-a="play" title="hear it">🔊</button><button data-a="use" title="put it in the box">use</button></div>`:
       `<div class="note">💡 again for more</div>`);
+  glossAll(h.el);
   const pb=h.el.querySelector("[data-a=play]"),ub=h.el.querySelector("[data-a=use]");
   if(pb) pb.onclick=()=>speakText(d.full,false);
   if(ub) ub.onclick=()=>{ const box=$("talkInput"); box.value=d.full; talkGrow(); box.focus(); };
@@ -5686,8 +5716,17 @@ $("talkLog").addEventListener("pointerover",e=>{
 $("talkLog").addEventListener("pointerout",e=>{
   if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
 });
+// the tip sits in Talk's card; the course on Today needs it too, so it lives on the page
+document.body.appendChild($("glossTip"));
+$("crCard").addEventListener("pointerover",e=>{
+  const sp=e.target.closest(".w");
+  if(sp&&e.pointerType==="mouse") glossShow(sp);
+});
+$("crCard").addEventListener("pointerout",e=>{
+  if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
+});
 document.addEventListener("click",e=>{
-  const sp=e.target.closest("#talkLog .w");
+  const sp=e.target.closest("#talkLog .w, #crCard .w");
   if(sp) glossShow(sp); else glossHide();
 });
 $("talkLog").addEventListener("scroll",glossHide);

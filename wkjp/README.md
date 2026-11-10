@@ -123,7 +123,13 @@ recordings (`rec`). The Anthropic key
   both reasons and the rest of the app is unaffected.
 - Each Talk reply gets a follow-up call that splits it into words with
   reading and meaning, for the hover/tap glosses. Kanji words not in the
-  learned set get a dotted underline.
+  learned set get a dotted underline. Talk's hints and corrections, and the
+  course's phrases, drill lines, hints and fixes, get the same glosses
+  (`glossLater`, one Haiku call per text, cached for the page's life).
+- What the voice reads can differ from what's shown (`sayFix`): OpenJTalk,
+  behind VOICEVOX, reads Xはいります/いりません as 入る after a noun
+  (袋はいりません came out ふくろ はいりません), so a pause goes in after
+  that は (not after には or では, where 入る is often meant).
 - Talk replies stream: the reply call to Claude asks for `stream: true`, and
   nginx passes the server-sent events straight through (`proxy_buffering off`
   on `/claude/`). The app reads the `reply` field out of the JSON as it's
