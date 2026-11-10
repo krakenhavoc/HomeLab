@@ -1,0 +1,18 @@
+{
+  "name": "WaniKani Listening Practice",
+  "short_name": "wkjp",
+  "description": "Japanese practice built on your WaniKani, Anki and Bunpro progress: reviews by voice, a speaking course, Talk, graded stories and stats.",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151a2d",
+  "theme_color": "#151a2d",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
