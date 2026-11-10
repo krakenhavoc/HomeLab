@@ -5450,12 +5450,29 @@ function bpSummary(){
   });
   return parts.length?parts.join(" · "):"Not set: stories use Settings → Grammar focus instead.";
 }
+// the next k points they haven't started, in Bunpro's order (the rest of the
+// level they're on, then the next level)
+function bpNext(k){
+  if(!BP) return [];
+  const out=[];
+  for(const lv of ["N5","N4","N3"]){
+    const list=BP[lv]||[],n=Math.min(Math.floor(+S["bp"+lv]||0),list.length);
+    list.slice(n).forEach(([t])=>{ if(out.length<k) out.push(t); });
+    if(out.length>=k) break;
+  }
+  return out;
+}
 function stGrammarLines(){
   const pts=bpStarted();
   if(pts.length){
     const seen=new Set(),titles=pts.map(p=>p.t).filter(t=>!seen.has(t)&&seen.add(t));
-    return [`Grammar: keep to the grammar points the learner has started on Bunpro, listed below in the order they learned them, plus anything simpler. Avoid grammar they haven't reached. The last few are new to them: use one or two of those.`,
-      "Grammar they've started: "+titles.join("、")];
+    // naming what's next works better than "avoid anything later": a live
+    // story at N5 #50 still used ので and the て-form until they were listed
+    const next=bpNext(20).filter(t=>!seen.has(t));
+    return [`Grammar: keep to the grammar points the learner has started on Bunpro, listed below in the order they learned them, plus anything simpler. The last few are new to them: use one or two of those.`,
+      "Grammar they've started: "+titles.join("、"),
+      next.length?"Not learned yet, so don't use them (say it another way with what they know, e.g. two short sentences): "+next.join("、"):"",
+      "Before answering, reread the story and rewrite any sentence that uses grammar outside the started list."];
   }
   const lv=S.talkGrammar,list=grammarList();
   return [lv?`Grammar: JLPT ${lv} and below.`:"Grammar: simple JLPT N5 grammar.",list.length?"Work in some of these points: "+list.join("、"):""];
