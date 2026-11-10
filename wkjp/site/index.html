@@ -21,6 +21,8 @@
     --accent:#f0b13d; --accent-ink:#2a1c04;
     --green:#4fc28b; --red:#ef6b82; --amber:#f59f5a;
     --radical:#00a1f1; --kanji:#f100a1; --vocab:#a100f1;
+    /* practice-time types; green stays the "target met" status colour */
+    --c-out:#3987e5; --c-in:#c98500; --c-study:#d55181;
     --radius:14px;
     --sans:"Zen Kaku Gothic New",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;
     --mincho:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
@@ -58,7 +60,7 @@
   .card p{font-size:.9rem; color:var(--muted);}
   .hidden{display:none !important;}
   label{font-size:.84rem; color:var(--muted); display:block; margin:12px 0 4px;}
-  input[type=text], input[type=password], select, textarea{
+  input[type=text], input[type=password], input[type=number], select, textarea{
     width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
     border-radius:10px; padding:10px 12px; font-size:.95rem; font-family:inherit;
   }
@@ -136,32 +138,52 @@
   .statGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
   .statGrid.four{grid-template-columns:repeat(4,1fr);}
   @media (max-width:480px){ .statGrid.four{grid-template-columns:repeat(2,1fr);} }
-  /* practice time: output (blue) at the base of each bar, everything else (gold) above; legend, tooltip and the rows below carry the same numbers */
+  /* practice time: output, input, study stacked from the base of each bar; legend, tooltip and the rows below carry the same numbers */
   .tH{font-size:.84rem; color:var(--muted); font-weight:700; margin:16px 0 6px;}
   .tchart{position:relative; display:flex; align-items:flex-end; gap:2px; height:120px; border-bottom:1px solid var(--line);}
   .tchart .gl{position:absolute; left:0; right:0; border-top:1px dashed #2c3456; pointer-events:none;}
-  .tchart .gl span{position:absolute; right:0; top:-1.3em; font-size:.66rem; color:var(--muted);}
+  .tchart .gl span{position:absolute; left:0; top:-1.3em; font-size:.66rem; color:var(--muted);}
   .tchart .col{flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; outline:none;}
   .tchart .bar{display:flex; flex-direction:column; border-radius:4px 4px 0 0; overflow:hidden;}
-  .tchart .bar .o{background:var(--radical);}
-  .tchart .bar .r{background:var(--accent); flex:1;}
-  .tchart .bar .r + .o{border-top:2px solid var(--card);}
-  .tleg{display:flex; gap:14px; font-size:.76rem; color:var(--muted); margin:-2px 0 6px;}
-  .tleg i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
-  .tmOut{background:var(--card2); border-radius:12px; padding:12px 14px; margin-bottom:14px;}
-  .tmOutHead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.9rem;}
-  .tmOutHead .grow{flex:1;}
-  .tmOutHead label{margin:0; font-size:.78rem;}
-  .tmOutHead select{width:auto; padding:3px 8px; font-size:.8rem;}
-  .tmOut .tdBar{margin:8px 0 10px;}
-  .tmOut .statGrid{margin-bottom:0;}
-  .tmOut .statBox{background:var(--card);}
-  .tdBar.out span{background:var(--radical);}
+  .tchart .bar .s{flex:0 0 auto;}
+  .tchart .bar .s + .s{border-top:2px solid var(--card);}
+  .c-out{background:var(--c-out);} .c-in{background:var(--c-in);} .c-study{background:var(--c-study);}
+  .tleg{display:flex; gap:16px; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin:-2px 0 8px;}
+  .tleg i,.dot{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px;}
+  .tmHead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .tmHead h2{margin:0; flex:1;}
+  .tmOut{position:relative; background:linear-gradient(135deg,#232c52 0%,var(--card2) 70%); border:1px solid #2e3a6b;
+    border-radius:14px; padding:16px 16px 14px; margin-bottom:16px;}
+  .tmHero{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;}
+  .tmHero .grow{flex:1;}
+  .tmKick{font-size:.76rem; color:var(--muted); font-weight:700; letter-spacing:.02em;}
+  .tmBig{font-size:2.4rem; font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums;}
+  .tmBig small{font-size:1rem; font-weight:700; color:var(--muted); margin-left:4px;}
+  .tmSub{font-size:.86rem; color:var(--muted); margin-top:2px;}
+  .tmSub.met{color:var(--green); font-weight:700;}
+  .tmHero label{margin:0; font-size:.78rem; display:flex; align-items:center; gap:6px;}
+  .tmHero select{width:auto; padding:3px 8px; font-size:.8rem;}
+  .tmOut .tdBar{height:12px; margin:12px 0 14px; background:#151a2d;}
+  .tmMini{display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid #2e3a6b; padding-top:12px;}
+  .tmMini > div{padding:0 10px; border-left:1px solid #2e3a6b;}
+  .tmMini > div:first-child{border-left:none; padding-left:0;}
+  .tmMini .v{font-size:1.15rem; font-weight:800; font-variant-numeric:tabular-nums;}
+  .tmMini .l{font-size:.72rem; color:var(--muted); line-height:1.3;}
+  @media (max-width:480px){ .tmMini{grid-template-columns:repeat(2,1fr); row-gap:12px;} .tmMini > div:nth-child(3){border-left:none; padding-left:0;} }
+  .tmOut .note{margin-top:12px;}
+  .tdBar.out span{background:var(--c-out);}
   .tdBar.out.met span{background:var(--green);}
+  .tmSplit{display:flex; height:14px; border-radius:99px; overflow:hidden; background:var(--bg); margin:4px 0 8px;}
+  .tmSplit .s + .s{border-left:2px solid var(--card);}
+  .tmSplitLeg{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px;}
+  .tmSplitLeg > div{background:var(--card2); border-radius:10px; padding:8px 10px;}
+  .tmSplitLeg .n{font-size:.8rem; color:var(--muted);}
+  .tmSplitLeg .v{font-size:1.05rem; font-weight:800; font-variant-numeric:tabular-nums;}
+  .tmSplitLeg .p{font-size:.76rem; color:var(--muted);}
   .tdOut{margin-top:10px;}
-  .trow.g{font-weight:700; margin-top:6px;}
-  .trow.g .b span{background:var(--text); opacity:.75;}
-  .trow.g.output .b span,.trow.a.output .b span{background:var(--radical); opacity:1;}
+  .trow.g{font-weight:700; margin-top:8px;}
+  .trow.output .b span{background:var(--c-out);} .trow.input .b span{background:var(--c-in);} .trow.study .b span{background:var(--c-study);}
+  .trow.a .b span{opacity:.7;}
   .trow.a span:first-child{padding-left:1em; color:var(--muted);}
   .tmLog{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
   .tmLog select{width:auto; max-width:100%; padding:6px 8px; font-size:.84rem;}
@@ -1028,17 +1050,22 @@
   <!-- ============ STATS VIEW ============ -->
   <main id="viewStats" class="hidden">
     <section class="card" id="timeCard">
-      <h2>Practice time</h2>
+      <div class="tmHead"><h2>Practice time</h2></div>
       <div class="tmOut">
-        <div class="tmOutHead"><b>Output today</b><span id="tmOutTxt"></span><span class="grow"></span>
-          <span style="display:flex; align-items:center; gap:6px;"><label for="tmOutGoal">target</label>
-          <select id="tmOutGoal"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option></select></span></div>
+        <div class="tmHero">
+          <div><div class="tmKick"><i class="dot c-out"></i>Output today</div>
+            <div class="tmBig"><span id="tmOutBig">0</span><small>min</small></div>
+            <div class="tmSub" id="tmOutTxt"></div></div>
+          <span class="grow"></span>
+          <label for="tmOutGoal">target
+          <select id="tmOutGoal"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option></select></label>
+        </div>
         <div class="tdBar out" role="progressbar" aria-label="output today" aria-valuemin="0" id="tmOutBar"><span id="tmOutFill"></span></div>
-        <div class="statGrid four">
-          <div class="statBox"><div class="v" id="tmOutAvg">–</div><div class="l">output a day, last 7</div></div>
-          <div class="statBox"><div class="v" id="tmOutDays">–</div><div class="l">days at target, last 7</div></div>
-          <div class="statBox"><div class="v" id="tmSpoke">–</div><div class="l">voice into the mic today</div></div>
-          <div class="statBox"><div class="v" id="tmSaid">–</div><div class="l">Japanese sentences today</div></div>
+        <div class="tmMini">
+          <div><div class="v" id="tmOutAvg">–</div><div class="l">output a day, last 7</div></div>
+          <div><div class="v" id="tmOutDays">–</div><div class="l">days at target, last 7</div></div>
+          <div><div class="v" id="tmSpoke">–</div><div class="l">voice into the mic today</div></div>
+          <div><div class="v" id="tmSaid">–</div><div class="l">Japanese sentences today</div></div>
         </div>
         <p class="note" id="tmOutWeek"></p>
       </div>
@@ -1049,10 +1076,12 @@
         <div class="statBox"><div class="v" id="tmStreak">–</div><div class="l">day streak</div></div>
       </div>
       <h3 class="tH">Minutes a day, last 14 days</h3>
-      <div class="tleg"><span><i style="background:var(--radical)"></i>Output</span><span><i style="background:var(--accent)"></i>Everything else</span></div>
+      <div class="tleg"><span><i class="c-out"></i>Output</span><span><i class="c-in"></i>Input</span><span><i class="c-study"></i>Study</span></div>
       <div class="tchart" id="tmChart" role="list" aria-label="Practice minutes per day, last 14 days"></div>
       <div class="tdays" id="tmDays" aria-hidden="true"></div>
       <h3 class="tH">Last 7 days by type</h3>
+      <div class="tmSplit" id="tmSplit" role="img"></div>
+      <div class="tmSplitLeg" id="tmSplitLeg"></div>
       <div id="tmBreak"></div>
       <h3 class="tH">Time outside wkjp</h3>
       <div class="tmLog">
@@ -4653,7 +4682,9 @@ async function renderTime(){
   // output: today against the target, the week, voice and sentences
   const oGoal=+S.outputGoal||45,oMin=o=>Math.round(groupSec(o,"output")/60),oToday=oMin(days[dayKey()]);
   $("tmOutGoal").value=String(oGoal);
-  $("tmOutTxt").innerHTML=oToday>=oGoal?`<b>${oToday} min</b>, target met ✓`:`<b>${oToday}</b> of ${oGoal} min`;
+  $("tmOutBig").textContent=String(oToday);
+  $("tmOutTxt").textContent=oToday>=oGoal?`✓ Target met (${oGoal} min)`:`of ${oGoal} min target · ${oGoal-oToday} to go`;
+  $("tmOutTxt").classList.toggle("met",oToday>=oGoal);
   $("tmOutFill").style.width=Math.min(100,100*oToday/oGoal)+"%";
   $("tmOutBar").classList.toggle("met",oToday>=oGoal);
   $("tmOutBar").setAttribute("aria-valuemax",String(oGoal)); $("tmOutBar").setAttribute("aria-valuenow",String(oToday));
@@ -4667,20 +4698,24 @@ async function renderTime(){
   const wSpoke=cW.reduce((a,c)=>a+(c.spoke||0),0),wSaid=cW.reduce((a,c)=>a+(c.said||0),0);
   $("tmOutWeek").textContent=`Output is ${GROUP_WHAT.output}. Last 7 days: ${fmtVoice(wSpoke)} of voice into the mic and ${plural(wSaid,"Japanese sentence")} said or typed. Voice time counts only the seconds the mic heard you, so it's much smaller than the minutes spent.`;
   const fort=last(14),mins=fort.map(d=>Math.round(sumDay(days[dayKey(d)])/60)),outs=fort.map(d=>oMin(days[dayKey(d)]));
+  // each day's minutes by type, output at the base: the segments share the bar by their seconds
+  const segs=fort.map(d=>{ const o=days[dayKey(d)]||{},all=sumDay(o)||1;
+    return ["study","input","output"].map(g=>[g,groupSec(o,g)/all]).filter(([,f])=>f>0); });
+  const C={output:"c-out",input:"c-in",study:"c-study"};
   const top=Math.max(10,...mins),step=top>120?60:top>60?30:top>30?15:10,grid=Math.floor(top/step)*step;
   const scale=Math.max(top,grid)*1.08;
   const fmtD=d=>d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
   $("tmChart").innerHTML=`<div class="gl" style="bottom:${100*grid/scale}%"><span>${grid} min</span></div>`+
     fort.map((d,i)=>`<div class="col" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(fmtD(d))}: ${mins[i]} minutes, ${outs[i]} of them output">`+
       `<div class="bar" style="height:${mins[i]?Math.max(2,100*mins[i]/scale):0}%">`+
-      (mins[i]>outs[i]?`<div class="r"></div>`:"")+
-      (outs[i]?`<div class="o" style="flex:0 0 ${100*Math.min(outs[i],mins[i])/Math.max(1,mins[i])}%"></div>`:"")+`</div></div>`).join("");
+      segs[i].map(([g,f])=>`<div class="s ${C[g]}" style="height:${100*f}%"></div>`).join("")+`</div></div>`).join("");
   $("tmDays").innerHTML=fort.map((d,i)=>`<span class="${i===13?"today":""}">${i===13?"today":i%2?"":d.getDate()}</span>`).join("");
   const tip=$("tmTip"),chart=$("tmChart");
   const show=el=>{
     const i=+el.dataset.i,o=days[dayKey(fort[i])]||{};
     const parts=Object.keys(TIME_NAME).filter(a=>o[a]).map(a=>`${TIME_NAME[a]} ${fmtDur(o[a])}`);
-    tip.innerHTML=`<div><b>${esc(fmtD(fort[i]))}</b>: ${esc(fmtDur(sumDay(o)))}, output ${esc(fmtDur(groupSec(o,"output")))}</div>`+(parts.length?`<div class="r">${esc(parts.join(", "))}</div>`:"");
+    const byType=Object.keys(GROUP_NAME).filter(g=>groupSec(o,g)).map(g=>`${GROUP_NAME[g]} ${fmtDur(groupSec(o,g))}`);
+    tip.innerHTML=`<div><b>${esc(fmtD(fort[i]))}</b>: ${esc(fmtDur(sumDay(o)))}</div>`+(byType.length?`<div>${esc(byType.join(" · "))}</div>`:"")+(parts.length?`<div class="r">${esc(parts.join(", "))}</div>`:"");
     tip.classList.remove("hidden");
     const b=el.getBoundingClientRect(),t=tip.getBoundingClientRect();
     tip.style.top=Math.max(4,b.top+b.height-(el.querySelector(".bar").offsetHeight||0)-t.height-8)+"px";
@@ -4692,7 +4727,12 @@ async function renderTime(){
   const tot={};
   week.forEach(o=>Object.entries(o).forEach(([a,s])=>{ tot[a]=(tot[a]||0)+s; }));
   const gTot=g=>Object.keys(tot).reduce((a,k)=>a+(TIME_GROUP[k]===g?tot[k]:0),0);
-  const max=Math.max(1,...Object.keys(GROUP_NAME).map(gTot));
+  const max=Math.max(1,...Object.keys(GROUP_NAME).map(gTot)),wAll=Object.keys(GROUP_NAME).reduce((a,g)=>a+gTot(g),0);
+  const pct=g=>wAll?Math.round(100*gTot(g)/wAll):0;
+  $("tmSplit").innerHTML=Object.keys(GROUP_NAME).filter(g=>gTot(g)).map(g=>`<span class="s ${C[g]}" style="flex:${gTot(g)}"></span>`).join("");
+  $("tmSplit").setAttribute("aria-label",Object.keys(GROUP_NAME).map(g=>`${GROUP_NAME[g]} ${pct(g)}%`).join(", "));
+  $("tmSplitLeg").innerHTML=Object.keys(GROUP_NAME).map(g=>`<div title="${esc(GROUP_WHAT[g])}"><div class="n"><i class="dot ${C[g]}"></i>${GROUP_NAME[g]}</div>`+
+    `<div class="v">${esc(fmtDur(gTot(g)))}</div><div class="p">${pct(g)}% of the week</div></div>`).join("");
   const bar=(cls,label,sec,title)=>`<div class="trow ${cls}"${title?` title="${esc(title)}"`:""}><span>${label}</span>`+
     `<span class="b"><span style="width:${100*sec/max}%"></span></span><span class="v">${fmtDur(sec)}</span></div>`;
   $("tmBreak").innerHTML=Object.keys(tot).length?Object.keys(GROUP_NAME).map(g=>
