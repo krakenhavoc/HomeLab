@@ -136,19 +136,44 @@
   .statGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
   .statGrid.four{grid-template-columns:repeat(4,1fr);}
   @media (max-width:480px){ .statGrid.four{grid-template-columns:repeat(2,1fr);} }
-  /* practice time: one series, so one colour and no legend */
+  /* practice time: output (blue) at the base of each bar, everything else (gold) above; legend, tooltip and the rows below carry the same numbers */
   .tH{font-size:.84rem; color:var(--muted); font-weight:700; margin:16px 0 6px;}
   .tchart{position:relative; display:flex; align-items:flex-end; gap:2px; height:120px; border-bottom:1px solid var(--line);}
   .tchart .gl{position:absolute; left:0; right:0; border-top:1px dashed #2c3456; pointer-events:none;}
   .tchart .gl span{position:absolute; right:0; top:-1.3em; font-size:.66rem; color:var(--muted);}
   .tchart .col{flex:1; height:100%; display:flex; flex-direction:column; justify-content:flex-end; outline:none;}
-  .tchart .bar{background:var(--accent); border-radius:4px 4px 0 0;}
+  .tchart .bar{display:flex; flex-direction:column; border-radius:4px 4px 0 0; overflow:hidden;}
+  .tchart .bar .o{background:var(--radical);}
+  .tchart .bar .r{background:var(--accent); flex:1;}
+  .tchart .bar .r + .o{border-top:2px solid var(--card);}
+  .tleg{display:flex; gap:14px; font-size:.76rem; color:var(--muted); margin:-2px 0 6px;}
+  .tleg i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px;}
+  .tmOut{background:var(--card2); border-radius:12px; padding:12px 14px; margin-bottom:14px;}
+  .tmOutHead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.9rem;}
+  .tmOutHead .grow{flex:1;}
+  .tmOutHead label{margin:0; font-size:.78rem;}
+  .tmOutHead select{width:auto; padding:3px 8px; font-size:.8rem;}
+  .tmOut .tdBar{margin:8px 0 10px;}
+  .tmOut .statGrid{margin-bottom:0;}
+  .tmOut .statBox{background:var(--card);}
+  .tdBar.out span{background:var(--radical);}
+  .tdBar.out.met span{background:var(--green);}
+  .tdOut{margin-top:10px;}
+  .trow.g{font-weight:700; margin-top:6px;}
+  .trow.g .b span{background:var(--text); opacity:.75;}
+  .trow.g.output .b span,.trow.a.output .b span{background:var(--radical); opacity:1;}
+  .trow.a span:first-child{padding-left:1em; color:var(--muted);}
+  .tmLog{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .tmLog select{width:auto; max-width:100%; padding:6px 8px; font-size:.84rem;}
+  .tmLog input{width:5.5em; padding:6px 8px;}
+  #tmLogged .x{background:none; border:none; color:var(--muted); cursor:pointer; padding:0 4px;}
+  #tmLogged .x:hover{color:var(--red);}
   .tchart .col:hover .bar,.tchart .col:focus-visible .bar{filter:brightness(1.18);}
   .tchart .col:focus-visible{box-shadow:inset 0 0 0 2px var(--soft); border-radius:4px;}
   .tdays{display:flex; gap:2px; font-size:.66rem; color:var(--muted); margin-top:4px;}
   .tdays span{flex:1; text-align:center;}
   .tdays span.today{color:var(--text); font-weight:700;}
-  .trow{display:grid; grid-template-columns:6.5em 1fr 5.5em; align-items:center; gap:10px; padding:4px 0; font-size:.88rem;}
+  .trow{display:grid; grid-template-columns:9.5em 1fr 5.5em; align-items:center; gap:10px; padding:4px 0; font-size:.88rem;}
   .trow .b{height:8px; background:var(--bg); border-radius:99px; overflow:hidden;}
   .trow .b span{display:block; height:100%; background:var(--accent); border-radius:99px;}
   .trow .v{text-align:right; color:var(--muted); font-variant-numeric:tabular-nums;}
@@ -583,6 +608,10 @@
         <div class="tdGoalRow"><span id="tdGoalTxt"></span><span class="grow"></span>
           <label for="tdGoalSel">daily goal</label>
           <select id="tdGoalSel"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option></select></div>
+        <div class="tdOut">
+          <div class="tdBar out" role="progressbar" aria-label="output today" aria-valuemin="0" id="tdOutBar"><span id="tdOutFill"></span></div>
+          <div class="tdGoalRow"><span id="tdOutTxt"></span></div>
+        </div>
       </div>
       <button class="btn primary" id="btnTdNext" disabled>…</button>
       <div class="tdRows" id="tdRows"></div>
@@ -1000,6 +1029,19 @@
   <main id="viewStats" class="hidden">
     <section class="card" id="timeCard">
       <h2>Practice time</h2>
+      <div class="tmOut">
+        <div class="tmOutHead"><b>Output today</b><span id="tmOutTxt"></span><span class="grow"></span>
+          <span style="display:flex; align-items:center; gap:6px;"><label for="tmOutGoal">target</label>
+          <select id="tmOutGoal"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option></select></span></div>
+        <div class="tdBar out" role="progressbar" aria-label="output today" aria-valuemin="0" id="tmOutBar"><span id="tmOutFill"></span></div>
+        <div class="statGrid four">
+          <div class="statBox"><div class="v" id="tmOutAvg">–</div><div class="l">output a day, last 7</div></div>
+          <div class="statBox"><div class="v" id="tmOutDays">–</div><div class="l">days at target, last 7</div></div>
+          <div class="statBox"><div class="v" id="tmSpoke">–</div><div class="l">voice into the mic today</div></div>
+          <div class="statBox"><div class="v" id="tmSaid">–</div><div class="l">Japanese sentences today</div></div>
+        </div>
+        <p class="note" id="tmOutWeek"></p>
+      </div>
       <div class="statGrid four">
         <div class="statBox"><div class="v" id="tmToday">–</div><div class="l">today</div></div>
         <div class="statBox"><div class="v" id="tmWeek">–</div><div class="l">last 7 days</div></div>
@@ -1007,10 +1049,20 @@
         <div class="statBox"><div class="v" id="tmStreak">–</div><div class="l">day streak</div></div>
       </div>
       <h3 class="tH">Minutes a day, last 14 days</h3>
+      <div class="tleg"><span><i style="background:var(--radical)"></i>Output</span><span><i style="background:var(--accent)"></i>Everything else</span></div>
       <div class="tchart" id="tmChart" role="list" aria-label="Practice minutes per day, last 14 days"></div>
       <div class="tdays" id="tmDays" aria-hidden="true"></div>
-      <h3 class="tH">Last 7 days by activity</h3>
+      <h3 class="tH">Last 7 days by type</h3>
       <div id="tmBreak"></div>
+      <h3 class="tH">Time outside wkjp</h3>
+      <div class="tmLog">
+        <label for="tmLogType" class="sr">kind</label>
+        <select id="tmLogType"><option value="tutor">Tutor or conversation (output)</option><option value="input">Videos, podcasts, reading (input)</option><option value="srs">Anki or Bunpro (study)</option></select>
+        <label for="tmLogMin" class="sr">minutes</label><input type="number" id="tmLogMin" min="1" max="600" inputmode="numeric" placeholder="min">
+        <label for="tmLogDay" class="sr">day</label><select id="tmLogDay"><option value="0">today</option><option value="1">yesterday</option></select>
+        <button class="btn small" id="btnTmLog">Add</button>
+      </div>
+      <p class="note" id="tmLogged"></p>
       <p class="note" id="tmNote"></p>
       <div id="tmTip" class="hidden"></div>
     </section>
@@ -1497,7 +1549,7 @@ let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,conte
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkGrammar:"",talkGrammarList:"",talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
-  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true,micPause:2500,storyNew:5,storyLen:"short",storyStyle:"polite"},load("wkl_settings",{}));
+  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true,micPause:2500,outputGoal:45,storyNew:5,storyLen:"short",storyStyle:"polite"},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -2567,6 +2619,7 @@ async function talkSend(opt){
   const wait=talkAdd("msg ai","…");
   // check runs alongside the reply; its note slots in under the learner's line
   const ja=isJa(text);
+  if(ja) outLog("said",1);
   talkLLM("check",checkSystem(ja),[{role:"user",content:text}],CHECK_SCHEMA,0).then(({out:c})=>{
     if(!c.correction||c.correction.trim()===text) return;
     if(ja) nbAddTalk(text,c.correction.trim(),c.note||"");
@@ -2741,9 +2794,11 @@ async function talkMic(){
   catch(e){ talkErr("mic blocked: "+(e.message||e.name)); return; }
   const chunks=[];
   micRec=new MediaRecorder(stream);
+  const recAt=Date.now();
   micRec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
   micRec.onstop=async()=>{
     clearTimeout(micStop);
+    const recSec=(Date.now()-recAt)/1000;
     stream.getTracks().forEach(t=>t.stop());
     micRec=null;
     btn.textContent="…"; btn.disabled=true;
@@ -2757,6 +2812,8 @@ async function talkMic(){
       const j=await sttPost(fd,{retry:true,onWait:n=>talkErr(`${STT_BUSY} Trying again (${n})…`)});
       $("talkErr").classList.add("hidden");
       text=sttClean((j.text||"").trim());
+      // press-to-talk has no speech detector: the take's length stands in for it
+      if(text) outLog("spoke",Math.min(recSec,30));
       if(text){ const box=$("talkInput"); box.value=(box.value?box.value+" ":"")+text; talkGrow(); box.focus(); }
       else talkErr("didn't catch that — try again, closer to the mic or somewhere quieter");
     }catch(e){ talkErr(e.message||"speech-to-text failed"); }
@@ -2900,6 +2957,7 @@ function micUtterance(alive,opt={}){
       clearInterval(tick); fill.style.width="0%"; fill.classList.remove("over");
       // what the detector saw, for Reviews' diagnostics (dB relative to full scale)
       const dB=v=>v>0?Math.round(20*Math.log10(v)):-120;
+      if(keep) outLog("spoke",speech/1000);
       if(opt.stats) Object.assign(opt.stats,{ms:t,speechMs:speech,peakRatio:+peakRatio.toFixed(2),peakDb:dB(peak),
         thrDb:dB(thr),floorDb:dB(MIC?MIC.floor:0),outcome:keep?"sent":!alive()||!MIC?"cancelled":"silent"});
       if(RV) RV.micStop=false;
@@ -4473,7 +4531,14 @@ function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 // Each browser keeps its own file on the wkjp server (stats/time-<id>.json),
 // so devices never overwrite each other; the Stats tab adds them up.
 const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewDict:"dictionary"};
-const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice"};
+const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice & stories",
+  tutor:"Tutor (outside)",input:"Input (outside)",srs:"Anki & Bunpro"};
+// what each kind of time is for: output is producing Japanese (speaking, or writing in Talk)
+const TIME_GROUP={talk:"output",speak:"output",course:"output",tutor:"output",practice:"input",input:"input",
+  reviews:"study",lessons:"study",dictionary:"study",srs:"study"};
+const GROUP_NAME={output:"Output",input:"Input",study:"Study"};
+const GROUP_WHAT={output:"Talk, Speak, course steps, tutor",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
+const groupSec=(o,g)=>Object.entries(o||{}).reduce((a,[k,v])=>a+(TIME_GROUP[k]===g?+v||0:0),0);
 const TIME_TICK=15,TIME_IDLE=120000;
 let DEVICE=load("wkl_device","");
 if(!/^[a-f0-9]{16}$/.test(DEVICE)){
@@ -4482,6 +4547,8 @@ if(!/^[a-f0-9]{16}$/.test(DEVICE)){
 }
 let TIMELOG=load("wkl_timelog",null);
 if(!TIMELOG||typeof TIMELOG.days!=="object") TIMELOG={v:1,days:{}};
+// per day: seconds of voice the mic heard (spoke) and Japanese sentences produced (said)
+if(!TIMELOG.counts||typeof TIMELOG.counts!=="object") TIMELOG.counts={};
 let timeLast=Date.now(),timeDirty=false,timeSent=0;
 const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 ["keydown","pointerdown","wheel","touchstart"].forEach(ev=>addEventListener(ev,()=>{ timeLast=Date.now(); },{passive:true,capture:true}));
@@ -4498,11 +4565,37 @@ function timeTick(){
   store("wkl_timelog",TIMELOG);
   if(Date.now()-timeSent>60000) timeSave();
 }
+function outLog(k,v){
+  if(!(v>0)) return;
+  const day=TIMELOG.counts[dayKey()]=TIMELOG.counts[dayKey()]||{};
+  day[k]=Math.round(((day[k]||0)+v)*10)/10;
+  const keys=Object.keys(TIMELOG.counts).sort();
+  if(keys.length>730) keys.slice(0,keys.length-730).forEach(x=>{ delete TIMELOG.counts[x]; });
+  timeDirty=true;
+  store("wkl_timelog",TIMELOG);
+}
+// time spent outside wkjp, added by hand (minutes, back: 0 today, 1 yesterday)
+function timeAdd(kind,min,back){
+  const d=new Date(); d.setDate(d.getDate()-back);
+  const day=TIMELOG.days[dayKey(d)]=TIMELOG.days[dayKey(d)]||{};
+  day[kind]=(day[kind]||0)+Math.round(min*60);
+  timeDirty=true;
+  store("wkl_timelog",TIMELOG);
+  timeSave();
+}
+function timeUnadd(key,kind){
+  const day=TIMELOG.days[key];
+  if(!day) return;
+  delete day[kind];
+  timeDirty=true;
+  store("wkl_timelog",TIMELOG);
+  timeSave();
+}
 // this browser's file on the server; keepalive for the last save as the page hides
 function timeSave(keepalive){
   if(!timeDirty||location.protocol==="file:") return;
   timeDirty=false; timeSent=Date.now();
-  const body=JSON.stringify({v:1,device:DEVICE,ua:navigator.userAgent.slice(0,160),at:new Date().toISOString(),days:TIMELOG.days});
+  const body=JSON.stringify({v:1,device:DEVICE,ua:navigator.userAgent.slice(0,160),at:new Date().toISOString(),days:TIMELOG.days,counts:TIMELOG.counts});
   fetch(`stats/time-${DEVICE}.json`,{method:"PUT",body,keepalive:!!keepalive,headers:{"Content-Type":"application/json"}})
     .then(r=>{ if(!r.ok) timeDirty=true; },()=>{ timeDirty=true; });
 }
@@ -4516,14 +4609,21 @@ async function timeAll(){
       docs=(await Promise.all(files.map(n=>fetch("stats/"+n,{cache:"no-store"}).then(x=>x.ok?x.json():null,()=>null)))).filter(Boolean);
     }
   }catch(e){}
-  docs.push({device:DEVICE,days:TIMELOG.days});
-  const days={};
-  for(const doc of docs) for(const [k,v] of Object.entries(doc.days||{})){
-    if(!/^\d{4}-\d\d-\d\d$/.test(k)||!v||typeof v!=="object") continue;
-    const o=days[k]=days[k]||{};
-    for(const [a,sec] of Object.entries(v)) if(Object.hasOwn(TIME_NAME,a)&&+sec>0) o[a]=(o[a]||0)+(+sec);
+  docs.push({device:DEVICE,days:TIMELOG.days,counts:TIMELOG.counts});
+  const days={},counts={};
+  for(const doc of docs){
+    for(const [k,v] of Object.entries(doc.days||{})){
+      if(!/^\d{4}-\d\d-\d\d$/.test(k)||!v||typeof v!=="object") continue;
+      const o=days[k]=days[k]||{};
+      for(const [a,sec] of Object.entries(v)) if(Object.hasOwn(TIME_NAME,a)&&+sec>0) o[a]=(o[a]||0)+(+sec);
+    }
+    for(const [k,v] of Object.entries(doc.counts||{})){
+      if(!/^\d{4}-\d\d-\d\d$/.test(k)||!v||typeof v!=="object") continue;
+      const o=counts[k]=counts[k]||{};
+      for(const a of ["spoke","said"]) if(+v[a]>0) o[a]=(o[a]||0)+(+v[a]);
+    }
   }
-  return {days,devices:docs.length};
+  return {days,counts,devices:docs.length};
 }
 const sumDay=o=>Object.values(o||{}).reduce((a,b)=>a+b,0);
 // days in a row with at least 5 minutes, counting today only once it qualifies
@@ -4540,7 +4640,7 @@ function fmtDur(sec){
   return r?`${h} h ${r} min`:`${h} h`;
 }
 async function renderTime(){
-  const {days,devices}=await timeAll();
+  const {days,counts,devices}=await timeAll();
   const today=new Date(),back=n=>{ const d=new Date(today); d.setDate(d.getDate()-n); return d; };
   const last=n=>Array.from({length:n},(_,i)=>back(n-1-i));
   const week=last(7).map(d=>days[dayKey(d)]||{});
@@ -4550,19 +4650,37 @@ async function renderTime(){
   // days in a row with at least 5 minutes, counting today only once it qualifies
   $("tmStreak").textContent=String(timeStreak(days));
   // the chart: minutes per day, a gridline at a round number near the top
-  const fort=last(14),mins=fort.map(d=>Math.round(sumDay(days[dayKey(d)])/60));
+  // output: today against the target, the week, voice and sentences
+  const oGoal=+S.outputGoal||45,oMin=o=>Math.round(groupSec(o,"output")/60),oToday=oMin(days[dayKey()]);
+  $("tmOutGoal").value=String(oGoal);
+  $("tmOutTxt").innerHTML=oToday>=oGoal?`<b>${oToday} min</b>, target met ✓`:`<b>${oToday}</b> of ${oGoal} min`;
+  $("tmOutFill").style.width=Math.min(100,100*oToday/oGoal)+"%";
+  $("tmOutBar").classList.toggle("met",oToday>=oGoal);
+  $("tmOutBar").setAttribute("aria-valuemax",String(oGoal)); $("tmOutBar").setAttribute("aria-valuenow",String(oToday));
+  const weekOut=week.map(oMin);
+  $("tmOutAvg").textContent=`${Math.round(weekOut.reduce((a,b)=>a+b,0)/7)} min`;
+  $("tmOutDays").textContent=`${weekOut.filter(m=>m>=oGoal).length} of 7`;
+  const cT=counts[dayKey()]||{},cW=last(7).map(d=>counts[dayKey(d)]||{});
+  const fmtVoice=sec=>sec>=60?`${Math.floor(sec/60)}m ${Math.round(sec%60)}s`:`${Math.round(sec||0)}s`;
+  $("tmSpoke").textContent=fmtVoice(cT.spoke);
+  $("tmSaid").textContent=String(cT.said||0);
+  const wSpoke=cW.reduce((a,c)=>a+(c.spoke||0),0),wSaid=cW.reduce((a,c)=>a+(c.said||0),0);
+  $("tmOutWeek").textContent=`Output is ${GROUP_WHAT.output}. Last 7 days: ${fmtVoice(wSpoke)} of voice into the mic and ${plural(wSaid,"Japanese sentence")} said or typed. Voice time counts only the seconds the mic heard you, so it's much smaller than the minutes spent.`;
+  const fort=last(14),mins=fort.map(d=>Math.round(sumDay(days[dayKey(d)])/60)),outs=fort.map(d=>oMin(days[dayKey(d)]));
   const top=Math.max(10,...mins),step=top>120?60:top>60?30:top>30?15:10,grid=Math.floor(top/step)*step;
   const scale=Math.max(top,grid)*1.08;
   const fmtD=d=>d.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"});
   $("tmChart").innerHTML=`<div class="gl" style="bottom:${100*grid/scale}%"><span>${grid} min</span></div>`+
-    fort.map((d,i)=>`<div class="col" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(fmtD(d))}: ${mins[i]} minutes">`+
-      `<div class="bar" style="height:${mins[i]?Math.max(2,100*mins[i]/scale):0}%"></div></div>`).join("");
+    fort.map((d,i)=>`<div class="col" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(fmtD(d))}: ${mins[i]} minutes, ${outs[i]} of them output">`+
+      `<div class="bar" style="height:${mins[i]?Math.max(2,100*mins[i]/scale):0}%">`+
+      (mins[i]>outs[i]?`<div class="r"></div>`:"")+
+      (outs[i]?`<div class="o" style="flex:0 0 ${100*Math.min(outs[i],mins[i])/Math.max(1,mins[i])}%"></div>`:"")+`</div></div>`).join("");
   $("tmDays").innerHTML=fort.map((d,i)=>`<span class="${i===13?"today":""}">${i===13?"today":i%2?"":d.getDate()}</span>`).join("");
   const tip=$("tmTip"),chart=$("tmChart");
   const show=el=>{
     const i=+el.dataset.i,o=days[dayKey(fort[i])]||{};
     const parts=Object.keys(TIME_NAME).filter(a=>o[a]).map(a=>`${TIME_NAME[a]} ${fmtDur(o[a])}`);
-    tip.innerHTML=`<div><b>${esc(fmtD(fort[i]))}</b>: ${esc(fmtDur(sumDay(o)))}</div>`+(parts.length?`<div class="r">${esc(parts.join(", "))}</div>`:"");
+    tip.innerHTML=`<div><b>${esc(fmtD(fort[i]))}</b>: ${esc(fmtDur(sumDay(o)))}, output ${esc(fmtDur(groupSec(o,"output")))}</div>`+(parts.length?`<div class="r">${esc(parts.join(", "))}</div>`:"");
     tip.classList.remove("hidden");
     const b=el.getBoundingClientRect(),t=tip.getBoundingClientRect();
     tip.style.top=Math.max(4,b.top+b.height-(el.querySelector(".bar").offsetHeight||0)-t.height-8)+"px";
@@ -4570,13 +4688,21 @@ async function renderTime(){
   };
   const hide=()=>tip.classList.add("hidden");
   chart.querySelectorAll(".col").forEach(el=>{ el.onmouseenter=()=>show(el); el.onfocus=()=>show(el); el.onmouseleave=hide; el.onblur=hide; });
-  // the week by activity, biggest first
+  // the week by type (output, input, study), each with its activities, biggest first
   const tot={};
   week.forEach(o=>Object.entries(o).forEach(([a,s])=>{ tot[a]=(tot[a]||0)+s; }));
-  const rows=Object.keys(TIME_NAME).filter(a=>tot[a]).sort((a,b)=>tot[b]-tot[a]),max=Math.max(1,...rows.map(a=>tot[a]));
-  $("tmBreak").innerHTML=rows.length?rows.map(a=>`<div class="trow"><span>${TIME_NAME[a]}</span>`+
-    `<span class="b"><span style="width:${100*tot[a]/max}%"></span></span><span class="v">${fmtDur(tot[a])}</span></div>`).join("")
-    :`<p class="note">Nothing yet this week. Time counts while you use Lessons, Reviews, a course step, Talk, Speak, the dictionary or Practice.</p>`;
+  const gTot=g=>Object.keys(tot).reduce((a,k)=>a+(TIME_GROUP[k]===g?tot[k]:0),0);
+  const max=Math.max(1,...Object.keys(GROUP_NAME).map(gTot));
+  const bar=(cls,label,sec,title)=>`<div class="trow ${cls}"${title?` title="${esc(title)}"`:""}><span>${label}</span>`+
+    `<span class="b"><span style="width:${100*sec/max}%"></span></span><span class="v">${fmtDur(sec)}</span></div>`;
+  $("tmBreak").innerHTML=Object.keys(tot).length?Object.keys(GROUP_NAME).map(g=>
+    bar("g "+g,GROUP_NAME[g],gTot(g),GROUP_WHAT[g])+
+    Object.keys(TIME_NAME).filter(a=>TIME_GROUP[a]===g&&tot[a]).sort((a,b)=>tot[b]-tot[a]).map(a=>bar("a "+g,TIME_NAME[a],tot[a])).join("")).join("")
+    :`<p class="note">Nothing yet this week. Time counts while you use Lessons, Reviews, a course step, Talk, Speak, the dictionary or Practice, plus time you add below.</p>`;
+  // what this browser added by hand, today and yesterday
+  const logged=[0,1].flatMap(n=>{ const d=back(n),k=dayKey(d),o=TIMELOG.days[k]||{};
+    return ["tutor","input","srs"].filter(a=>o[a]).map(a=>`<span>${n?"Yesterday":"Today"}: ${TIME_NAME[a]} ${fmtDur(o[a])}<button class="x" data-k="${k}" data-a="${a}" title="remove" aria-label="remove">×</button></span>`); });
+  $("tmLogged").innerHTML=logged.length?logged.join(" · "):"Tutor sessions count as output; outside videos and podcasts as input. They add to your daily total and streak too.";
   $("tmNote").textContent=`Counted while a practice tab is in front and you've used it in the last 2 minutes (or the mic or audio is on), in 15-second steps.`+
     (devices>1?` Added up across ${devices} browsers.`:"");
 }
@@ -4763,6 +4889,11 @@ async function renderToday(){
   $("tdBar").classList.toggle("met",today>=goal);
   $("tdBar").setAttribute("aria-valuemax",String(goal)); $("tdBar").setAttribute("aria-valuenow",String(today));
   $("tdGoalTxt").innerHTML=today>=goal?`<b>${today} min</b> today. Goal met ✓`:`<b>${today}</b> of ${goal} min today`;
+  const oGoal=+S.outputGoal||45,oToday=tm?Math.round(groupSec(tm.days[dayKey()],"output")/60):0;
+  $("tdOutFill").style.width=Math.min(100,100*oToday/oGoal)+"%";
+  $("tdOutBar").classList.toggle("met",oToday>=oGoal);
+  $("tdOutBar").setAttribute("aria-valuemax",String(oGoal)); $("tdOutBar").setAttribute("aria-valuenow",String(oToday));
+  $("tdOutTxt").innerHTML=oToday>=oGoal?`Output: <b>${oToday} min</b>, target met ✓`:`Output: <b>${oToday}</b> of ${oGoal} min (speaking, Talk, course)`;
   const rv=sum?((sum.reviews[0]||{}).subject_ids||[]).length:0,ls=sum?((sum.lessons[0]||{}).subject_ids||[]).length:0;
   const nbn=nb?nbOpen(nb).length:0,sc=sceneOfDay();
   const rows=[];
@@ -5116,6 +5247,7 @@ async function crPhSay(p){
   const s=CRS,at=s&&s.stage+s.i;
   const t=await crListen();
   if(!t||CRS!==s||s.stage+s.i!==at) return;
+  outLog("said",1);
   const sim=await crMatch(t,p),[cls,txt]=crVerdict(sim);
   if(CRS!==s||s.stage+s.i!==at) return;
   crMsg(`Heard: ${t}. ${txt}`,cls);
@@ -5301,6 +5433,7 @@ async function crDrCheck(text,spoken){
   s.busy=false; $("crSend").disabled=false; crMsg("");
   const v=["good","close","wrong"].includes(out.verdict)?out.verdict:"wrong",first=it.score==null;
   it.tries++;
+  if(isJa(text)) outLog("said",1);
   if(first){
     it.score=v==="good"?(it.hint?0.5:1):v==="close"?0.5:0;
     it.said=text; it.verdict=v; it.fix=out.fix||"";
@@ -5848,6 +5981,16 @@ document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closes
 
 /* today */
 $("tdGoalSel").onchange=e=>{ S.dailyGoal=+e.target.value; saveS(); renderToday(); };
+$("tmOutGoal").onchange=e=>{ S.outputGoal=+e.target.value; saveS(); renderTime(); };
+$("btnTmLog").onclick=()=>{
+  const m=Math.round(+$("tmLogMin").value);
+  if(!(m>0&&m<=600)){ $("tmLogMin").focus(); return; }
+  timeAdd($("tmLogType").value,m,+$("tmLogDay").value);
+  $("tmLogMin").value="";
+  renderTime();
+};
+$("tmLogMin").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("btnTmLog").click(); } });
+$("tmLogged").onclick=e=>{ const b=e.target.closest("[data-k]"); if(b){ timeUnadd(b.dataset.k,b.dataset.a); renderTime(); } };
 $("btnTdNext").onclick=()=>tdGo($("btnTdNext").dataset.go);
 $("tdRows").onclick=e=>{ const b=e.target.closest("[data-go]"); if(b) tdGo(b.dataset.go); };
 
