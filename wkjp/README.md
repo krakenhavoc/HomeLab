@@ -126,6 +126,10 @@ recordings (`rec`). The Anthropic key
   learned set get a dotted underline. Talk's hints and corrections, and the
   course's phrases, drill lines, hints and fixes, get the same glosses
   (`glossLater`, one Haiku call per text, cached for the page's life).
+  Katakana words show their hiragana (worked out locally, `kataToHira`),
+  for a learner still learning katakana. Clicking or tapping a word reads
+  it aloud (`glossSay`): its reading when it has one, and the particles
+  は and へ as わ and え.
 - What the voice reads can differ from what's shown (`sayFix`): OpenJTalk,
   behind VOICEVOX, reads Xはいります/いりません as 入る after a noun
   (袋はいりません came out ふくろ はいりません), so a pause goes in after
