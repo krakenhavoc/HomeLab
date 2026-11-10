@@ -306,6 +306,27 @@ recordings (`rec`). The Anthropic key
     ("Connect WaniKani" without a token). The row buttons go to the same places:
     Reviews and Lessons start once their data is loaded, Drill starts the
     notebook drill, and Play or 🗣 Live opens Talk in today's scene.
+- **物語 Stories**, a card at the top of 練習 Practice: short stories to
+  read and listen to, written by the Talk model for what the learner knows.
+  - **Words:** built from the known words (WaniKani and Anki), with a chosen
+    share of new ones (None, 2, 5, 10 or 20%; default 5%, since comfortable
+    reading needs about 95-98% known words), taken from upcoming WaniKani
+    vocab where they fit.
+  - **Grammar:** Bunpro has no public API, so the learner enters how many
+    points they've started at N5, N4 and N3, and `site/bunpro.json`
+    (Bunpro's grammar library in study order, fetched 2026-11-10: N5 132,
+    N4 185, N3 220) turns that into the list of points the story may use.
+    Without numbers it falls back to Settings → Grammar focus.
+  - **Options:** a topic (or 🎲 / blank for a surprise from travel and daily
+    life), length (short, medium, long) and style (polite, plain, or mostly
+    casual conversation).
+  - **Reading and listening:** hover or tap any word for its reading
+    (`glossLater`); after the glosses arrive the card says what share were
+    kanji words not yet learned. Listen or Slowly reads it with the chosen
+    voice; Hide text blurs it for a listen-first pass; EN per paragraph.
+    Then the story's new words and 3 comprehension questions.
+  - **Saved:** the last 20 stories in this browser (`wkl_stories`), reopened
+    from "Recent stories". Not synced.
 - **講座 Course**, a card on Today under the summary: a 31-unit course by
   trip situation for a learner who is just starting to speak (はじめまして,
   ordering, finding places, restaurants, trains, ryokan, shopping, small talk
