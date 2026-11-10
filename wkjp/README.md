@@ -61,6 +61,17 @@ recordings (`rec`). The Anthropic key
 
 ## Notes
 
+- **Installable app (PWA):** `site/manifest.webmanifest` (standalone, the
+  indigo theme, 192/512 icons and a maskable 512 rendered from
+  `favicon.svg`) and `site/sw.js`. The service worker serves the app's own
+  files network-first, so a deploy shows up on the next load, with the last
+  copy as the fallback offline; the Google Fonts are cached once fetched.
+  It never caches anything else: WaniKani, Claude, speech, recordings and
+  the per-browser files (stats, notebook, course, pictures, Anki) always go
+  to the network. nginx serves `sw.js` and the manifest with
+  `Cache-Control: no-cache`. Install from the browser menu ("Install app",
+  or "Add to Home Screen" on iOS); offline, the page opens but anything
+  that needs the server waits for the connection.
 - One secret, the Anthropic API key for Talk, kept on the VM and never sent
   to the browser (below). Server-side state is that, the pronunciation
   check recordings and picture choices. The WaniKani token and study stats
