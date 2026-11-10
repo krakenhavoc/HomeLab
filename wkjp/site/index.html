@@ -2554,7 +2554,9 @@ function glossWrap(el,text,words){
     const sp=document.createElement("span");
     sp.className="w"+(hasKanji(ja)&&!k?" new":"");
     sp.textContent=ja;
-    sp.dataset.r=hasKanji(ja)?(w.reading||"").replace(/\s+/g,""):"";
+    // kanji words get the model's reading; katakana words their hiragana,
+    // worked out here, for a learner still learning katakana
+    sp.dataset.r=hasKanji(ja)?(w.reading||"").replace(/\s+/g,""):/[ァ-ヶ]/.test(ja)?kataToHira(ja):"";
     sp.dataset.e=w.en||"";
     sp.dataset.k=k?"1":"";
     frag.append(sp);
@@ -2569,13 +2571,21 @@ function glossShow(sp){
   if(glossOn) glossOn.classList.remove("on");
   glossOn=sp; sp.classList.add("on");
   tip.innerHTML=`${sp.dataset.r?`<div class="r">${esc(sp.dataset.r)}</div>`:""}<div>${esc(sp.dataset.e||"—")}</div>`
-    +(sp.dataset.k?`<div class="r">✓ learned</div>`:"");
+    +(sp.dataset.k?`<div class="r">✓ learned</div>`:"")+`<div class="r">🔊 click or tap to hear it</div>`;
   tip.classList.remove("hidden");
   const b=sp.getBoundingClientRect(),t=tip.getBoundingClientRect();
   let top=b.top-t.height-6;
   if(top<4) top=b.bottom+6;
   tip.style.top=top+"px";
   tip.style.left=Math.max(4,Math.min(b.left+b.width/2-t.width/2,innerWidth-t.width-4))+"px";
+}
+// one word read aloud: its reading when it has one (a voice can misread a
+// lone kanji word), and the particles は and へ as they're said, わ and え
+function glossSay(sp){
+  const t=(sp.dataset.r||sp.textContent||"").trim();
+  if(!t) return;
+  unlockAudio();
+  speakText(t==="は"?"わ":t==="へ"?"え":t,false);
 }
 function glossHide(){
   if(glossOn) glossOn.classList.remove("on");
@@ -6181,7 +6191,7 @@ document.body.appendChild($("glossTip"));
 stInit();
 document.addEventListener("click",e=>{
   const sp=e.target.closest("#talkLog .w, #crCard .w, #stCard .w");
-  if(sp) glossShow(sp); else glossHide();
+  if(sp){ glossShow(sp); glossSay(sp); } else glossHide();
 });
 $("talkLog").addEventListener("scroll",glossHide);
 window.addEventListener("resize",()=>{ talkFit(); talkScroll(); });
