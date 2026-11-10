@@ -466,7 +466,27 @@ recordings (`rec`). The Anthropic key
     while its latest miss is newer than the latest "got it" for it from any
     browser, so clearing it on the phone clears it on the desktop too.
     Each browser keeps up to 500 entries.
-- The Stats tab's **Practice time** card is a rough log of active time:
+- The Stats tab's **Practice time** card leads with **output**, since
+  speaking is the learner's main gap:
+  - **Types:** every kind of time is output (Talk, Speak, course steps,
+    tutor), input (Practice and stories, outside input) or study (reviews,
+    lessons, dictionary, Anki and Bunpro) (`TIME_GROUP`). The week's rows
+    are grouped that way, and the 14-day chart stacks output (blue) at the
+    base of each bar under everything else (gold).
+  - **Target:** output today against a daily target (`S.outputGoal`,
+    default 45 min), with the 7-day average and days at target. Today shows
+    the same bar under the daily goal.
+  - **Voice and sentences:** per day, the seconds the mic heard the
+    learner's voice (the speech detector's count wherever `micUtterance`
+    listens; the take's length for Talk's press-to-talk mic) and the
+    Japanese sentences they produced (Talk lines, drill answers, phrases
+    said in the course). Kept as `counts` next to `days` in the same
+    per-browser file and added up across browsers.
+  - **Time outside wkjp:** a small form adds minutes for today or
+    yesterday: tutor sessions (output), videos, podcasts and reading
+    (input), Anki or Bunpro (study). They count toward the daily total and
+    streak; × removes what this browser added.
+- The same card is a rough log of active time:
   - **Counting:** a 15 s tick adds to today's total for the open tab's
     activity (Lessons, Reviews, a course step on Today, Talk, Speak,
     Dictionary, Practice; not Stats, Settings or the rest of Today). It counts only while the page is visible, and only if the
