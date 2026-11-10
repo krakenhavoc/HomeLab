@@ -183,9 +183,9 @@
   .fix{align-self:flex-end; max-width:85%; background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
   #talkInput{font-size:1rem;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w{border-radius:3px; cursor:help;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w:hover,:is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w.on{background:#33407a;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard) .w.new{border-bottom:1px dotted var(--soft);}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w{border-radius:3px; cursor:help;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w:hover,:is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w.on{background:#33407a;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w.new{border-bottom:1px dotted var(--soft);}
   #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
     border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
   #glossTip .r{color:var(--muted); font-size:.78rem;}
@@ -252,6 +252,39 @@
   .tdRow .t{flex:1; font-size:.9rem; color:var(--muted); min-width:0;}
   .tdRow .t b{color:var(--text); font-weight:700;}
   .tdRow .acts{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  /* Graded stories */
+  .stHead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .stHead h2{margin:0;}
+  .stHead .note{margin:0;}
+  .stOpts{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0 10px;}
+  @media (max-width:480px){ .stOpts{grid-template-columns:1fr 1fr;} }
+  .stTopicRow{display:flex; gap:6px;}
+  .stTopicRow input{flex:1; min-width:0;}
+  #stBp{margin-top:10px; font-size:.86rem;}
+  #stBp summary{cursor:pointer; color:var(--text); font-weight:700;}
+  #stBp .bpRow{display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; margin-top:8px;}
+  #stBp .bpRow label{margin:0; display:flex; align-items:center; gap:6px;}
+  #stBp input{width:5.5em; padding:5px 8px;}
+  .stGo{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:12px;}
+  .stGo select{width:auto; max-width:100%; padding:6px 10px; font-size:.86rem;}
+  #stOut{margin-top:16px; border-top:1px solid var(--line); padding-top:14px;}
+  .stTitle{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .stTitle h3{font-family:var(--mincho); font-size:1.35rem;}
+  .stTitle .en{color:var(--muted); font-size:.9rem;}
+  .stCtl{display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 4px;}
+  .stP{margin-top:12px;}
+  .stP .ja{font-family:var(--mincho); font-size:1.2rem; line-height:1.9;}
+  #stParas.stHide .ja{filter:blur(7px); user-select:none;}
+  .stP .tools{display:flex; gap:4px; margin-top:2px;}
+  .stP .tools button{background:none; border:1px solid var(--line); color:var(--muted); border-radius:7px; padding:1px 8px; cursor:pointer; font-size:.76rem;}
+  .stP .en{color:var(--muted); font-size:.9rem; margin-top:4px;}
+  #stOut details{margin-top:14px; font-size:.9rem;}
+  #stOut summary{cursor:pointer; font-weight:700;}
+  #stWords, #stQs{margin:8px 0 0 1.2em;}
+  #stWords li, #stQs li{margin:5px 0;}
+  #stWords [lang=ja], #stQs [lang=ja]{font-family:var(--mincho); font-size:1.05rem;}
+  #stWords .r{color:var(--muted);} #stWords .m{color:var(--muted); font-size:.86rem;}
+  #stQs .ans{margin-top:4px;}
   /* Course: units of three steps */
   .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0;}
   .crHead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
@@ -589,6 +622,42 @@
   </main>
 
   <main id="viewPractice" class="hidden">
+
+    <section id="stCard" class="card">
+      <div class="stHead"><h2>物語 Stories</h2><span class="note">to read and listen to, from the words and grammar you know</span></div>
+      <label for="stTopic">Topic</label>
+      <div class="stTopicRow"><input type="text" id="stTopic" autocomplete="off"><button class="btn small" id="btnStDice" title="a random topic">🎲</button></div>
+      <div class="stOpts">
+        <div><label for="stLen">Length</label><select id="stLen"><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></div>
+        <div><label for="stStyle">Style</label><select id="stStyle"><option value="polite">Polite</option><option value="plain">Plain</option><option value="dialogue">Conversation</option></select></div>
+        <div><label for="stNew">New words</label><select id="stNew"><option value="0">None</option><option value="2">2%</option><option value="5">5%</option><option value="10">10%</option><option value="20">20%</option></select></div>
+      </div>
+      <details id="stBp">
+        <summary>Grammar from Bunpro</summary>
+        <p class="note">How many grammar points you've started at each level. Stories stay within them, in Bunpro's order.</p>
+        <div class="bpRow">
+          <label for="bpN5">N5 <input type="number" id="bpN5" min="0" inputmode="numeric"> <span id="bpN5Of"></span></label>
+          <label for="bpN4">N4 <input type="number" id="bpN4" min="0" inputmode="numeric"> <span id="bpN4Of"></span></label>
+          <label for="bpN3">N3 <input type="number" id="bpN3" min="0" inputmode="numeric"> <span id="bpN3Of"></span></label>
+        </div>
+        <p class="note" id="bpSum"></p>
+      </details>
+      <div class="stGo"><button class="btn primary" id="btnStWrite">Write a story ▸</button><select id="stRecent" class="hidden" aria-label="recent stories"></select></div>
+      <p class="note" id="stStatus"></p>
+      <div class="err hidden" id="stErr"></div>
+      <div id="stOut" class="hidden">
+        <div class="stTitle"><h3 lang="ja" id="stTitle"></h3><span class="en hidden" id="stTitleEn"></span></div>
+        <div class="stCtl">
+          <button class="btn small" id="btnStPlay">▶ Listen</button><button class="btn small" id="btnStSlow">🐢 Slowly</button>
+          <button class="btn small" id="btnStStop">⏹</button><button class="btn small" id="btnStHide">Hide text</button><button class="btn small" id="btnStEn">EN title</button>
+        </div>
+        <div id="stParas"></div>
+        <p class="note" id="stMeasure"></p>
+        <details><summary>New words (<span id="stWordsN">0</span>)</summary><ul id="stWords"></ul></details>
+        <details><summary>Questions</summary><ol id="stQs"></ol></details>
+        <p class="note" id="stMeta"></p>
+      </div>
+    </section>
 
     <!-- setup -->
     <section id="setupCard" class="card">
@@ -1428,7 +1497,7 @@ let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,conte
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkGrammar:"",talkGrammarList:"",talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
-  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true,micPause:2500},load("wkl_settings",{}));
+  pcSave:true,pcCount:10,micClean:true,micAGC:true,rvSave:true,micPause:2500,storyNew:5,storyLen:"short",storyStyle:"polite"},load("wkl_settings",{}));
 // old builds saved the desktop default; hosted, the engine is proxied at /vv
 if(location.protocol!=="file:"&&/^https?:\/\/(localhost|127\.0\.0\.1):50021\/?$/.test(S.vvUrl||"")) S.vvUrl="";
 let STATS=load("wkl_stats",{answered:0,correct:0,sessions:0,items:{}});
@@ -2364,7 +2433,8 @@ function talkReply(r,by,opt={}){
 // replies, hints and corrections, the course's drills and phrases): one
 // Haiku call per text, kept for the page's life so a repeat costs nothing.
 const GLOSS_CACHE=new Map();
-function glossLater(el,text){
+// done(): called once the words are wrapped
+function glossLater(el,text,done){
   text=(text||"").trim();
   if(!el||!text||!isJa(text)) return;
   let p=GLOSS_CACHE.get(text);
@@ -2374,7 +2444,7 @@ function glossLater(el,text){
     GLOSS_CACHE.set(text,p);
     if(GLOSS_CACHE.size>300) GLOSS_CACHE.delete(GLOSS_CACHE.keys().next().value);
   }
-  p.then(words=>{ if(el.isConnected&&el.textContent.trim()===text) glossWrap(el,text,words); }).catch(()=>{});
+  p.then(words=>{ if(el.isConnected&&el.textContent.trim()===text){ glossWrap(el,text,words); if(done) done(); } }).catch(()=>{});
 }
 // every plain Japanese text element under root (lang="ja", no child elements)
 function glossAll(root){
@@ -5335,6 +5405,182 @@ function sceneCheckPass(){
   }else talkAdd("debrief",`<h3>Every goal reached</h3><div>With ${plural(sceneHints,"hint")}: the test needs ${CR_HINTS} or fewer. Finish &amp; debrief for feedback, then New chat to try again.</div>`);
 }
 
+/* ---------- Graded stories (Practice tab) ---------- */
+// Short stories written for the learner to read and listen to: built from
+// their known words (WaniKani and Anki), with a chosen share of new ones
+// (from upcoming WaniKani vocab), and kept to the grammar they've started
+// on Bunpro. Bunpro has no public API, so the learner says how many points
+// they've started per level and bunpro.json (Bunpro's study order) says which.
+let BP=null,STORY=null,stSeq=0;
+const ST_KEEP=20;
+const ST_TOPICS=["a first night in Tokyo","buying lunch at a konbini","a cat at a shrine","getting on the wrong train","a rainy day in Kyoto",
+  "a ramen shop with a ticket machine","an onsen in the mountains","a summer festival","a chef at a sushi counter","making a friend at an izakaya",
+  "choosing a present","a lazy weekend at home","a dog who loves walks","a lost umbrella","a day at the beach","a game shop in Akihabara",
+  "breakfast at a ryokan","a long walk in a new town","cooking dinner for a friend","the last train home"];
+const ST_LEN={short:"6 to 8 sentences in 2 paragraphs",medium:"12 to 15 sentences in 3 or 4 paragraphs",long:"20 to 25 sentences in 5 or 6 paragraphs"};
+const ST_STYLE={
+  polite:"Narrate in polite Japanese (です/ます).",
+  plain:"Narrate in plain form (だ, 〜る, 〜た), the way books are written.",
+  dialogue:"Make it mostly a conversation between two people in casual Japanese, with a short line of narration now and then. Write each spoken line as the speaker's name, a colon and the line in 「」, e.g. ゆき：「もう食べた？」"};
+const STORY_SCHEMA={type:"object",additionalProperties:false,required:["title","title_en","paragraphs","new_words","questions"],properties:{
+  title:str,title_en:str,
+  paragraphs:{type:"array",items:{type:"object",additionalProperties:false,required:["ja","en"],properties:{ja:str,en:str}}},
+  new_words:{type:"array",items:{type:"object",additionalProperties:false,required:["ja","reading","en"],properties:{ja:str,reading:str,en:str}}},
+  questions:{type:"array",items:{type:"object",additionalProperties:false,required:["q","q_en","a","a_en"],properties:{q:str,q_en:str,a:str,a_en:str}}}}};
+async function bpLoad(){
+  if(BP) return BP;
+  try{ const r=await fetch("bunpro.json",{cache:"no-cache"}); if(r.ok) BP=(await r.json()).levels||null; }catch(e){}
+  return BP;
+}
+// the points started, in Bunpro's order: [{lv, t, lesson}]
+function bpStarted(){
+  if(!BP) return [];
+  const out=[];
+  for(const lv of ["N5","N4","N3"]){
+    const list=BP[lv]||[],n=Math.max(0,Math.min(Math.floor(+S["bp"+lv]||0),list.length));
+    list.slice(0,n).forEach(([t,lesson])=>out.push({lv,t,lesson}));
+  }
+  return out;
+}
+function bpSummary(){
+  if(!BP) return "Couldn't load Bunpro's grammar order.";
+  const parts=["N5","N4","N3"].filter(lv=>+S["bp"+lv]>0).map(lv=>{
+    const list=BP[lv],n=Math.min(+S["bp"+lv],list.length),[t,lesson]=list[n-1];
+    return `${lv}: ${n} of ${list.length}, up to ${t} (lesson ${lesson})`;
+  });
+  return parts.length?parts.join(" · "):"Not set: stories use Settings → Grammar focus instead.";
+}
+function stGrammarLines(){
+  const pts=bpStarted();
+  if(pts.length){
+    const seen=new Set(),titles=pts.map(p=>p.t).filter(t=>!seen.has(t)&&seen.add(t));
+    return [`Grammar: keep to the grammar points the learner has started on Bunpro, listed below in the order they learned them, plus anything simpler. Avoid grammar they haven't reached. The last few are new to them: use one or two of those.`,
+      "Grammar they've started: "+titles.join("、")];
+  }
+  const lv=S.talkGrammar,list=grammarList();
+  return [lv?`Grammar: JLPT ${lv} and below.`:"Grammar: simple JLPT N5 grammar.",list.length?"Work in some of these points: "+list.join("、"):""];
+}
+function storySystem(o){
+  const known=knownWords(),words=known.slice(0,1500),fresh=o.pct?upcomingWords(new Set(known),150):[];
+  return [
+    `You write a short graded story for a Japanese learner at WaniKani level ${wkLevel()}, to read and to listen to.`,
+    `Length: ${ST_LEN[o.len]||ST_LEN.short}. ${ST_STYLE[o.style]||ST_STYLE.polite}`,
+    `Topic: ${o.topic}.`,
+    "Make it a real little story: a beginning, something that happens, and an ending. Natural Japanese; set in Japan unless the topic says otherwise.",
+    o.pct?`Vocabulary: build the story from the learner's known words below, with about ${o.pct}% of the words new to them. Take new words from "New words" where they fit; otherwise use common everyday words. Count a word as known only if it's in the known list.`
+      :"Vocabulary: use only the learner's known words below, plus particles and the most basic everyday words.",
+    "Write known words in kanji as they appear in the list, and new words in their normal spelling (the app shows readings on hover). Any other word whose kanji the learner doesn't know: write it in hiragana. No readings in parentheses, no romaji.",
+    ...stGrammarLines(),
+    "title: a short Japanese title; title_en its English.",
+    "paragraphs: ja is the paragraph in Japanese, en its natural English translation.",
+    "new_words: every word in the story that isn't in the known list (skip particles and endings), as written in the story, with its reading in hiragana and a short English meaning.",
+    "questions: 3 simple questions in Japanese about the story that the learner can answer from it, each with a short Japanese answer, and English for both.",
+    words.length?"Known words: "+words.join("、"):"The learner is a beginner; use very basic words.",
+    fresh.length?"New words: "+fresh.join("、"):""
+  ].filter(Boolean).join("\n");
+}
+const stOpts=()=>({topic:$("stTopic").value.trim()||ST_TOPICS[Math.floor(Math.random()*ST_TOPICS.length)],
+  len:S.storyLen||"short",style:S.storyStyle||"polite",pct:+S.storyNew||0});
+async function stWrite(){
+  const btn=$("btnStWrite"),o=stOpts(),my=++stSeq;
+  btn.disabled=true; btn.textContent="Writing…";
+  $("stErr").classList.add("hidden");
+  $("stStatus").textContent=`Writing a ${o.len} story about ${o.topic}…`;
+  await bpLoad();
+  try{
+    const {out,by}=await talkLLM("check",storySystem(o),[{role:"user",content:"Write the story."}],STORY_SCHEMA,0.8);
+    if(my!==stSeq) return;
+    const paras=(out.paragraphs||[]).map(p=>({ja:talkClean(p.ja||""),en:p.en||""})).filter(p=>p.ja);
+    if(!paras.length) throw new Error("the story came back empty");
+    const st={at:Date.now(),opts:o,by,title:out.title||o.topic,title_en:out.title_en||"",paragraphs:paras,
+      new_words:(out.new_words||[]).filter(w=>w&&w.ja),questions:(out.questions||[]).filter(q=>q&&q.q)};
+    const saved=load("wkl_stories",[]);
+    store("wkl_stories",[st].concat(Array.isArray(saved)?saved:[]).slice(0,ST_KEEP));
+    stShow(st);
+    stRecentUI();
+    $("stStatus").textContent="";
+  }catch(e){
+    if(my!==stSeq) return;
+    $("stStatus").textContent="";
+    $("stErr").textContent="⚠ Couldn't write the story: "+(e.message||e)+". Check Settings → Conversation partner and try again.";
+    $("stErr").classList.remove("hidden");
+  }
+  btn.disabled=false; btn.textContent="Write a story ▸";
+}
+function stShow(st){
+  STORY=st;
+  stopAudio();
+  $("stOut").classList.remove("hidden");
+  $("stTitle").textContent=st.title; $("stTitleEn").textContent=st.title_en;
+  $("stTitleEn").classList.add("hidden");
+  $("stParas").classList.remove("stHide"); $("btnStHide").textContent="Hide text";
+  $("stParas").innerHTML=st.paragraphs.map((p,i)=>`<div class="stP"><p class="ja" lang="ja">${esc(p.ja)}</p>`+
+    `<div class="tools"><button data-a="play" data-i="${i}" title="hear this paragraph">🔊</button><button data-a="slow" data-i="${i}" title="slowly">🐢</button><button data-a="en" data-i="${i}" title="English">EN</button></div>`+
+    `<p class="en hidden">${esc(p.en)}</p></div>`).join("");
+  $("stWords").innerHTML=st.new_words.length?st.new_words.map(w=>`<li><span lang="ja">${esc(w.ja)}</span>`+
+    (w.reading&&w.reading!==w.ja?` <span class="r">${esc(w.reading)}</span>`:"")+` <span class="m">${esc(w.en)}</span></li>`).join("")
+    :`<li class="note">None: every word should be one you know.</li>`;
+  $("stWordsN").textContent=st.new_words.length;
+  $("stQs").innerHTML=st.questions.map((q,i)=>`<li><span lang="ja">${esc(q.q)}</span> <button class="btn small" data-q="${i}">Answer</button>`+
+    `<div class="note">${esc(q.q_en)}</div><div class="ans hidden"><span lang="ja">${esc(q.a)}</span> <span class="note">${esc(q.a_en)}</span></div></li>`).join("");
+  $("stMeta").textContent=`${st.opts.topic} · ${st.opts.len} · ${st.opts.style} · aiming for ${st.opts.pct}% new words`+(st.by?` · ${st.by}`:"");
+  let left=st.paragraphs.length;
+  $("stParas").querySelectorAll("p.ja").forEach((el,i)=>glossLater(el,st.paragraphs[i].ja,()=>{ if(--left===0&&STORY===st) stMeasure(); }));
+  glossAll($("stQs"));
+}
+// after the hover glosses come back: how many words were new (kanji words
+// not in the learned set; kana-only words can't be told apart, so it's a floor)
+function stMeasure(){
+  const all=$("stParas").querySelectorAll(".w"),fresh=$("stParas").querySelectorAll(".w.new");
+  if(!all.length) return;
+  $("stMeasure").textContent=`${fresh.length} of ${all.length} words (${Math.round(100*fresh.length/all.length)}%) are kanji words you haven't learned: dotted underline. Hover or tap any word for its reading.`;
+}
+function stRecentUI(){
+  const saved=load("wkl_stories",[]),sel=$("stRecent");
+  sel.innerHTML=`<option value="">Recent stories</option>`+(Array.isArray(saved)?saved:[]).map((s,i)=>
+    `<option value="${i}">${esc(s.title)} · ${esc(new Date(s.at).toLocaleDateString([],{month:"short",day:"numeric"}))}</option>`).join("");
+  sel.classList.toggle("hidden",!(Array.isArray(saved)&&saved.length));
+}
+const stText=()=>STORY?STORY.paragraphs.map(p=>p.ja).join("\n"):"";
+function stInit(){
+  $("stTopic").placeholder=ST_TOPICS[0]+"… (blank: a surprise)";
+  $("stLen").value=S.storyLen||"short"; $("stStyle").value=S.storyStyle||"polite"; $("stNew").value=String(S.storyNew!=null?S.storyNew:5);
+  $("stLen").onchange=e=>{ S.storyLen=e.target.value; saveS(); };
+  $("stStyle").onchange=e=>{ S.storyStyle=e.target.value; saveS(); };
+  $("stNew").onchange=e=>{ S.storyNew=+e.target.value; saveS(); };
+  $("btnStDice").onclick=()=>{ $("stTopic").value=ST_TOPICS[Math.floor(Math.random()*ST_TOPICS.length)]; };
+  $("btnStWrite").onclick=stWrite;
+  $("stTopic").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.isComposing){ e.preventDefault(); stWrite(); } });
+  ["N5","N4","N3"].forEach(lv=>{
+    const el=$("bp"+lv);
+    if(+S["bp"+lv]>0) el.value=String(S["bp"+lv]);
+    el.oninput=()=>{ const v=Math.max(0,Math.floor(+el.value||0)); S["bp"+lv]=v||null; saveS(); $("bpSum").textContent=bpSummary(); };
+  });
+  bpLoad().then(()=>{
+    if(BP) ["N5","N4","N3"].forEach(lv=>{ $("bp"+lv).max=String(BP[lv].length); $("bp"+lv+"Of").textContent=`of ${BP[lv].length}`; });
+    $("bpSum").textContent=bpSummary();
+  });
+  $("btnStPlay").onclick=()=>{ unlockAudio(); speakText(stText(),false); };
+  $("btnStSlow").onclick=()=>{ unlockAudio(); speakText(stText(),true); };
+  $("btnStStop").onclick=stopAudio;
+  $("btnStHide").onclick=()=>{ const h=$("stParas").classList.toggle("stHide"); $("btnStHide").textContent=h?"Show text":"Hide text"; };
+  $("btnStEn").onclick=()=>{ $("stTitleEn").classList.toggle("hidden"); };
+  $("stParas").onclick=e=>{
+    const b=e.target.closest("[data-a]");
+    if(!b||!STORY) return;
+    const i=+b.dataset.i,p=STORY.paragraphs[i];
+    if(b.dataset.a==="en") b.closest(".stP").querySelector(".en").classList.toggle("hidden");
+    else{ unlockAudio(); speakText(p.ja,b.dataset.a==="slow"); }
+  };
+  $("stQs").onclick=e=>{ const b=e.target.closest("[data-q]"); if(b) b.closest("li").querySelector(".ans").classList.toggle("hidden"); };
+  $("stRecent").onchange=e=>{
+    const saved=load("wkl_stories",[]),st=Array.isArray(saved)&&saved[+e.target.value];
+    if(e.target.value!==""&&st) stShow(st);
+    e.target.value="";
+  };
+  stRecentUI();
+}
+
 /* ---------- tabs & wiring ---------- */
 const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
@@ -5716,17 +5962,20 @@ $("talkLog").addEventListener("pointerover",e=>{
 $("talkLog").addEventListener("pointerout",e=>{
   if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
 });
-// the tip sits in Talk's card; the course on Today needs it too, so it lives on the page
+// the tip sits in Talk's card; the course on Today and stories on Practice need it too, so it lives on the page
 document.body.appendChild($("glossTip"));
-$("crCard").addEventListener("pointerover",e=>{
-  const sp=e.target.closest(".w");
-  if(sp&&e.pointerType==="mouse") glossShow(sp);
+["crCard","stCard"].forEach(id=>{
+  $(id).addEventListener("pointerover",e=>{
+    const sp=e.target.closest(".w");
+    if(sp&&e.pointerType==="mouse") glossShow(sp);
+  });
+  $(id).addEventListener("pointerout",e=>{
+    if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
+  });
 });
-$("crCard").addEventListener("pointerout",e=>{
-  if(e.pointerType==="mouse"&&e.target.closest(".w")) glossHide();
-});
+stInit();
 document.addEventListener("click",e=>{
-  const sp=e.target.closest("#talkLog .w, #crCard .w");
+  const sp=e.target.closest("#talkLog .w, #crCard .w, #stCard .w");
   if(sp) glossShow(sp); else glossHide();
 });
 $("talkLog").addEventListener("scroll",glossHide);
