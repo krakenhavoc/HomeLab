@@ -24,7 +24,7 @@ script first tries SQLite's backup API (a consistent snapshot) and, if the
 file is locked, copies collection.anki2 and its -wal file and reads the copy.
 
 Output: {"v":1, "deck", "at", "total", "started", "words":[{"c","r","m"}],
-"study": {"deck", "total", "mature", "working":[{"c","r","m"}]}} with each
+"study": {"deck", "total", "mature", "working":[{"c","r","m","l"}]}} with each
 note's Word, Word Reading (or Reading) and Word Meaning (or Meaning), HTML
 stripped; words newest studied first, working words started first.
 """
@@ -158,17 +158,21 @@ def read_study(db_path, deck):
         return None
     q = ",".join("?" * len(ids))
     rows = db.execute(
-        f"""select n.id, n.mid, n.flds, min(c.ivl), max(c.type), max(c.mod)
+        f"""select n.id, n.mid, n.flds, min(c.ivl), max(c.type), max(c.mod), n.tags
             from cards c join notes n on n.id = c.nid
             where c.did in ({q}) and c.queue >= 0 group by n.id""",
         ids,
     ).fetchall()
     cache, mature, started, seen = {}, [], [], set()
-    for nid, mid, flds, ivl, typ, mod in rows:
+    for nid, mid, flds, ivl, typ, mod, tags in rows:
         w = word_of(flds, field_ords(db, mid, cache))
         if not w or w["c"] in seen:
             continue
         seen.add(w["c"])
+        # the textbook lesson, from a tag like genki::L4, so wkjp can drill a chapter
+        lesson = re.search(r"(?i)(?:^|\s)genki::(L\d+)(?:\s|$)", tags or "")
+        if lesson:
+            w["l"] = lesson.group(1).upper()
         if typ == 2 and ivl >= MATURE:
             mature.append(w)
         elif typ > 0:
