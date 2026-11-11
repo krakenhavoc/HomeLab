@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "about": "GENKI I (3rd ed.) chapters the learner works through with their tutor, for wkjp's generated speaking drills and role-plays. Only the chapter's grammar points and situation are kept here, never the book's text or exercises: drills and scenes are written by the model. Words come from the learner's Anki GENKI deck (tag genki::L<n>).",
+  "chapters": [
+    {
+      "id": "g4", "lesson": 4, "ja": "初めてのデート", "en": "The First Date", "level": "N5", "tag": "L4",
+      "can": ["Say what there is and who is where", "Say where things are: 上, 下, 前, 隣, 間…", "Talk about last week in the past tense, and what you didn't do", "Say how long you did something"],
+      "grammar": ["Xがあります / います", "Yの上 / 下 / 前 / 隣 / 間 (where things are)", "でした / じゃなかったです", "〜ました / 〜ませんでした", "も", "〜時間 (ぐらい)", "たくさん", "〜と (together with)"],
+      "focus": "Speaking drills on GENKI Lesson 4: what there is and who is where (place に X があります / います, がありません), where things are (X は Y の上 / 下 / 前 / 後ろ / 中 / 隣 / 近く / 右 / 左 です, A と B の間), the past of です (でした, じゃなかったです) and of verbs (〜ました, 〜ませんでした), も (私も, 京都にも), how long (〜時間, 〜時間ぐらい), たくさん, and 〜と for doing things with someone. Cues are about the learner's own week, room, town and friends (use About the learner), and everyday campus or city life. Polite forms.",
+      "scene": {"role": "a Japanese classmate chatting with the learner in the university cafeteria on a Monday, curious about their weekend and their neighbourhood",
+        "open": "週末は何をしましたか？", "openEn": "What did you do at the weekend?",
+        "goals": ["Say two things you did at the weekend (〜ました)", "Say how long you did something (〜時間)", "Say something you didn't do (〜ませんでした)", "Say what's near your home (近くに〜があります)"]}
+    },
+    {
+      "id": "g5", "lesson": 5, "ja": "沖縄旅行", "en": "A Trip to Okinawa", "level": "N5", "tag": "L5",
+      "can": ["Describe things with い- and な-adjectives, yes and no", "Say how something was, in the past", "Say what you like and dislike", "Suggest doing something together"],
+      "grammar": ["い / な adjectives (present)", "い / な adjectives (past)", "adjective + noun", "好き(な) / きらい(な)", "〜ましょう / 〜ましょうか", "counting: 〜枚"],
+      "focus": "Speaking drills on GENKI Lesson 5: い- and な-adjectives in the present (高いです / 高くないです, 静かです / 静かじゃないです) and the past (楽しかったです / 楽しくなかったです, 元気でした / 元気じゃなかったです), いい → よかった, adjective + noun (おもしろい映画, きれいな海), degree words (とても, ちょっと, あまり〜ない), 好き / きらい / 大好き (Xが好きです), suggesting with 〜ましょう / 〜ましょうか, and counting flat things with 〜枚 (切手を二枚). Cues about trips, food, places, weather, shopping and the learner's likes (use About the learner). Polite forms.",
+      "scene": {"role": "a Japanese friend meeting the learner after the learner's trip, asking how it went",
+        "open": "旅行はどうでしたか？", "openEn": "How was your trip?",
+        "goals": ["Say how the trip was, in the past (楽しかった, 暑かった…)", "Describe a place or food with an adjective before a noun (きれいな海, おいしい食べ物)", "Say what you liked or didn't like (好き / きらい)", "Suggest doing something together (〜ましょう / 〜ましょうか)"]}
+    }
+  ]
+}

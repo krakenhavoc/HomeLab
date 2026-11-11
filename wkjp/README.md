@@ -369,6 +369,16 @@ recordings (`rec`). The Anthropic key
     Then the story's new words and 3 comprehension questions.
   - **Saved:** the last 20 stories in this browser (`wkl_stories`), reopened
     from "Recent stories". Not synced.
+- **教科書 GENKI**, at the bottom of the course card: the textbook the tutor
+  teaches. `site/genki.json` keeps only each chapter's grammar points,
+  situation and a made-up scene (never the book's text or exercises: the
+  repo is public). Pick a chapter; **Drill** writes voice drills on its
+  grammar with the words of that chapter the learner has started in the
+  Anki GENKI deck (the sync sends each word's `genki::L<n>` tag as `l`),
+  and **Role-play** opens its scene in Talk (also under "GENKI" in the
+  scene menu), with the chapter's grammar as the focus. Progress is kept
+  like a course unit's (ids `g4`, `g5`), outside the course's order.
+  Add a chapter to `genki.json` when the tutor gets there.
 - **講座 Course**, a card on Today under the summary: a 31-unit course by
   trip situation for a learner who is just starting to speak (はじめまして,
   ordering, finding places, restaurants, trains, ryokan, shopping, small talk

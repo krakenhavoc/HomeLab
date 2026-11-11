@@ -338,6 +338,13 @@
   #stWords .r{color:var(--muted);} #stWords .m{color:var(--muted); font-size:.86rem;}
   #stQs .ans{margin-top:4px;}
   /* Course: units of three steps */
+  .crGenki{margin-top:12px; border-top:1px solid var(--line); padding-top:12px;}
+  .crGHead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.9rem;}
+  .crGHead b{font-family:var(--mincho); font-size:1.1rem;}
+  .crGHead span{color:var(--muted);}
+  .crGHead .grow,.crGRow .grow{flex:1;}
+  .crGHead select{width:auto; max-width:100%; padding:5px 10px; font-size:.84rem;}
+  .crGRow{display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px;}
   .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; margin:0;}
   .crHead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px;}
   .crHead h2{margin:0; flex:1; font-size:.95rem; color:var(--muted); font-weight:700;}
@@ -653,6 +660,13 @@
         <ul class="crCan" id="crCan"></ul>
         <div class="crGram" id="crGram"></div>
         <ol class="crSteps" id="crSteps"></ol>
+        <div class="crGenki hidden" id="crGenki">
+          <div class="crGHead"><b lang="ja">教科書</b><span>GENKI, with your tutor</span><span class="grow"></span>
+            <label for="crGenkiSel" class="sr">chapter</label><select id="crGenkiSel"></select></div>
+          <div class="crGram" id="crGenkiGram"></div>
+          <div class="crGRow"><span class="note" id="crGenkiSt"></span><span class="grow"></span>
+            <button class="btn small" data-g="dr">Drill</button><button class="btn small" data-g="rp">Role-play</button><button class="btn small hidden" data-g="live" id="crGenkiLive">🗣 Live</button></div>
+        </div>
         <details id="crMeBox">
           <summary>About me <span>· used by the drills, Talk and its hints</span></summary>
           <div class="two">
@@ -1904,7 +1918,7 @@ async function ankiLoad(){
     if(!r.ok) return;
     const d=await r.json();
     if(!d||!Array.isArray(d.words)) return;
-    const ws=a=>(Array.isArray(a)?a:[]).filter(w=>w&&typeof w.c==="string"&&w.c).map(w=>({c:w.c,r:String(w.r||""),m:String(w.m||"")}));
+    const ws=a=>(Array.isArray(a)?a:[]).filter(w=>w&&typeof w.c==="string"&&w.c).map(w=>({c:w.c,r:String(w.r||""),m:String(w.m||""),l:String(w.l||"")}));
     const st=d.study&&typeof d.study==="object"?d.study:null;
     ANKI={deck:String(d.deck||"Anki"),at:d.at||"",total:+d.total||0,words:ws(d.words),
       study:st?{deck:String(st.deck||"Study"),total:+st.total||0,mature:+st.mature||0,working:ws(st.working)}:null};
@@ -2290,7 +2304,9 @@ function sceneLines(){
       :"Speak the way real staff or people there speak (polite, with the set phrases they use), but keep sentences short and simple. 1-2 sentences.",
     "Don't do the learner's tasks for them: answer and react naturally, and let them lead. If they seem stuck, or write English, help with a short hint in simple Japanese.",
     "The learner's goals in this scene: "+SCENE.goals.map((g,i)=>`${i+1}. ${g}`).join("; ")+".",
-    ...(SCENE.unit?[`This is the role-play test for unit ${crNum(SCENE.unit)} of the learner's course. Situation notes: ${SCENE.unit.focus}`,
+    ...(SCENE.unit?[SCENE.unit.genki?`This is a role-play for ${crLabel(SCENE.unit)} of the learner's textbook. Use its grammar and words naturally. Situation notes: ${SCENE.unit.focus}`
+        :`This is the role-play test for unit ${crNum(SCENE.unit)} of the learner's course. Situation notes: ${SCENE.unit.focus}`,
+      ...(SCENE.unit.genki&&crChapterWords(SCENE.unit).length?["The chapter's words they've started: "+crChapterWords(SCENE.unit).join("、")]:[]),
       "Phrases they've practised for it: "+crPhrases(SCENE.unit,crAll().me).map(p=>p.ja).join(" ")]:[]),
     "goals: the numbers of the goals the learner has achieved so far in this conversation, all of them, not only this turn."];
 }
@@ -5020,7 +5036,16 @@ let COURSE=null,CP_REMOTE=[],cpDirty=false,cpTimer=null,CRS=null,crMicSeq=0;
 let CP=load("wkl_course",null);
 if(!CP||typeof CP.units!=="object") CP={v:1,units:{},me:{name:"",from:"",about:"",at:0},cur:"",curAt:0,start:""};
 const CR_PASS=0.75,CR_HINTS=2;
+// GENKI chapters (site/genki.json): the tutor's textbook. Drills and scenes
+// are generated from each chapter's grammar and situation; its words come
+// from the Anki GENKI deck. They share the course's steps and progress, but
+// aren't part of the course's order.
+let GENKI=null;
 async function crLoad(){
+  if(!GENKI) try{
+    const r=await fetch("genki.json",{cache:"no-cache"});
+    if(r.ok){ const j=await r.json(); if(Array.isArray(j.chapters)&&j.chapters.length) GENKI=j.chapters.map(c=>({...c,phrases:[],genki:true})); }
+  }catch(e){}
   if(COURSE) return COURSE;
   try{
     const r=await fetch("course.json",{cache:"no-cache"});
@@ -5029,7 +5054,11 @@ async function crLoad(){
   return COURSE;
 }
 const crUnits=()=>COURSE?COURSE.units:[];
-const crUnit=id=>crUnits().find(u=>u.id===id)||null;
+const crUnit=id=>crUnits().find(u=>u.id===id)||(GENKI||[]).find(u=>u.id===id)||null;
+// how a unit or chapter is named in prompts and messages
+const crLabel=u=>u.genki?`GENKI Lesson ${u.lesson}`:`Unit ${crNum(u)}`;
+// the Anki GENKI words of this chapter they've started
+const crChapterWords=u=>ANKI&&ANKI.study?ANKI.study.working.filter(w=>w.l===u.tag).map(w=>w.c):[];
 const crNum=u=>crUnits().indexOf(u)+1;
 // the other browsers' files, fetched now and then; crAll() merges them with this one
 async function cpFetchAll(){
@@ -5135,6 +5164,7 @@ function crRender(){
       (missing?`. ${plural(missing,"phrase")} need About me, below`:""),p.ph?`✓ ${crDate(p.ph)}`:"")+
     step("dr","Drill","Answer by voice; 💡 if you're stuck. Pass: 75%",p.drBest?`${p.dr?"✓ ":""}best ${Math.round(p.drBest*100)}%`:"")+
     step("rp","Role-play test",`In Talk: reach every goal, ${CR_HINTS} hints or fewer`,p.rp?`✓ ${crDate(p.rp)}`:"");
+  crGenkiRender(a);
   if(!$("crMeBox").open||!$("crMeName").value&&!$("crMeAbout").value){
     $("crMeName").value=a.me.name; $("crMeFrom").value=a.me.from; $("crMeAbout").value=a.me.about;
   }
@@ -5148,20 +5178,42 @@ function crPicker(){
   g.label="Course units";
   g.innerHTML=crUnits().map((u,i)=>`<option value="${u.id}">${i+1}. ${esc(u.ja)}  ${esc(u.en)}</option>`).join("");
   sel.appendChild(g);
+  if(GENKI){
+    const t=document.createElement("optgroup");
+    t.label="GENKI";
+    t.innerHTML=GENKI.map(c=>`<option value="${c.id}">L${c.lesson}. ${esc(c.ja)}  ${esc(c.en)}</option>`).join("");
+    sel.appendChild(t);
+  }
   // a unit scene saved from last time, now that it exists
   if(!SCENE&&!TALK.some(m=>m.role==="user")&&crUnit(S.talkScene)){ sel.value=S.talkScene; sceneStart(S.talkScene,true); }
 }
 function crSceneOf(id){
   const u=crUnit(id);
-  return u?{id:u.id,ja:u.ja,en:`Unit ${crNum(u)}: ${u.en}`,role:u.scene.role,open:u.scene.open,openEn:u.scene.openEn,goals:u.scene.goals,casual:!!u.scene.casual,unit:u}:null;
+  return u?{id:u.id,ja:u.ja,en:`${crLabel(u)}: ${u.en}`,role:u.scene.role,open:u.scene.open,openEn:u.scene.openEn,goals:u.scene.goals,casual:!!u.scene.casual,unit:u}:null;
 }
 function crPlay(u,live){
   $("tabTalk").click();
   if(!SCENE||SCENE.id!==u.id){
-    if(TALK.some(m=>m.role==="user")&&!confirm(`Start the unit ${crNum(u)} role-play? The current conversation will be cleared.`)) return;
+    if(TALK.some(m=>m.role==="user")&&!confirm(`Start the ${crLabel(u)} role-play? The current conversation will be cleared.`)) return;
     $("talkScene").value=u.id; sceneStart(u.id);
   }
   if(live&&!LIVE) liveStart();
+}
+function crGenkiRender(a){
+  $("crGenki").classList.toggle("hidden",!GENKI);
+  if(!GENKI) return;
+  const sel=$("crGenkiSel"),u=crUnit(S.genkiCh)||GENKI[0],p=a.units[u.id]||{},n=crChapterWords(u).length;
+  sel.innerHTML=GENKI.map(c=>`<option value="${c.id}"${c===u?" selected":""}>L${c.lesson} ${esc(c.ja)}  ${esc(c.en)}</option>`).join("");
+  $("crGenkiGram").innerHTML=`<span>Grammar:</span>`+u.grammar.map(g=>`<span class="g" lang="ja">${esc(g)}</span>`).join("");
+  $("crGenkiSt").textContent=[n?`${plural(n,"word")} from this chapter started in Anki`:"No words from this chapter started in Anki yet",
+    p.drBest?`drill best ${Math.round(p.drBest*100)}%`:"",p.rp?"role-play ✓":""].filter(Boolean).join(" · ");
+  $("crGenkiLive").classList.toggle("hidden",!canRecord);
+}
+function crGenkiGo(k){
+  const u=crUnit(S.genkiCh)||(GENKI||[])[0];
+  if(!u) return;
+  if(k==="dr") crDrStart(u);
+  else crPlay(u,k==="live");
 }
 function crGo(k){
   const a=crAll(),u=crCurrent(a)||crUnits()[crUnits().length-1];
@@ -5365,9 +5417,10 @@ function crDrillSystem(u,me,review){
   const known=knownWords().slice(0,800),n=8,r=review.length?2:0;
   return [
     `You write a short speaking drill for a Japanese learner at WaniKani level ${wkLevel()} who is travelling to Japan and is just starting to speak. They're studying JLPT ${u.level} grammar.`,
-    `Unit ${crNum(u)}: ${u.ja} (${u.en}). Situation: ${u.focus}`,
+    `${crLabel(u)}${u.genki?" of their textbook (GENKI I), which their tutor is teaching":""}: ${u.ja} (${u.en}). Situation: ${u.focus}`,
     `This unit's grammar: ${u.grammar.join("、")}.`,
-    "This unit's phrases: "+crPhrases(u,me).map(p=>`${p.ja} (${p.en})`).join("; "),
+    crPhrases(u,me).length?"This unit's phrases: "+crPhrases(u,me).map(p=>`${p.ja} (${p.en})`).join("; "):"",
+    u.genki&&crChapterWords(u).length?`This chapter's vocabulary they've started in Anki (use as much of it as fits): ${crChapterWords(u).join("、")}`:"",
     review.length?"Phrases from earlier units, for review: "+review.map(p=>`${p.ja} (${p.en})`).join("; "):"",
     crAboutLine(me),
     `Write ${n} exchanges${r?`: the first ${n-r} for this unit (review: false), the last ${r} using the earlier units' phrases in this unit's situation where they fit (review: true)`:", all review: false"}. In each, someone the learner would meet says one short line and the learner replies.`,
@@ -5397,7 +5450,7 @@ function crJudgeSystem(it,spoken){
 async function crDrStart(u){
   const a=crAll();
   // earlier units whose phrases have been learned, a few of their phrases
-  const prev=crUnits().slice(0,crNum(u)-1).filter(x=>(a.units[x.id]||{}).ph);
+  const prev=u.genki?[]:crUnits().slice(0,crNum(u)-1).filter(x=>(a.units[x.id]||{}).ph);
   const review=shuffle(prev.flatMap(x=>crPhrases(x,a.me).filter(p=>!p.hear))).slice(0,6);
   const s={kind:"dr",u,items:null,i:0,busy:false};
   crOpen(s);
@@ -5596,10 +5649,10 @@ async function talkHint(){
 function sceneCheckPass(){
   if(!SCENE||!SCENE.unit||scenePassed||sceneDone.size<SCENE.goals.length) return;
   scenePassed=true;
-  const u=SCENE.unit,n=crNum(u);
+  const u=SCENE.unit;
   if(sceneHints<=CR_HINTS){
     crMark(u.id,"rp");
-    talkAdd("debrief pass",`<h3>✓ Unit ${n} role-play passed</h3><div>Every goal reached${sceneHints?` with ${plural(sceneHints,"hint")}`:" without hints"}. Finish &amp; debrief for feedback on what you said.</div>`);
+    talkAdd("debrief pass",`<h3>✓ ${esc(crLabel(u))} role-play passed</h3><div>Every goal reached${sceneHints?` with ${plural(sceneHints,"hint")}`:" without hints"}. Finish &amp; debrief for feedback on what you said.</div>`);
   }else talkAdd("debrief",`<h3>Every goal reached</h3><div>With ${plural(sceneHints,"hint")}: the test needs ${CR_HINTS} or fewer. Finish &amp; debrief for feedback, then New chat to try again.</div>`);
 }
 
@@ -6169,6 +6222,8 @@ $("btnSceneEnd").onclick=sceneEnd;
 $("btnTalkHint").onclick=talkHint;
 document.addEventListener("keydown",crKey);
 $("crSteps").onclick=e=>{ const b=e.target.closest("[data-cr]"); if(b) crGo(b.dataset.cr); };
+$("crGenki").onclick=e=>{ const b=e.target.closest("[data-g]"); if(b) crGenkiGo(b.dataset.g); };
+$("crGenkiSel").onchange=e=>{ S.genkiCh=e.target.value; saveS(); crRender(); };
 $("crSel").onchange=e=>{ CP.cur=e.target.value; CP.curAt=Date.now(); cpStore(); crRender(); };
 $("btnCrStop").onclick=crClose;
 $("btnCrMeSave").onclick=()=>{
