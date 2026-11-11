@@ -52,18 +52,35 @@ def find_collection():
     sys.exit("no Anki collection found; pass --collection")
 
 
+BACKUP_SECONDS = 20
+
+
 def snapshot(path, tmp):
     """A readable copy of the collection, consistent if Anki isn't writing."""
     dst = os.path.join(tmp, "collection.anki2")
+    # The backup API retries for as long as Anki holds a lock (it did after a
+    # burst of AnkiConnect writes, and the sync hung for 11 minutes). Its
+    # progress callback runs on every retry, so give up there after a while.
+    deadline = time.monotonic() + BACKUP_SECONDS
+
+    def progress(status, remaining, total):
+        if time.monotonic() > deadline:
+            raise TimeoutError("collection stayed locked")
+
+    src = out = None
     try:
         src = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=2)
         out = sqlite3.connect(dst)
-        src.backup(out)
-        src.close()
-        out.close()
+        src.backup(out, progress=progress)
         return dst
-    except sqlite3.OperationalError:
+    except (sqlite3.OperationalError, TimeoutError):
         pass  # locked by Anki: copy the files instead
+    finally:
+        for c in (src, out):
+            if c is not None:
+                c.close()
+    if os.path.exists(dst):
+        os.remove(dst)
     shutil.copy2(path, dst)
     if os.path.exists(path + "-wal"):
         shutil.copy2(path + "-wal", dst + "-wal")
