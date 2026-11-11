@@ -15,6 +15,7 @@ is reachable only through the private gateway.
 | Pronunciation check report | `wkjp/tools/rec-report.py` |
 | Emoji for item pictures | `wkjp/tools/build-emoji.py` → `wkjp/site/emoji.json` |
 | Anki words as known words | `wkjp/tools/anki-sync.py` + `wkjp/tools/systemd/` (on base-station) |
+| Sentence audio for mined Anki cards | `wkjp/tools/sentence-audio.py` + `wkjp/tools/systemd/` (on base-station) |
 | Backups of saved data | `wkjp/tools/wkjp-backup.py` + `wkjp/tools/systemd/` (on base-station) |
 
 ## Backups
@@ -184,6 +185,19 @@ recordings (`rec`). The Anthropic key
     (up to 3,000) and known-word check all use it. The listening Practice
     quiz and Reviews stay WaniKani-only. Settings → Vocabulary says how many
     came from Anki and when.
+- **Sentence audio for mined cards:** words mined with Yomitan go into Anki
+  (note type `Mined`: Word, Reading, Meaning, Sentence, Audio) with word
+  audio only. `wkjp/tools/sentence-audio.py`, from a 5-minute user timer on
+  base-station, reads each new Sentence with VOICEVOX (base-station first,
+  the VM's as backup; voice 2, 四国めたん, as in the app; the はいりません
+  fix applied) and appends the clip to the Audio field through AnkiConnect,
+  so the back plays the word, then the sentence. It changes no fields or
+  templates (a schema change would force a full AnkiWeb sync). Clips are
+  `wkjp_sentence_<hash>.wav`, which also marks a note as done. Anki must be
+  open; otherwise it waits for the next run. Install like the sync:
+  `install -Dm755 wkjp/tools/sentence-audio.py ~/.local/bin/wkjp-sentence-audio`,
+  the units, then `systemctl --user enable --now wkjp-sentence-audio.timer`.
+  `--dry-run` lists what it would read.
 - Talk's prompt lists up to 1,500 known words (above), plus, when
   Settings → "New words in Talk" is above 0% (default 15%), the nearest ~150
   unlearned WaniKani words to draw new words from. The model treats the
