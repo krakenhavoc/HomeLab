@@ -3,18 +3,21 @@
 
 Runs on the machine with Anki desktop (base-station, Flatpak Anki), from a
 systemd user timer (wkjp/tools/systemd/). It reads the collection without
-touching it, collects the notes in the deck (default "Kaishi 1.5k") that have
-at least one card past "new" (learning, review or relearning), and PUTs them
-to wkjp's /anki/known.json, but only when the list changed.
+touching it and PUTs wkjp's /anki/known.json, but only when it changed:
 
-    wkjp-anki-sync [--deck NAME] [--study-deck NAME] [--collection PATH]
+  - known words: every note, in any deck, with a Word field and at least one
+    card past "new" (learning, review or relearning). The main deck
+    (default "Kaishi 1.5k") comes first and gives the progress shown on
+    Today ("254 of 1501 started").
+  - words in progress: the study decks (default "GENKI,Post-1.5k": the
+    textbook chapters the tutor assigns and the words mined with Yomitan;
+    missing ones are skipped). Every note in them that's been started but
+    isn't mature yet (some card under 21 days' interval; new and suspended
+    ones not) is one wkjp works into Talk, stories and drills; a new card
+    joins once it's been started, and mature ones are known.
+
+    wkjp-anki-sync [--deck NAME] [--study-deck NAMES] [--collection PATH]
                    [--url URL] [--dry-run]
-
-A second, study deck (default "GENKI", the textbook chapters the tutor
-assigns; skipped if it doesn't exist) is read too: every note in it that
-isn't mature yet (some card under 21 days' interval, new ones included,
-suspended ones not) is a word the learner is working on, which wkjp works
-into Talk, stories and drills; mature ones join the known words.
 
 Anki holds its collection with an exclusive lock while it's open, so the
 script first tries SQLite's backup API (a consistent snapshot) and, if the
@@ -160,7 +163,7 @@ def read_study(db_path, deck):
             where c.did in ({q}) and c.queue >= 0 group by n.id""",
         ids,
     ).fetchall()
-    cache, mature, started, new, seen = {}, [], [], [], set()
+    cache, mature, started, seen = {}, [], [], set()
     for nid, mid, flds, ivl, typ, mod in rows:
         w = word_of(flds, field_ords(db, mid, cache))
         if not w or w["c"] in seen:
@@ -170,13 +173,27 @@ def read_study(db_path, deck):
             mature.append(w)
         elif typ > 0:
             started.append((mod, w))
-        else:
-            new.append((nid, w))
+        # not started yet: neither known nor in progress until it's been seen
     db.close()
-    working = [w for _, w in sorted(started, key=lambda x: -x[0])] + [
-        w for _, w in sorted(new)
-    ]
+    working = [w for _, w in sorted(started, key=lambda x: -x[0])]
     return len(rows), mature, working
+
+
+def read_started(db_path):
+    """Every started note with a Word field, in any deck, newest studied first."""
+    db = open_db(db_path)
+    rows = db.execute(
+        """select n.mid, n.flds, max(c.mod) from cards c join notes n on n.id = c.nid
+           where c.type > 0 group by n.id order by max(c.mod) desc"""
+    ).fetchall()
+    cache, words, seen = {}, [], set()
+    for mid, flds, _ in rows:
+        w = word_of(flds, field_ords(db, mid, cache))
+        if w and w["c"] not in seen:
+            seen.add(w["c"])
+            words.append(w)
+    db.close()
+    return words
 
 
 def read_words(db_path, deck):
@@ -240,8 +257,8 @@ def main():
     ap.add_argument("--deck", default="Kaishi 1.5k")
     ap.add_argument(
         "--study-deck",
-        default="GENKI",
-        help="the textbook deck whose unfinished words wkjp should practise ('' for none)",
+        default="GENKI,Post-1.5k",
+        help="comma-separated decks whose unfinished words wkjp should practise ('' for none)",
     )
     ap.add_argument("--collection")
     ap.add_argument("--url", default="https://wkjp.labxp.io/anki/known.json")
@@ -253,21 +270,40 @@ def main():
     with tempfile.TemporaryDirectory(prefix="wkjp-anki-") as tmp:
         snap = snapshot(path, tmp)
         total, words = read_words(snap, a.deck)
-        study = read_study(snap, a.study_deck) if a.study_deck else None
+        everywhere = read_started(snap)
+        names = [d.strip() for d in (a.study_deck or "").split(",") if d.strip()]
+        found = [(d, read_study(snap, d)) for d in names]
+    found = [(d, r) for d, r in found if r]
+    study = None
+    if found:
+        mature, working, seen = [], [], set()
+        for _, (_, m, w) in found:
+            mature += m
+            for x in w:
+                if x["c"] not in seen:
+                    seen.add(x["c"])
+                    working.append(x)
+        study = (sum(r[0] for _, r in found), mature, working)
+    # the main deck's words first, then what's been started anywhere else
+    have = {w["c"] for w in words}
+    known = words + [
+        w for w in everywhere if w["c"] not in have and not have.add(w["c"])
+    ]
     doc = {
         "v": 1,
         "deck": a.deck,
         "total": total,
         "started": len(words),
-        "words": words,
+        "words": known,
     }
     if study:
         s_total, mature, working = study
-        have = {w["c"] for w in words}
         # mature study words are known words too
-        doc["words"] = words + [w for w in mature if w["c"] not in have]
+        doc["words"] = known + [
+            w for w in mature if w["c"] not in have and not have.add(w["c"])
+        ]
         doc["study"] = {
-            "deck": a.study_deck,
+            "deck": ", ".join(d for d, _ in found),
             "total": s_total,
             "mature": len(mature),
             "working": working,
@@ -275,10 +311,12 @@ def main():
     digest = hashlib.sha256(
         json.dumps(doc, ensure_ascii=False, sort_keys=True).encode()
     ).hexdigest()
-    print(f"{a.deck}: {len(words)} of {total} started")
+    print(
+        f"{a.deck}: {len(words)} of {total} started; {len(doc['words'])} known words in all"
+    )
     if study:
         print(
-            f"{a.study_deck}: {len(study[2])} working on, {len(study[1])} mature, of {study[0]}"
+            f"{doc['study']['deck']}: {len(study[2])} working on, {len(study[1])} mature, of {study[0]}"
         )
     if a.dry_run:
         print(json.dumps(words[:5], ensure_ascii=False))

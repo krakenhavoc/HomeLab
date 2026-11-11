@@ -179,11 +179,16 @@ recordings (`rec`). The Anthropic key
     `install -Dm644 -t ~/.config/systemd/user wkjp/tools/systemd/*`, then
     `systemctl --user daemon-reload && systemctl --user enable --now
     wkjp-anki-sync.timer`. `wkjp-anki-sync --dry-run` shows what it found.
-  - **Study deck:** the sync also reads a textbook deck (`--study-deck`,
-    default `GENKI`, for the chapters the tutor assigns; skipped if it
-    doesn't exist). Its notes that aren't mature yet (a card under 21 days,
-    new ones included, suspended ones not) go to wkjp as `study.working`,
-    started first; mature ones join the known words. Talk works one or two
+  - **All decks:** known words are every note started in any deck whose
+    note type has a Word field (Kaishi's first, as it also gives Today's
+    progress), not only Kaishi.
+  - **Study decks:** the sync also reads study decks (`--study-deck`,
+    default `GENKI,Post-1.5k`: the chapters the tutor assigns and the
+    words mined with Yomitan; missing ones are skipped). Their notes that
+    have been started but aren't mature yet (a card under 21 days; new and
+    suspended ones not) go to wkjp as `study.working`, most recently
+    studied first; a new card joins once it's started, and mature ones
+    join the known words. Talk works one or two
     into most replies and asks questions that invite them, stories use
     several (outside the new-word share), and course drills put them in
     the lines and answers. Today shows how many are in progress.
