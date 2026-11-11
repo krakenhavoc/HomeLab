@@ -1904,12 +1904,18 @@ async function ankiLoad(){
     if(!r.ok) return;
     const d=await r.json();
     if(!d||!Array.isArray(d.words)) return;
-    ANKI={deck:String(d.deck||"Anki"),at:d.at||"",total:+d.total||0,
-      words:d.words.filter(w=>w&&typeof w.c==="string"&&w.c).map(w=>({c:w.c,r:String(w.r||""),m:String(w.m||"")}))};
+    const ws=a=>(Array.isArray(a)?a:[]).filter(w=>w&&typeof w.c==="string"&&w.c).map(w=>({c:w.c,r:String(w.r||""),m:String(w.m||"")}));
+    const st=d.study&&typeof d.study==="object"?d.study:null;
+    ANKI={deck:String(d.deck||"Anki"),at:d.at||"",total:+d.total||0,words:ws(d.words),
+      study:st?{deck:String(st.deck||"Study"),total:+st.total||0,mature:+st.mature||0,working:ws(st.working)}:null};
     store("wkl_anki",ANKI);
     updateChips();
   }catch(e){}
 }
+// Words the learner is working on now: the textbook deck's (GENKI) notes not
+// mature yet, started ones first. Talk, stories and drills work them in.
+const workingWords=(n=80)=>ANKI&&ANKI.study?ANKI.study.working.slice(0,n).map(w=>w.c):[];
+const workingLine=what=>{ const w=workingWords(); return w.length?`Words the learner is working on right now (their textbook's current chapters): ${w.join("、")}. ${what}`:""; };
 // Everything the learner knows: WaniKani words (newest level first), then the
 // Anki ones WaniKani doesn't have (most recently studied first).
 function knownWords(){
@@ -1933,7 +1939,8 @@ function updateChips(){
   chip.textContent=`Lv ${DATA.user.level} · ${words.length} words · ${sentences.length}/${CORPUS.length} sentences`;
   note.textContent=`Pool: ${words.length} learned words, ${sentences.length} of ${CORPUS.length} sentences unlocked. Sentences unlock as you learn the vocab in them.`;
   dn.textContent=`Signed in as ${DATA.user.name} · data refreshed ${new Date(DATA.ts).toLocaleString()}`+
-    (ANKI?` · ${ANKI.words.length} words from Anki (${ANKI.deck}${ANKI.total?`, of ${ANKI.total}`:""})${ANKI.at?`, sent ${new Date(ANKI.at).toLocaleString()}`:""}, used as known words in Talk and the dictionary`:"");
+    (ANKI?` · ${ANKI.words.length} words from Anki (${ANKI.deck}${ANKI.total?`, of ${ANKI.total}`:""})${ANKI.at?`, sent ${new Date(ANKI.at).toLocaleString()}`:""}, used as known words in Talk and the dictionary`:"")+
+    (ANKI&&ANKI.study?` · ${ANKI.study.working.length} words in progress in ${ANKI.study.deck}, worked into Talk, stories and course drills`:"");
 }
 
 /* ---------- stats ---------- */
@@ -2360,7 +2367,8 @@ function talkSystem(){
     "Plain text only, no markdown, no readings in parentheses.",
     pct
       ?`Build replies mostly from the learner's known words below, but make about ${pct}% of your words new ones they haven't learned. Take new words from "New words" when one fits naturally; otherwise use a common everyday word. Write new words normally, kanji included: the app shows their reading. Any other kanji word they don't know: write it in hiragana.`
-      :"Use only the learner's known words below. Write any kanji word they don't know in hiragana.",
+      :"Use only the learner's known words below (and the words they're working on). Write any kanji word they don't know in hiragana.",
+    workingLine("Use one or two of these in most replies where they fit, and now and then ask a question that invites the learner to use one. Write them normally: the app shows readings."),
     "If the learner writes English or romaji, just carry on the conversation in Japanese.",
     crAboutLine(crAll().me),
     "english: an English translation of your reply, and nothing else: corrections of the learner's Japanese are handled separately.",
@@ -4966,6 +4974,7 @@ async function renderToday(){
   rows.push(["会話",`Scene of the day: <b lang="ja">${esc(sc.ja)}</b> ${esc(sc.en)}`,
     `<button class="btn small" data-go="scene">Play</button>`+(canRecord?`<button class="btn small" data-go="live">🗣 Live</button>`:"")]);
   if(ANKI) rows.push(["Anki",`<b>${esc(ANKI.deck)}</b>: ${ANKI.words.length}${ANKI.total?` of ${ANKI.total}`:""} words started`+
+    (ANKI.study?`. <b>${esc(ANKI.study.deck)}</b>: ${plural(ANKI.study.working.length,"word")} in progress, ${ANKI.study.mature} mature`:"")+
     (ANKI.at?`, synced ${esc(tdWhen(ANKI.at))}`:""),""]);
   $("tdRows").innerHTML=rows.map(([k,t,a])=>`<div class="tdRow"><span class="k" lang="ja">${k}</span><span class="t">${t}</span><span class="acts">${a}</span></div>`).join("");
   // the next thing to do
@@ -5369,6 +5378,7 @@ function crDrillSystem(u,me,review){
     "start: the first word or two of answer, as a hint.",
     "point: the grammar point or phrase pattern the answer practises, written like 〜をください.",
     "Vary the situations and go from easier to harder; keep the replies to what a beginner can say. When a cue is about the learner, use About the learner; if it doesn't say, pick something ordinary.",
+    workingLine("Use some of them in the partner's lines and the answers where they fit the situation."),
     known.length?"Words the learner knows (use them in answers where you can): "+known.join("、"):""
   ].filter(Boolean).join("\n");
 }
@@ -5676,6 +5686,7 @@ function storySystem(o){
       :"Vocabulary: use only the learner's known words below, plus particles and the most basic everyday words.",
     "Write known words in kanji as they appear in the list, and new words in their normal spelling (the app shows readings on hover). Any other word whose kanji the learner doesn't know: write it in hiragana. No readings in parentheses, no romaji.",
     ...stGrammarLines(),
+    workingLine("Use several of them; they don't count toward the new-word share."),
     "title: a short Japanese title; title_en its English.",
     "paragraphs: ja is the paragraph in Japanese, en its natural English translation.",
     "new_words: every word in the story that isn't in the known list (skip particles and endings), as written in the story, with its reading in hiragana and a short English meaning.",
