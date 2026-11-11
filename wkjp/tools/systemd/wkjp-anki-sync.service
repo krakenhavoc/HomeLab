@@ -7,3 +7,6 @@ After=network-online.target
 [Service]
 Type=oneshot
 ExecStart=%h/.local/bin/wkjp-anki-sync
+# a stuck run blocks every later one: the timer starts the next run only
+# after this one ends
+TimeoutStartSec=5min

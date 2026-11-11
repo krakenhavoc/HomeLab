@@ -6,3 +6,4 @@ Description=Add sentence audio to mined Anki cards
 [Service]
 Type=oneshot
 ExecStart=%h/.local/bin/wkjp-sentence-audio
+TimeoutStartSec=10min
