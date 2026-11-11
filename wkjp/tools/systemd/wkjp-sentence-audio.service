@@ -1,0 +1,8 @@
+# Adds VOICEVOX sentence audio to Anki cards mined with Yomitan (note type
+# "Mined"). A user unit on the machine with Anki desktop; see wkjp/README.md.
+[Unit]
+Description=Add sentence audio to mined Anki cards
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/wkjp-sentence-audio
