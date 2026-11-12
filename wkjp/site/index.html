@@ -358,6 +358,7 @@
   #wrRes .good{color:var(--green);} #wrRes .close{color:var(--amber);} #wrRes .wrong{color:var(--red);}
   #wrRes ul{margin:6px 0 0 1.2em;} #wrRes li{margin:4px 0;}
   #wrRes .why{color:var(--muted); font-size:.86rem;}
+  #wrRes button.say{background:none; border:none; cursor:pointer; font-size:.95rem; padding:0 4px;}
   #wrDiary{margin-top:14px; font-size:.9rem;} #wrDiary summary{cursor:pointer; font-weight:700;}
   #wrDiaryList{margin:8px 0 0 1.2em;} #wrDiaryList li{margin:8px 0;} #wrDiaryList [lang=ja]{font-family:var(--mincho);}
   .crGenki{margin-top:12px; border-top:1px solid var(--line); padding-top:12px;}
@@ -903,7 +904,7 @@
         <label for="wrInput" class="sr">your answer</label>
         <textarea id="wrInput" lang="ja" rows="3" placeholder="日本語で書いてください…" autocomplete="off" spellcheck="false"></textarea>
         <div class="wrActs">
-          <button class="btn small" id="btnWrHint">💡 Hint</button><button class="btn small" id="btnWrEn">EN</button>
+          <button class="btn small" id="btnWrPlay" title="hear the question">🔊</button><button class="btn small" id="btnWrSlow" title="hear it slowly">🐢</button><button class="btn small" id="btnWrHint">💡 Hint</button><button class="btn small" id="btnWrEn">EN</button>
           <span class="grow"></span><span class="kbdx">Ctrl+Enter</span>
           <button class="btn primary" id="btnWrCheck">Check</button><button class="btn" id="btnWrNext">Next ▸</button>
         </div>
@@ -5996,6 +5997,8 @@ function wrShow(){
   $("wrQ").textContent=it.q; $("wrQ").lang=tr?"en":"ja";
   $("wrQen").textContent=it.q_en; $("wrQen").classList.add("hidden");
   $("btnWrEn").classList.toggle("hidden",tr);
+  // a Japanese question can be heard; a sentence to translate is English
+  $("btnWrPlay").classList.toggle("hidden",tr); $("btnWrSlow").classList.toggle("hidden",tr);
   $("wrTask").textContent=it.task||"";
   $("wrPoint").innerHTML=it.point?`<span>Use:</span><span class="g" lang="ja">${esc(it.point)}</span>`:"";
   $("wrInput").value=it.said||""; $("wrInput").rows=w.src==="diary"?7:3;
@@ -6033,14 +6036,15 @@ async function wrCheck(){
   const head={good:it.hint?"✓ Good, with a hint.":"✓ Good!",close:"✏️ Close.",wrong:"✗ Not quite."}[v];
   const changed=(out.corrected||"").trim()&&out.corrected.trim()!==text;
   $("wrRes").innerHTML=`<div class="v ${v}">${head}</div>`+
-    (changed?`<div class="wrFix"><span class="k">corrected</span><b lang="ja">${esc(out.corrected.trim())}</b></div>`:"")+
+    (changed?`<div class="wrFix"><span class="k">corrected</span><b lang="ja">${esc(out.corrected.trim())}</b>${wrSay(out.corrected.trim())}</div>`:"")+
     ((out.fixes||[]).length?`<ul>${out.fixes.map(f=>`<li><span lang="ja">${esc(f.yours)}</span> → <b lang="ja">${esc(f.better)}</b><div class="why">${esc(f.why)}</div></li>`).join("")}</ul>`:"")+
     (out.good?`<div class="why">👍 ${esc(out.good)}</div>`:"")+
-    ((out.natural||"").trim()&&out.natural.trim()!==(out.corrected||"").trim()?`<div class="wrFix"><span class="k">natural</span><span lang="ja">${esc(out.natural.trim())}</span></div>`:"")+
-    `<div class="wrFix"><span class="k">model</span><span lang="ja">${esc(it.model)}</span></div>`;
+    ((out.natural||"").trim()&&out.natural.trim()!==(out.corrected||"").trim()?`<div class="wrFix"><span class="k">natural</span><span lang="ja">${esc(out.natural.trim())}</span>${wrSay(out.natural.trim())}</div>`:"")+
+    `<div class="wrFix"><span class="k">model</span><span lang="ja">${esc(it.model)}</span>${wrSay(it.model)}</div>`;
   glossAll($("wrRes"));
   if(w.src==="diary") wrSaveDiary(it,text,out);
 }
+const wrSay=t=>t?` <button class="say" data-say="${esc(t)}" title="hear it" aria-label="hear it">🔊</button>`:"";
 function wrNext(){ if(!WR) return; WR.i++; wrShow(); }
 function wrEnd(){
   const w=WR,done=w.items.filter(x=>x.res),good=done.filter(x=>x.res.v==="good").length;
@@ -6075,6 +6079,10 @@ function wrInit(){
   $("btnWrNext").onclick=wrNext;
   $("btnWrHint").onclick=wrHint;
   $("btnWrEn").onclick=()=>$("wrQen").classList.toggle("hidden");
+  const wrQText=()=>WR&&WR.items[WR.i]?WR.items[WR.i].q:"";
+  $("btnWrPlay").onclick=()=>{ unlockAudio(); speakText(wrQText(),false); };
+  $("btnWrSlow").onclick=()=>{ unlockAudio(); speakText(wrQText(),true); };
+  $("wrRes").addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b){ unlockAudio(); speakText(b.dataset.say,false); } });
   $("wrInput").addEventListener("keydown",e=>{
     if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!e.isComposing){ e.preventDefault(); if(WR&&WR.items[WR.i]&&WR.items[WR.i].res&&!$("wrInput").value.trim()) wrNext(); else wrCheck(); }
   });
