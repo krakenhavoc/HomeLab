@@ -436,7 +436,9 @@ recordings (`rec`). The Anthropic key
   (its grammar and the chapter words started in Anki), the current **course
   unit**, **Translate** (English sentences to write in Japanese), and a
   **Diary** prompt (3-5 sentences about your day, using About me). Type an
-  answer; Check (Ctrl+Enter) returns a verdict, the corrected answer, up to
+  answer; 🔊 / 🐢 read a Japanese question aloud (normally or slowly),
+  and the corrected, natural and model answers each have a 🔊. Check
+  (Ctrl+Enter) returns a verdict, the corrected answer, up to
   3 fixes (into the mistake notebook), what went well, a more natural
   version and a model answer. 💡 shows the grammar to use, then how a model
   answer starts. Diary entries are kept in this browser (`wkl_diary`).
