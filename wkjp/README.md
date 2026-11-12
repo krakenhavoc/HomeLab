@@ -427,6 +427,20 @@ recordings (`rec`). The Anthropic key
     score from any browser; About me and the chosen unit from whichever
     changed last.
   - Time in a course step counts as **Course** in the practice-time log.
+- **話す Speak** holds two modes, picked at the top: **会話 Conversation**
+  (Talk) and **発音 Pronunciation** (the pronunciation check and the
+  type-and-listen box, which used to be their own tab). The tab stays lit in
+  both; the pronunciation view still runs as `tabSpeak`, without a button.
+- **書く Writing:** workbook-style practice, all generated (never text from
+  a textbook: the repo is public). Sources: the current **GENKI chapter**
+  (its grammar and the chapter words started in Anki), the current **course
+  unit**, **Translate** (English sentences to write in Japanese), and a
+  **Diary** prompt (3-5 sentences about your day, using About me). Type an
+  answer; Check (Ctrl+Enter) returns a verdict, the corrected answer, up to
+  3 fixes (into the mistake notebook), what went well, a more natural
+  version and a model answer. 💡 shows the grammar to use, then how a model
+  answer starts. Diary entries are kept in this browser (`wkl_diary`).
+  Writing time counts as output, and each Japanese sentence checked counts.
 - The 辞書 Dictionary tab is a Japanese-Japanese dictionary written, as far
   as it can be, in words the learner already knows:
   - **Writing:** the Talk model (Settings → Conversation partner; Claude,

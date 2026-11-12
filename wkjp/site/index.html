@@ -235,9 +235,9 @@
   .fix{align-self:flex-end; max-width:85%; background:#3a2d17; border:1px solid #6b5220; color:#ffd78a; font-size:.85rem; padding:8px 10px; border-radius:10px;}
   .fix .why{color:var(--muted); font-size:.78rem; margin-top:2px;}
   #talkInput{font-size:1rem;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w{border-radius:3px; cursor:help;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w:hover,:is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w.on{background:#33407a;}
-  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard) .w.new{border-bottom:1px dotted var(--soft);}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard,#wrCard) .w{border-radius:3px; cursor:help;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard,#wrCard) .w:hover,:is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard,#wrCard) .w.on{background:#33407a;}
+  :is(.msg,#talkLog .hint,#talkLog .fix,#crCard,#stCard,#wrCard) .w.new{border-bottom:1px dotted var(--soft);}
   #glossTip{position:fixed; z-index:50; max-width:260px; background:var(--card); border:1px solid var(--line);
     border-radius:8px; padding:6px 10px; font-size:.85rem; line-height:1.4; pointer-events:none; box-shadow:0 4px 14px #0008;}
   #glossTip .r{color:var(--muted); font-size:.78rem;}
@@ -338,6 +338,28 @@
   #stWords .r{color:var(--muted);} #stWords .m{color:var(--muted); font-size:.86rem;}
   #stQs .ans{margin-top:4px;}
   /* Course: units of three steps */
+  .modeBar{margin-bottom:12px;}
+  .modeBar button{flex:1;}
+  .wrHead{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px;}
+  .wrHead h2{margin:0;}
+  .wrHead .note{margin:0;}
+  .wrPrompt{background:var(--card2); border-radius:12px; padding:12px 14px; margin:4px 0 10px;}
+  .wrQ{font-size:1.2rem; line-height:1.7;}
+  .wrQ:lang(ja){font-family:var(--mincho);}
+  .wrTask{font-size:.9rem; color:var(--muted); margin-top:4px;}
+  #wrInput{font-size:1.1rem;}
+  .wrActs{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px;}
+  .wrActs .grow{flex:1;}
+  .kbdx{font-size:.72rem; color:var(--muted);}
+  #wrHint > div, #wrRes > div{margin-top:8px; font-size:.92rem;}
+  #wrHint .k, #wrRes .k{font-size:.72rem; color:var(--muted); border:1px solid var(--line); border-radius:5px; padding:0 5px; margin-right:6px;}
+  #wrHint b, #wrRes b, .wrFix [lang=ja]{font-family:var(--mincho); font-size:1.05rem;}
+  #wrRes .v{font-weight:700;}
+  #wrRes .good{color:var(--green);} #wrRes .close{color:var(--amber);} #wrRes .wrong{color:var(--red);}
+  #wrRes ul{margin:6px 0 0 1.2em;} #wrRes li{margin:4px 0;}
+  #wrRes .why{color:var(--muted); font-size:.86rem;}
+  #wrDiary{margin-top:14px; font-size:.9rem;} #wrDiary summary{cursor:pointer; font-weight:700;}
+  #wrDiaryList{margin:8px 0 0 1.2em;} #wrDiaryList li{margin:8px 0;} #wrDiaryList [lang=ja]{font-family:var(--mincho);}
   .crGenki{margin-top:12px; border-top:1px solid var(--line); padding-top:12px;}
   .crGHead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:.9rem;}
   .crGHead b{font-family:var(--mincho); font-size:1.1rem;}
@@ -625,8 +647,9 @@
     <button id="tabPractice" title="練習 (れんしゅう)"><span class="tabJa" lang="ja">練習</span><span class="tabEn">Practice</span></button>
     <button id="tabLessons" title="学習 (がくしゅう)"><span class="tabJa" lang="ja">学習</span><span class="tabEn">Lessons</span></button>
     <button id="tabReviews" title="復習 (ふくしゅう)"><span class="tabJa" lang="ja">復習</span><span class="tabEn">Reviews</span></button>
-    <button id="tabSpeak" title="話す (はなす)"><span class="tabJa" lang="ja">話す</span><span class="tabEn">Speak</span></button>
-    <button id="tabTalk" title="会話 (かいわ)"><span class="tabJa" lang="ja">会話</span><span class="tabEn">Talk</span></button>
+    <button id="tabSpeak" class="hidden" tabindex="-1" aria-hidden="true">発音</button>
+    <button id="tabTalk" title="話す (はなす): conversation and pronunciation"><span class="tabJa" lang="ja">話す</span><span class="tabEn">Speak</span></button>
+    <button id="tabWrite" title="書く (かく): writing practice"><span class="tabJa" lang="ja">書く</span><span class="tabEn">Write</span></button>
     <button id="tabDict" title="辞書 (じしょ)"><span class="tabJa" lang="ja">辞書</span><span class="tabEn">Dictionary</span></button>
     <button id="tabStats" title="統計 (とうけい)"><span class="tabJa" lang="ja">統計</span><span class="tabEn">Stats</span></button>
     <button id="tabSettings" title="設定 (せってい)"><span class="tabJa" lang="ja">設定</span><span class="tabEn">Settings</span></button>
@@ -862,6 +885,35 @@
   </main>
 
   <!-- ============ DICTIONARY VIEW ============ -->
+  <main id="viewWrite" class="hidden">
+    <section class="card" id="wrCard">
+      <div class="wrHead"><h2><span lang="ja">書く</span> Writing</h2><span class="note">type your answers in Japanese and get them back corrected</span></div>
+      <div class="seg" id="wrSrc"><button data-v="genki">GENKI chapter</button><button data-v="course">Course unit</button><button data-v="translate">Translate</button><button data-v="diary">Diary</button></div>
+      <p class="note" id="wrAbout"></p>
+      <div class="row" style="margin-top:10px;"><button class="btn primary" id="btnWrNew">New questions ▸</button></div>
+      <div class="err hidden" id="wrErr"></div>
+      <div id="wrRun" class="hidden">
+        <div class="crTop"><span id="wrProg"></span></div>
+        <div class="wrPrompt">
+          <div class="wrQ" id="wrQ" lang="ja"></div>
+          <div class="note hidden" id="wrQen"></div>
+          <div class="wrTask" id="wrTask"></div>
+          <div class="crGram" id="wrPoint"></div>
+        </div>
+        <label for="wrInput" class="sr">your answer</label>
+        <textarea id="wrInput" lang="ja" rows="3" placeholder="日本語で書いてください…" autocomplete="off" spellcheck="false"></textarea>
+        <div class="wrActs">
+          <button class="btn small" id="btnWrHint">💡 Hint</button><button class="btn small" id="btnWrEn">EN</button>
+          <span class="grow"></span><span class="kbdx">Ctrl+Enter</span>
+          <button class="btn primary" id="btnWrCheck">Check</button><button class="btn" id="btnWrNext">Next ▸</button>
+        </div>
+        <div id="wrHint"></div>
+        <div id="wrRes"></div>
+      </div>
+      <details id="wrDiary" class="hidden"><summary>Past diary entries</summary><ul id="wrDiaryList"></ul></details>
+    </section>
+  </main>
+
   <main id="viewDict" class="hidden">
     <section class="card">
       <h2>辞書 <span style="color:var(--muted); font-weight:500;">Japanese dictionary in words you know</span></h2>
@@ -977,6 +1029,7 @@
 
   <!-- ============ SPEAK VIEW ============ -->
   <main id="viewSpeak" class="hidden">
+    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" aria-selected="false"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" class="on" aria-selected="true"><span lang="ja">発音</span> Pronunciation</button></div>
     <section class="card" id="pcCard">
       <h2>Pronunciation check</h2>
       <div id="pcSetup">
@@ -1035,6 +1088,7 @@
 
   <!-- ============ TALK VIEW ============ -->
   <main id="viewTalk" class="hidden">
+    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" class="on" aria-selected="true"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" aria-selected="false"><span lang="ja">発音</span> Pronunciation</button></div>
     <section class="card" id="talkCard">
       <div class="talkHead">
         <h2>Talk</h2>
@@ -4598,14 +4652,14 @@ function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 // 2 minutes, or the mic is open or audio is playing (hands-free Reviews, Live).
 // Each browser keeps its own file on the wkjp server (stats/time-<id>.json),
 // so devices never overwrite each other; the Stats tab adds them up.
-const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewDict:"dictionary"};
-const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice & stories",
+const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewWrite:"write",viewDict:"dictionary"};
+const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Pronunciation",write:"Writing",dictionary:"Dictionary",practice:"Practice & stories",
   tutor:"Speaking & writing (outside)",input:"Input (outside)",srs:"Anki & Bunpro"};
 // what each kind of time is for: output is producing Japanese (speaking, or writing in Talk)
-const TIME_GROUP={talk:"output",speak:"output",course:"output",tutor:"output",practice:"input",input:"input",
+const TIME_GROUP={talk:"output",speak:"output",write:"output",course:"output",tutor:"output",practice:"input",input:"input",
   reviews:"study",lessons:"study",dictionary:"study",srs:"study"};
 const GROUP_NAME={output:"Output",input:"Input",study:"Study"};
-const GROUP_WHAT={output:"Talk, Speak, course steps, tutor, writing",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
+const GROUP_WHAT={output:"Talk, pronunciation, Writing, course steps, tutor, writing outside",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
 const groupSec=(o,g)=>Object.entries(o||{}).reduce((a,[k,v])=>a+(TIME_GROUP[k]===g?+v||0:0),0);
 const TIME_TICK=15,TIME_IDLE=120000;
 let DEVICE=load("wkl_device","");
@@ -5850,8 +5904,191 @@ function stInit(){
   stRecentUI();
 }
 
+/* ---------- 書く Writing ---------- */
+// Workbook-style writing practice, all generated (never text from a
+// textbook: the repo is public): questions on the current GENKI chapter or
+// course unit, English sentences to put into Japanese, or a diary prompt.
+// The learner types an answer; the model returns a corrected version, the
+// fixes (which go to the mistake notebook) and what went well.
+let WR=null,wrSeq=0;
+const WR_SRC={genki:"GENKI chapter",course:"Course unit",translate:"Translate",diary:"Diary"};
+const WRITE_SCHEMA={type:"object",additionalProperties:false,required:["items"],properties:{items:{type:"array",items:{type:"object",additionalProperties:false,
+  required:["q","q_en","task","point","model"],properties:{q:str,q_en:str,task:str,point:str,model:str}}}}};
+const WR_CHECK_SCHEMA={type:"object",additionalProperties:false,required:["verdict","corrected","fixes","good","natural"],properties:{
+  verdict:{type:"string",enum:["good","close","wrong"]},corrected:str,good:str,natural:str,
+  fixes:{type:"array",items:{type:"object",additionalProperties:false,required:["yours","better","why"],properties:{yours:str,better:str,why:str}}}}};
+// what the questions are about: the GENKI chapter or course unit picked elsewhere
+function wrTopic(src){
+  if(src==="course"){ const a=crAll(),u=crCurrent(a)||crUnits()[0]; return u?{u,label:`${crLabel(u)}: ${u.ja} (${u.en})`}:null; }
+  const u=crUnit(S.genkiCh)||(GENKI||[])[0];
+  return u?{u,label:`${crLabel(u)}: ${u.ja} (${u.en})`}:null;
+}
+function wrAbout(){
+  const src=S.wrSrc||"genki",t=wrTopic(src);
+  $("wrAbout").textContent={
+    genki:t?`Questions on ${t.label}, using its grammar and the words you've started. Change the chapter on Today's course card.`:"No GENKI chapters loaded.",
+    course:t?`Questions on ${t.label}.`:"No course loaded.",
+    translate:`English sentences to write in Japanese, at your level${t&&src!=="course"?`, with ${t.label}'s grammar`:""}.`,
+    diary:"One question about your day or life. Write 3 to 5 sentences; you'll get them back corrected."}[src];
+}
+function wrSystem(src){
+  const t=wrTopic(src),u=t&&t.u,me=crAll().me,known=knownWords().slice(0,800);
+  const words=u&&u.genki?crChapterWords(u):workingWords(40);
+  const what={
+    genki:"5 questions in Japanese, workbook-style, that the learner answers in writing in one or two sentences, each needing one of the chapter's grammar points.",
+    course:"5 questions in Japanese about this situation that the learner answers in writing in one or two sentences, using the unit's grammar or phrases.",
+    translate:"5 short English sentences for the learner to write in Japanese (q is the English sentence; q_en repeats it), each using one of the grammar points, about everyday life and travel.",
+    diary:"1 diary prompt: a question in Japanese about the learner's day, week, plans or life (use About the learner) that invites 3 to 5 sentences; task says what to cover."}[src];
+  return [
+    `You write written-answer practice for a Japanese learner at WaniKani level ${wkLevel()} who studies with a tutor using GENKI I and is going to Japan.`,
+    "Write everything fresh: never quote a textbook's questions, dialogues or exercises.",
+    u?`Topic: ${t.label}. ${u.focus}`:"",
+    u?`Grammar to practise: ${u.grammar.join("、")}.`:"",
+    words.length?`Words they're working on (use them): ${words.join("、")}`:"",
+    crAboutLine(me),
+    `Write ${what}`,
+    "q: the question (or, for translation, the English sentence). q_en: its English. Simple, natural, polite Japanese; kanji only for common words.",
+    "task: one short English instruction, e.g. \"Answer in two sentences using 〜ました and 〜時間.\"",
+    "point: the grammar point the answer should use, written like 〜ました (empty for a diary if none).",
+    "model: one natural model answer the learner could write.",
+    known.length?"Words the learner knows: "+known.join("、"):""
+  ].filter(Boolean).join("\n");
+}
+function wrCheckSystem(it,src){
+  return [
+    "You correct a Japanese learner's written answer. You do not chat.",
+    src==="translate"?`They were asked to write this in Japanese: "${it.q}"`:`The question: 「${it.q}」 (${it.q_en}). Task: ${it.task}`,
+    it.point?`The grammar to use: ${it.point}.`:"",
+    `A model answer: 「${it.model}」`,
+    'verdict: "good" if it answers the task in correct, natural Japanese (wording other than the model is fine); "close" if it is understandable but has mistakes; "wrong" if it does not answer the task or cannot be understood.',
+    "corrected: their whole answer with only the mistakes fixed, keeping their wording; the same text if it was right.",
+    "fixes: up to 3 of the most useful fixes, each with yours (their words), better (the fix) and why (one short English line). Empty if none.",
+    "good: one short English line on what they did well, naming the target grammar if they used it correctly.",
+    "natural: a more natural way a Japanese person might write it, if it differs from corrected; otherwise empty."
+  ].filter(Boolean).join("\n");
+}
+async function wrStart(){
+  const src=S.wrSrc||"genki",my=++wrSeq,btn=$("btnWrNew");
+  await crLoad();
+  btn.disabled=true; btn.textContent="Writing questions…";
+  $("wrErr").classList.add("hidden");
+  try{
+    const {out}=await talkLLM("reply",wrSystem(src),[{role:"user",content:"Write them."}],WRITE_SCHEMA,0.8);
+    if(my!==wrSeq) return;
+    const items=(out.items||[]).filter(x=>x&&x.q).slice(0,src==="diary"?1:6);
+    if(!items.length) throw new Error("no questions came back");
+    WR={src,items:items.map(x=>({...x,hint:0,said:"",res:null})),i:0};
+    $("wrRun").classList.remove("hidden");
+    wrShow();
+  }catch(e){
+    if(my!==wrSeq) return;
+    $("wrErr").textContent="⚠ Couldn't write questions: "+(e.message||e)+". Check Settings → Conversation partner.";
+    $("wrErr").classList.remove("hidden");
+  }
+  btn.disabled=false; btn.textContent="New questions ▸";
+}
+function wrShow(){
+  const w=WR;
+  if(!w) return;
+  if(w.i>=w.items.length){ wrEnd(); return; }
+  const it=w.items[w.i],tr=w.src==="translate";
+  $("wrProg").textContent=`${WR_SRC[w.src]} · ${w.i+1} of ${w.items.length}`;
+  $("wrQ").textContent=it.q; $("wrQ").lang=tr?"en":"ja";
+  $("wrQen").textContent=it.q_en; $("wrQen").classList.add("hidden");
+  $("btnWrEn").classList.toggle("hidden",tr);
+  $("wrTask").textContent=it.task||"";
+  $("wrPoint").innerHTML=it.point?`<span>Use:</span><span class="g" lang="ja">${esc(it.point)}</span>`:"";
+  $("wrInput").value=it.said||""; $("wrInput").rows=w.src==="diary"?7:3;
+  $("wrHint").innerHTML=""; $("wrRes").innerHTML="";
+  $("btnWrCheck").disabled=false; $("btnWrNext").textContent=w.i+1<w.items.length?"Next ▸":"Finish ▸";
+  if(!tr) glossLater($("wrQ"),it.q);
+  $("wrInput").focus();
+}
+function wrHint(){
+  const it=WR&&WR.items[WR.i];
+  if(!it||it.hint>=2) return;
+  it.hint++;
+  const start=(it.model||"").slice(0,Math.max(4,Math.ceil((it.model||"").length/4)));
+  $("wrHint").innerHTML=(it.point?`<div><span class="k">use</span><b lang="ja">${esc(it.point)}</b></div>`:"")+
+    (it.hint>=2?`<div><span class="k">starts</span><b lang="ja">${esc(start)}</b>…</div>`:"");
+  glossAll($("wrHint"));
+}
+async function wrCheck(){
+  const w=WR,it=w&&w.items[w.i],text=$("wrInput").value.trim(),at=w&&w.i;
+  if(!it||!text) return;
+  $("btnWrCheck").disabled=true;
+  $("wrRes").innerHTML=`<p class="note">Checking…</p>`;
+  let out;
+  try{ out=(await talkLLM("check",wrCheckSystem(it,w.src),[{role:"user",content:text}],WR_CHECK_SCHEMA,0)).out; }
+  catch(e){ if(WR===w&&w.i===at){ $("wrRes").innerHTML=`<p class="err">⚠ Couldn't check it: ${esc(e.message||e)}</p>`; $("btnWrCheck").disabled=false; } return; }
+  if(WR!==w||w.i!==at) return;
+  $("btnWrCheck").disabled=false;
+  const v=["good","close","wrong"].includes(out.verdict)?out.verdict:"close";
+  const first=!it.res;
+  it.said=text; it.res={v,out};
+  if(first){
+    if(isJa(text)) outLog("said",Math.max(1,text.split(/[。！？!?]+/).filter(s=>s.trim()).length));
+    (out.fixes||[]).forEach(f=>{ if(f.yours&&f.better&&f.yours.trim()!==f.better.trim()) nbAddTalk(f.yours.trim(),f.better.trim(),f.why||""); });
+  }
+  const head={good:it.hint?"✓ Good, with a hint.":"✓ Good!",close:"✏️ Close.",wrong:"✗ Not quite."}[v];
+  const changed=(out.corrected||"").trim()&&out.corrected.trim()!==text;
+  $("wrRes").innerHTML=`<div class="v ${v}">${head}</div>`+
+    (changed?`<div class="wrFix"><span class="k">corrected</span><b lang="ja">${esc(out.corrected.trim())}</b></div>`:"")+
+    ((out.fixes||[]).length?`<ul>${out.fixes.map(f=>`<li><span lang="ja">${esc(f.yours)}</span> → <b lang="ja">${esc(f.better)}</b><div class="why">${esc(f.why)}</div></li>`).join("")}</ul>`:"")+
+    (out.good?`<div class="why">👍 ${esc(out.good)}</div>`:"")+
+    ((out.natural||"").trim()&&out.natural.trim()!==(out.corrected||"").trim()?`<div class="wrFix"><span class="k">natural</span><span lang="ja">${esc(out.natural.trim())}</span></div>`:"")+
+    `<div class="wrFix"><span class="k">model</span><span lang="ja">${esc(it.model)}</span></div>`;
+  glossAll($("wrRes"));
+  if(w.src==="diary") wrSaveDiary(it,text,out);
+}
+function wrNext(){ if(!WR) return; WR.i++; wrShow(); }
+function wrEnd(){
+  const w=WR,done=w.items.filter(x=>x.res),good=done.filter(x=>x.res.v==="good").length;
+  $("wrProg").textContent=`${WR_SRC[w.src]} · done`;
+  $("wrQ").textContent=done.length?`${good} of ${done.length} answers good first time.`:"Nothing checked.";
+  $("wrQ").lang="en"; $("wrQen").textContent=""; $("wrTask").textContent="Fixes went into your mistake notebook. New questions whenever you're ready.";
+  $("wrPoint").innerHTML=""; $("wrHint").innerHTML=""; $("wrRes").innerHTML="";
+  $("wrInput").value=""; $("btnWrCheck").disabled=true; $("btnWrNext").textContent="Next ▸";
+  WR=null;
+}
+// diary entries stay in this browser, newest first
+function wrSaveDiary(it,text,out){
+  const list=load("wkl_diary",[]),day=dayKey();
+  const entry={day,q:it.q,text,corrected:(out.corrected||"").trim(),natural:(out.natural||"").trim()};
+  store("wkl_diary",[entry].concat((Array.isArray(list)?list:[]).filter(e=>!(e.day===day&&e.q===it.q))).slice(0,60));
+  wrDiaryList();
+}
+function wrDiaryList(){
+  const list=load("wkl_diary",[]),box=$("wrDiary");
+  box.classList.toggle("hidden",!(Array.isArray(list)&&list.length));
+  $("wrDiaryList").innerHTML=(Array.isArray(list)?list:[]).slice(0,20).map(e=>`<li><div class="note">${esc(e.day)} · <span lang="ja">${esc(e.q)}</span></div>`+
+    `<div lang="ja">${esc(e.corrected||e.text)}</div></li>`).join("");
+}
+function wrInit(){
+  const seg=$("wrSrc"),cur=S.wrSrc||"genki";
+  seg.querySelectorAll("button").forEach(b=>{
+    b.classList.toggle("on",b.dataset.v===cur);
+    b.onclick=()=>{ S.wrSrc=b.dataset.v; saveS(); seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); wrAbout(); };
+  });
+  $("btnWrNew").onclick=wrStart;
+  $("btnWrCheck").onclick=wrCheck;
+  $("btnWrNext").onclick=wrNext;
+  $("btnWrHint").onclick=wrHint;
+  $("btnWrEn").onclick=()=>$("wrQen").classList.toggle("hidden");
+  $("wrInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&!e.isComposing){ e.preventDefault(); if(WR&&WR.items[WR.i]&&WR.items[WR.i].res&&!$("wrInput").value.trim()) wrNext(); else wrCheck(); }
+  });
+  ["pointerover","pointerout"].forEach(ev=>$("wrCard").addEventListener(ev,e=>{
+    const sp=e.target.closest(".w");
+    if(!sp||e.pointerType!=="mouse") return;
+    if(ev==="pointerover") glossShow(sp); else glossHide();
+  }));
+  wrDiaryList();
+  crLoad().then(wrAbout);
+}
+
 /* ---------- tabs & wiring ---------- */
-const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
+const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabWrite:"viewWrite",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
   $(t).onclick=()=>{
     const was=Object.values(views).find(v=>!$(v).classList.contains("hidden")),to=views[t];
@@ -5870,7 +6107,8 @@ Object.keys(views).forEach(t=>{
     }
     if(to==="viewLessons"&&was!=="viewLessons") lsEnter();
     Object.entries(views).forEach(([tab,view])=>{
-      $(tab).classList.toggle("active",tab===t);
+      // pronunciation (tabSpeak, no visible button) is a mode of 話す
+      $(tab).classList.toggle("active",tab===t||(t==="tabSpeak"&&tab==="tabTalk"));
       $(view).classList.toggle("hidden",tab!==t);
     });
     if(t==="tabStats"){ renderStats(); timeSave(); renderTime(); }
@@ -6219,6 +6457,8 @@ $("talkScene").onchange=e=>{
   sceneStart(e.target.value);
 };
 $("btnSceneEnd").onclick=sceneEnd;
+document.querySelectorAll(".modeBar [data-mode]").forEach(b=>{ b.onclick=()=>$(b.dataset.mode==="pron"?"tabSpeak":"tabTalk").click(); });
+wrInit();
 $("btnTalkHint").onclick=talkHint;
 document.addEventListener("keydown",crKey);
 $("crSteps").onclick=e=>{ const b=e.target.closest("[data-cr]"); if(b) crGo(b.dataset.cr); };
@@ -6256,7 +6496,7 @@ document.body.appendChild($("glossTip"));
 });
 stInit();
 document.addEventListener("click",e=>{
-  const sp=e.target.closest("#talkLog .w, #crCard .w, #stCard .w");
+  const sp=e.target.closest("#talkLog .w, #crCard .w, #stCard .w, #wrCard .w");
   if(sp){ glossShow(sp); glossSay(sp); } else glossHide();
 });
 $("talkLog").addEventListener("scroll",glossHide);
