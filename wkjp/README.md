@@ -540,7 +540,8 @@ recordings (`rec`). The Anthropic key
     said in the course). Kept as `counts` next to `days` in the same
     per-browser file and added up across browsers.
   - **Time outside wkjp:** a small form adds minutes for today or
-    yesterday: tutor sessions (output), videos, podcasts and reading
+    yesterday: speaking or writing outside wkjp, such as tutor sessions, chats
+    or a diary (output), videos, podcasts and reading
     (input), Anki or Bunpro (study). They count toward the daily total and
     streak; × removes what this browser added.
 - The same card is a rough log of active time:

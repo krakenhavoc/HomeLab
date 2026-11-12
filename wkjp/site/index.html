@@ -1105,7 +1105,7 @@
       <h3 class="tH">Time outside wkjp</h3>
       <div class="tmLog">
         <label for="tmLogType" class="sr">kind</label>
-        <select id="tmLogType"><option value="tutor">Tutor or conversation (output)</option><option value="input">Videos, podcasts, reading (input)</option><option value="srs">Anki or Bunpro (study)</option></select>
+        <select id="tmLogType"><option value="tutor">Speaking or writing: tutor, chats, diary (output)</option><option value="input">Videos, podcasts, reading (input)</option><option value="srs">Anki or Bunpro (study)</option></select>
         <label for="tmLogMin" class="sr">minutes</label><input type="number" id="tmLogMin" min="1" max="600" inputmode="numeric" placeholder="min">
         <label for="tmLogDay" class="sr">day</label><select id="tmLogDay"><option value="0">today</option><option value="1">yesterday</option></select>
         <button class="btn small" id="btnTmLog">Add</button>
@@ -4600,12 +4600,12 @@ function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 // so devices never overwrite each other; the Stats tab adds them up.
 const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewDict:"dictionary"};
 const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Speak",dictionary:"Dictionary",practice:"Practice & stories",
-  tutor:"Tutor (outside)",input:"Input (outside)",srs:"Anki & Bunpro"};
+  tutor:"Speaking & writing (outside)",input:"Input (outside)",srs:"Anki & Bunpro"};
 // what each kind of time is for: output is producing Japanese (speaking, or writing in Talk)
 const TIME_GROUP={talk:"output",speak:"output",course:"output",tutor:"output",practice:"input",input:"input",
   reviews:"study",lessons:"study",dictionary:"study",srs:"study"};
 const GROUP_NAME={output:"Output",input:"Input",study:"Study"};
-const GROUP_WHAT={output:"Talk, Speak, course steps, tutor",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
+const GROUP_WHAT={output:"Talk, Speak, course steps, tutor, writing",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
 const groupSec=(o,g)=>Object.entries(o||{}).reduce((a,[k,v])=>a+(TIME_GROUP[k]===g?+v||0:0),0);
 const TIME_TICK=15,TIME_IDLE=120000;
 let DEVICE=load("wkl_device","");
@@ -4781,7 +4781,7 @@ async function renderTime(){
   // what this browser added by hand, today and yesterday
   const logged=[0,1].flatMap(n=>{ const d=back(n),k=dayKey(d),o=TIMELOG.days[k]||{};
     return ["tutor","input","srs"].filter(a=>o[a]).map(a=>`<span>${n?"Yesterday":"Today"}: ${TIME_NAME[a]} ${fmtDur(o[a])}<button class="x" data-k="${k}" data-a="${a}" title="remove" aria-label="remove">×</button></span>`); });
-  $("tmLogged").innerHTML=logged.length?logged.join(" · "):"Tutor sessions count as output; outside videos and podcasts as input. They add to your daily total and streak too.";
+  $("tmLogged").innerHTML=logged.length?logged.join(" · "):"Tutor sessions and writing in Japanese count as output; outside videos and podcasts as input. They add to your daily total and streak too.";
   $("tmNote").textContent=`Counted while a practice tab is in front and you've used it in the last 2 minutes (or the mic or audio is on), in 15-second steps.`+
     (devices>1?` Added up across ${devices} browsers.`:"");
 }
