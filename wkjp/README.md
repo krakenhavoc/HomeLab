@@ -427,16 +427,37 @@ recordings (`rec`). The Anthropic key
     score from any browser; About me and the chosen unit from whichever
     changed last.
   - Time in a course step counts as **Course** in the practice-time log.
-- **話す Speak** holds two modes, picked at the top: **会話 Conversation**
-  (Talk) and **発音 Pronunciation** (the pronunciation check and the
-  type-and-listen box, which used to be their own tab). The tab stays lit in
-  both; the pronunciation view still runs as `tabSpeak`, without a button.
+- **話す Speak** holds three modes, picked at the top: **会話 Conversation**
+  (Talk), **発音 Pronunciation** (the pronunciation check and the
+  type-and-listen box, which used to be their own tab) and **単語 Recall**.
+  The tab stays lit in all three; Pronunciation and Recall share the
+  `tabSpeak` view, without a button (`S.spMode`).
+- **単語 Word recall** is the other direction from Reviews: the English for
+  a word started in Anki (GENKI, Post-1.5k: `study.working`, started and not
+  mature), and the learner says the Japanese (space, or 🎤) or types it.
+  - **Checking:** on the kana, against the reading and the word, so the
+    kanji Whisper picks doesn't matter; Whisper and ReazonSpeech both
+    listen and the closer hearing counts (≥ 0.8 is right). A wrong answer
+    shows what was heard, not the word; 💡 reveals the reading a kana at a
+    time; **✓ That counts** accepts another right word; **Show** gives up.
+  - **Order:** words missed last time first, then new ones, then the least
+    sure (per-word results in this browser, `wkl_recall`). A word not
+    right first time comes back once at the end of the set; the summary
+    lists the misses with **Practise the missed ones**.
+  - **Options:** all started words or the current GENKI chapter's; 10, 20
+    or all. The mic stays open for a set and closes at the end.
+  - Recall time counts as output (`recall`), and the mic's voice seconds
+    count too.
 - **書く Writing:** workbook-style practice, all generated (never text from
   a textbook: the repo is public). Sources: the current **GENKI chapter**
   (its grammar and the chapter words started in Anki), the current **course
   unit**, **Translate** (English sentences to write in Japanese), and a
   **Diary** prompt (3-5 sentences about your day, using About me). Type an
-  answer; 🔊 / 🐢 read a Japanese question aloud (normally or slowly),
+  answer, or **🎤 Say it**: Whisper writes what was said into the box (after
+  anything already there, up to a minute a take), the learner fixes any
+  mishearing and checks; the checker is told the answer was spoken, so
+  punctuation and kanji choices don't count against it. The mic closes after
+  each take. 🔊 / 🐢 read a Japanese question aloud (normally or slowly),
   and the corrected, natural and model answers each have a 🔊. Check
   (Ctrl+Enter) returns a verdict, the corrected answer, up to
   3 fixes (into the mistake notebook), what went well, a more natural
@@ -536,8 +557,8 @@ recordings (`rec`). The Anthropic key
     Each browser keeps up to 500 entries.
 - The Stats tab's **Practice time** card leads with **output**, since
   speaking is the learner's main gap:
-  - **Types:** every kind of time is output (Talk, Speak, course steps,
-    tutor), input (Practice and stories, outside input) or study (reviews,
+  - **Types:** every kind of time is output (Talk, Speak, word recall,
+    Writing, course steps, tutor), input (Practice and stories, outside input) or study (reviews,
     lessons, dictionary, Anki and Bunpro) (`TIME_GROUP`), each with its own
     colour: output blue `#3987e5`, input amber `#c98500`, study magenta
     `#d55181` (`--c-out`, `--c-in`, `--c-study`). The three were checked
