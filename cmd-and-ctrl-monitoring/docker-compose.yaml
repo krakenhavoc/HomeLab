@@ -16,6 +16,14 @@
 #   3101  Caddy -> Loki push (basic auth)
 # Prometheus (9090), Loki (3100), Alertmanager (9093), blackbox (9115) and
 # Alloy are reachable only on the compose network.
+#
+# Memory: every service has a mem_limit, and the Go services that grow with
+# data (Prometheus, Loki) also get a GOMEMLIMIT a little under it. The VM has
+# 4 GB; the limits add up to about 3.4 GB, leaving the rest for the OS and
+# Docker. Without them, one service growing OOM-hung the whole VM on
+# 2026-11-02 and Grafana was down for 11 days. With them, the kernel kills
+# only that container and restart: unless-stopped brings it back. Raise a
+# limit (and the VM's memory_mb with it) if a service restarts in a loop.
 name: monitoring
 
 networks:
@@ -26,6 +34,11 @@ services:
     image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
     container_name: prometheus
     restart: unless-stopped
+    # Memory limits: see "Memory" in the header. GOMEMLIMIT makes the Go
+    # runtime collect harder before it reaches the cgroup limit.
+    mem_limit: 1536m
+    environment:
+      GOMEMLIMIT: 1200MiB
     user: "65534:65534"
     command:
       - --config.file=/etc/prometheus/conf/prometheus.yml
@@ -48,6 +61,7 @@ services:
     image: prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
     container_name: alertmanager
     restart: unless-stopped
+    mem_limit: 128m
     user: "65534:65534"
     command:
       - --config.file=/etc/alertmanager/conf/alertmanager.yml
@@ -64,6 +78,9 @@ services:
     image: grafana/loki:3.7.8@sha256:1107dd5274e0ada47e42472b7a7e71f3b2a2fe878878108f3e2f9e51528f0193
     container_name: loki
     restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      GOMEMLIMIT: 600MiB
     user: "10001:10001"
     command:
       - -config.file=/etc/loki/conf/loki.yaml
@@ -76,6 +93,7 @@ services:
     image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
     container_name: grafana
     restart: unless-stopped
+    mem_limit: 512m
     user: "472:0"
     # GF_SECURITY_ADMIN_PASSWORD. Grafana reads it only when it creates its
     # database, on the first start; see the README to rotate it.
@@ -119,6 +137,7 @@ services:
     image: prom/blackbox-exporter:v0.28.0@sha256:e753ff9f3fc458d02cca5eddab5a77e1c175eee484a8925ac7d524f04366c2fc
     container_name: blackbox
     restart: unless-stopped
+    mem_limit: 64m
     command:
       - --config.file=/etc/blackbox/blackbox.yml
     volumes:
@@ -129,6 +148,7 @@ services:
     image: caddy:2.11.6-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9
     container_name: caddy
     restart: unless-stopped
+    mem_limit: 128m
     # PUSH_HASH_PROD and PUSH_HASH_DEV, the bcrypt hashes of the two push
     # credentials.
     env_file: /etc/monitoring/caddy.env
@@ -143,6 +163,7 @@ services:
     image: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
     container_name: alloy
     restart: unless-stopped
+    mem_limit: 256m
     # MONITORING_HOST, this VM's name, for the host label.
     env_file: /etc/monitoring/host.env
     command:
