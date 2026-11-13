@@ -425,9 +425,36 @@
   #crActions{flex-wrap:wrap;} #crActions .btn{white-space:nowrap;}
   #crMsg{text-align:center; font-size:.88rem; min-height:1.3em; margin-top:10px; color:var(--muted);}
   #crMsg.good{color:var(--green);} #crMsg.close{color:var(--amber);} #crMsg.bad{color:var(--red);}
-  #crLevel{height:6px; background:var(--bg); border-radius:99px; margin:10px auto 0; max-width:320px; overflow:hidden;}
-  #crLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
-  #crLevelFill.over{background:var(--green);}
+  #crLevel,#wrLevel,#rcLevel{height:6px; background:var(--bg); border-radius:99px; margin:10px auto 0; max-width:320px; overflow:hidden;}
+  #crLevelFill,#wrLevelFill,#rcLevelFill{height:100%; width:0%; background:var(--accent); transition:width .05s;}
+  #crLevelFill.over,#wrLevelFill.over,#rcLevelFill.over{background:var(--green);}
+  #wrMicMsg{font-size:.86rem; min-height:1.2em; margin-top:6px;}
+  #wrMicMsg.bad{color:var(--red);}
+  /* 話す modes: Pronunciation shows its cards, Recall only its own */
+  #viewSpeak[data-mode="recall"] > section:not(#rcCard){display:none;}
+  #viewSpeak:not([data-mode="recall"]) #rcCard{display:none;}
+  .rcOpts{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;}
+  .rcEn{text-align:center; font-size:1.5rem; font-weight:700; line-height:1.4; margin:10px 0 4px;}
+  .rcHint{text-align:center; font-family:var(--mincho); font-size:1.15rem; letter-spacing:.12em; color:var(--muted); min-height:1.6em;}
+  #rcRes{text-align:center; margin-top:6px;}
+  #rcRes .v{font-weight:700;}
+  #rcRes .good{color:var(--green);} #rcRes .close{color:var(--amber);} #rcRes .wrong{color:var(--red);}
+  #rcRes .w{font-family:var(--mincho); font-size:1.7rem; font-weight:700; margin-top:4px;}
+  #rcRes .kana{color:var(--muted); font-size:1rem;}
+  #rcRes .heard{color:var(--muted); font-size:.9rem; margin-top:4px;}
+  #rcRes .heard [lang=ja]{font-family:var(--mincho); color:var(--text);}
+  #rcRes button.say{background:none; border:none; cursor:pointer; font-size:1rem; padding:0 4px;}
+  .rcMsg{text-align:center; min-height:1.3em; margin-top:8px;}
+  .rcMsg.bad{color:var(--red);}
+  .rcType{max-width:320px; margin:10px auto 0;}
+  #rcInput{text-align:center; font-size:1.1rem;}
+  .rcActs{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px;}
+  .rcActs .btn{white-space:nowrap;}
+  .rcKeys{text-align:center; margin-top:10px; font-size:.75rem;}
+  .rcScore{font-size:1.15rem; font-weight:700;}
+  .rcMiss{margin:6px 0 0 1.2em;} .rcMiss li{margin:5px 0; color:var(--muted);}
+  .rcMiss b{font-family:var(--mincho); color:var(--text); font-size:1.05rem;}
+  .rcMiss button.say{background:none; border:none; cursor:pointer; font-size:.95rem;}
   .crSum{font-size:.9rem;}
   .crSum .big{font-size:1.5rem; font-weight:700; margin:4px 0;}
   .crSum li{margin:5px 0 5px 1.2em; color:var(--muted);}
@@ -903,8 +930,9 @@
         </div>
         <label for="wrInput" class="sr">your answer</label>
         <textarea id="wrInput" lang="ja" rows="3" placeholder="日本語で書いてください…" autocomplete="off" spellcheck="false"></textarea>
+        <div id="wrLevel" class="hidden"><div id="wrLevelFill"></div></div><div class="note" id="wrMicMsg"></div>
         <div class="wrActs">
-          <button class="btn small" id="btnWrPlay" title="hear the question">🔊</button><button class="btn small" id="btnWrSlow" title="hear it slowly">🐢</button><button class="btn small" id="btnWrHint">💡 Hint</button><button class="btn small" id="btnWrEn">EN</button>
+          <button class="btn small" id="btnWrPlay" title="hear the question">🔊</button><button class="btn small" id="btnWrSlow" title="hear it slowly">🐢</button><button class="btn small" id="btnWrMic" title="answer by voice: what you say is written into the box">🎤 Say it</button><button class="btn small" id="btnWrHint">💡 Hint</button><button class="btn small" id="btnWrEn">EN</button>
           <span class="grow"></span><span class="kbdx">Ctrl+Enter</span>
           <button class="btn primary" id="btnWrCheck">Check</button><button class="btn" id="btnWrNext">Next ▸</button>
         </div>
@@ -1030,7 +1058,35 @@
 
   <!-- ============ SPEAK VIEW ============ -->
   <main id="viewSpeak" class="hidden">
-    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" aria-selected="false"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" class="on" aria-selected="true"><span lang="ja">発音</span> Pronunciation</button></div>
+    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" aria-selected="false"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" class="on" aria-selected="true"><span lang="ja">発音</span> Pronunciation</button><button data-mode="recall" role="tab" aria-selected="false"><span lang="ja">単語</span> Recall</button></div>
+    <section class="card" id="rcCard">
+      <h2><span lang="ja">単語</span> Word recall</h2>
+      <div id="rcDone" class="hidden">
+        <p class="rcScore" id="rcScore"></p>
+        <ul class="rcMiss" id="rcMiss"></ul>
+        <div class="row" style="margin:10px 0 14px;"><button class="btn" id="btnRcMissed">Practise the missed ones</button></div>
+      </div>
+      <div id="rcSetup">
+        <p class="note">The other direction from Reviews: you see the English and say the Japanese. The words are the ones you've started in Anki (GENKI, Post-1.5k) that aren't mature yet, the ones you've missed first.</p>
+        <div class="rcOpts">
+          <div class="seg" id="rcFrom"><button data-v="all">All started</button><button data-v="ch">GENKI chapter</button></div>
+          <div class="seg" id="rcN"><button data-v="10">10</button><button data-v="20">20</button><button data-v="0">All</button></div>
+        </div>
+        <p class="note" id="rcAbout"></p>
+        <div class="row" style="margin-top:10px;"><button class="btn primary" id="btnRcStart">Start</button></div>
+      </div>
+      <div id="rcRun" class="hidden">
+        <div class="crTop"><span id="rcProg"></span></div>
+        <div class="rcEn" id="rcEn"></div>
+        <div class="rcHint" id="rcHint" lang="ja"></div>
+        <div id="rcRes"></div>
+        <div id="rcLevel" class="hidden"><div id="rcLevelFill"></div></div>
+        <div class="note rcMsg" id="rcMsg"></div>
+        <div class="rcType"><label for="rcInput" class="sr">type the Japanese</label><input type="text" id="rcInput" lang="ja" placeholder="or type it, then Enter" autocomplete="off" spellcheck="false"></div>
+        <div class="rcActs" id="rcActs"></div>
+        <div class="note rcKeys" id="rcKeys"></div>
+      </div>
+    </section>
     <section class="card" id="pcCard">
       <h2>Pronunciation check</h2>
       <div id="pcSetup">
@@ -1089,7 +1145,7 @@
 
   <!-- ============ TALK VIEW ============ -->
   <main id="viewTalk" class="hidden">
-    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" class="on" aria-selected="true"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" aria-selected="false"><span lang="ja">発音</span> Pronunciation</button></div>
+    <div class="modeBar seg" role="tablist" aria-label="Speak"><button data-mode="talk" role="tab" class="on" aria-selected="true"><span lang="ja">会話</span> Conversation</button><button data-mode="pron" role="tab" aria-selected="false"><span lang="ja">発音</span> Pronunciation</button><button data-mode="recall" role="tab" aria-selected="false"><span lang="ja">単語</span> Recall</button></div>
     <section class="card" id="talkCard">
       <div class="talkHead">
         <h2>Talk</h2>
@@ -1979,6 +2035,7 @@ async function ankiLoad(){
       study:st?{deck:String(st.deck||"Study"),total:+st.total||0,mature:+st.mature||0,working:ws(st.working)}:null};
     store("wkl_anki",ANKI);
     updateChips();
+    rcAbout();
   }catch(e){}
 }
 // Words the learner is working on now: the textbook deck's (GENKI) notes not
@@ -4654,15 +4711,17 @@ function pcPause(){ if(PC&&PC.phase!=="done") pcFinish(); }
 // Each browser keeps its own file on the wkjp server (stats/time-<id>.json),
 // so devices never overwrite each other; the Stats tab adds them up.
 const TIME_ACT={viewPractice:"practice",viewLessons:"lessons",viewReviews:"reviews",viewSpeak:"speak",viewTalk:"talk",viewWrite:"write",viewDict:"dictionary"};
-const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Pronunciation",write:"Writing",dictionary:"Dictionary",practice:"Practice & stories",
+const TIME_NAME={reviews:"Reviews",lessons:"Lessons",course:"Course",talk:"Talk",speak:"Pronunciation",recall:"Word recall",write:"Writing",dictionary:"Dictionary",practice:"Practice & stories",
   tutor:"Speaking & writing (outside)",input:"Input (outside)",srs:"Anki & Bunpro"};
 // what each kind of time is for: output is producing Japanese (speaking, or writing in Talk)
-const TIME_GROUP={talk:"output",speak:"output",write:"output",course:"output",tutor:"output",practice:"input",input:"input",
+const TIME_GROUP={talk:"output",speak:"output",recall:"output",write:"output",course:"output",tutor:"output",practice:"input",input:"input",
   reviews:"study",lessons:"study",dictionary:"study",srs:"study"};
 const GROUP_NAME={output:"Output",input:"Input",study:"Study"};
-const GROUP_WHAT={output:"Talk, pronunciation, Writing, course steps, tutor, writing outside",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
+const GROUP_WHAT={output:"Talk, pronunciation, word recall, Writing, course steps, tutor, writing outside",input:"Practice, stories, outside input",study:"reviews, lessons, dictionary, Anki, Bunpro"};
 const groupSec=(o,g)=>Object.entries(o||{}).reduce((a,[k,v])=>a+(TIME_GROUP[k]===g?+v||0:0),0);
 const TIME_TICK=15,TIME_IDLE=120000;
+// 話す's mode on viewSpeak: "pron" (pronunciation check) or "recall" (単語 Word recall)
+let SPMODE=S.spMode==="recall"?"recall":"pron";
 let DEVICE=load("wkl_device","");
 if(!/^[a-f0-9]{16}$/.test(DEVICE)){
   DEVICE=Array.from(crypto.getRandomValues(new Uint8Array(8)),x=>x.toString(16).padStart(2,"0")).join("");
@@ -4676,7 +4735,7 @@ let timeLast=Date.now(),timeDirty=false,timeSent=0;
 const dayKey=(d=new Date())=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 ["keydown","pointerdown","wheel","touchstart"].forEach(ev=>addEventListener(ev,()=>{ timeLast=Date.now(); },{passive:true,capture:true}));
 function timeTick(){
-  const view=Object.values(views).find(v=>!$(v).classList.contains("hidden")),act=TIME_ACT[view]||(view==="viewToday"&&CRS?"course":"");
+  const view=Object.values(views).find(v=>!$(v).classList.contains("hidden")),act=view==="viewSpeak"&&SPMODE==="recall"?"recall":TIME_ACT[view]||(view==="viewToday"&&CRS?"course":"");
   const busy=Date.now()-timeLast<TIME_IDLE||!!MIC||!!(vvAudio&&!vvAudio.paused);
   if(!act||document.visibilityState!=="visible"||!busy) return;
   const k=dayKey(),d=TIMELOG.days[k]=TIMELOG.days[k]||{};
@@ -5961,6 +6020,7 @@ function wrCheckSystem(it,src){
     src==="translate"?`They were asked to write this in Japanese: "${it.q}"`:`The question: 「${it.q}」 (${it.q_en}). Task: ${it.task}`,
     it.point?`The grammar to use: ${it.point}.`:"",
     `A model answer: 「${it.model}」`,
+    it.voice?"They said the answer out loud and speech recognition wrote it down: ignore punctuation, spacing and kanji-or-kana choices, and if a word looks like a mishearing of the right one, say so in why rather than counting it as their mistake.":"",
     'verdict: "good" if it answers the task in correct, natural Japanese (wording other than the model is fine); "close" if it is understandable but has mistakes; "wrong" if it does not answer the task or cannot be understood.',
     "corrected: their whole answer with only the mistakes fixed, keeping their wording; the same text if it was right.",
     "fixes: up to 3 of the most useful fixes, each with yours (their words), better (the fix) and why (one short English line). Empty if none.",
@@ -6002,7 +6062,8 @@ function wrShow(){
   $("wrTask").textContent=it.task||"";
   $("wrPoint").innerHTML=it.point?`<span>Use:</span><span class="g" lang="ja">${esc(it.point)}</span>`:"";
   $("wrInput").value=it.said||""; $("wrInput").rows=w.src==="diary"?7:3;
-  $("wrHint").innerHTML=""; $("wrRes").innerHTML="";
+  $("wrHint").innerHTML=""; $("wrRes").innerHTML=""; wrMicStop(); wrMicMsg("");
+  $("btnWrMic").classList.toggle("hidden",!canRecord);
   $("btnWrCheck").disabled=false; $("btnWrNext").textContent=w.i+1<w.items.length?"Next ▸":"Finish ▸";
   if(!tr) glossLater($("wrQ"),it.q);
   $("wrInput").focus();
@@ -6045,6 +6106,38 @@ async function wrCheck(){
   if(w.src==="diary") wrSaveDiary(it,text,out);
 }
 const wrSay=t=>t?` <button class="say" data-say="${esc(t)}" title="hear it" aria-label="hear it">🔊</button>`:"";
+// Answer by voice: Whisper writes what was said into the box (after anything
+// already typed), the learner fixes what it misheard, then checks. The mic is
+// closed after each take, so an open mic doesn't keep counting practice time.
+let wrMicSeq=0,wrListen=null;
+function wrMicMsg(t,cls){ const m=$("wrMicMsg"); m.textContent=t; m.className="note"+(cls?" "+cls:""); }
+function wrMicUI(on){ $("wrLevel").classList.toggle("hidden",!on); $("btnWrMic").textContent=on?"⏹ Done":"🎤 Say it"; }
+function wrMicStop(){ if(!wrListen) return; wrMicSeq++; wrListen=null; wrMicUI(false); micClose(); }
+async function wrMic(){
+  const w=WR,it=w&&w.items[w.i];
+  if(!it||!canRecord) return;
+  if(wrListen){ wrListen.stop=true; return; }
+  stopAudio();
+  try{ await micOpen(); }catch(e){ wrMicMsg("Mic blocked: "+(e.message||e.name),"bad"); return; }
+  const my=++wrMicSeq,at=w.i,l=wrListen={stop:false},alive=()=>wrMicSeq===my&&WR===w&&w.i===at;
+  wrMicUI(true); wrMicMsg("Listening… press ⏹ Done when you've finished.");
+  // a diary can run long: up to a minute a take
+  const blob=await micUtterance(alive,{fill:$("wrLevelFill"),stopNow:()=>l.stop,...micTurn(),maxMs:60000});
+  if(wrListen===l){ wrListen=null; wrMicUI(false); micClose(); }
+  if(!alive()) return;
+  if(!blob){ wrMicMsg("Didn't hear anything. Press 🎤 and speak."); return; }
+  wrMicMsg("Writing down what you said…");
+  try{
+    const t=sttClean(await sttTranscribe(blob,"ja",STT_PROMPT,{retry:true,alive,onWait:n=>{ if(alive()) wrMicMsg(`${STT_BUSY} Trying again (${n})…`); }}));
+    if(!alive()) return;
+    if(!t){ wrMicMsg("Didn't catch that. Try again, a little closer to the mic."); return; }
+    const box=$("wrInput");
+    box.value=box.value.replace(/\s+$/,"")+t;
+    it.voice=true;
+    wrMicMsg("Fix anything it misheard, then Check (Ctrl+Enter). 🎤 again adds more.");
+    box.focus();
+  }catch(e){ if(alive()) wrMicMsg("⚠ "+(e.message||"speech-to-text failed"),"bad"); }
+}
 function wrNext(){ if(!WR) return; WR.i++; wrShow(); }
 function wrEnd(){
   const w=WR,done=w.items.filter(x=>x.res),good=done.filter(x=>x.res.v==="good").length;
@@ -6053,6 +6146,7 @@ function wrEnd(){
   $("wrQ").lang="en"; $("wrQen").textContent=""; $("wrTask").textContent="Fixes went into your mistake notebook. New questions whenever you're ready.";
   $("wrPoint").innerHTML=""; $("wrHint").innerHTML=""; $("wrRes").innerHTML="";
   $("wrInput").value=""; $("btnWrCheck").disabled=true; $("btnWrNext").textContent="Next ▸";
+  wrMicStop(); wrMicMsg("");
   WR=null;
 }
 // diary entries stay in this browser, newest first
@@ -6078,6 +6172,7 @@ function wrInit(){
   $("btnWrCheck").onclick=wrCheck;
   $("btnWrNext").onclick=wrNext;
   $("btnWrHint").onclick=wrHint;
+  $("btnWrMic").onclick=wrMic;
   $("btnWrEn").onclick=()=>$("wrQen").classList.toggle("hidden");
   const wrQText=()=>WR&&WR.items[WR.i]?WR.items[WR.i].q:"";
   $("btnWrPlay").onclick=()=>{ unlockAudio(); speakText(wrQText(),false); };
@@ -6095,6 +6190,219 @@ function wrInit(){
   crLoad().then(wrAbout);
 }
 
+/* ---------- 単語 Word recall (a mode of 話す) ---------- */
+// The other direction from Reviews: the English for a word started in Anki
+// (GENKI, Post-1.5k: started, not mature yet) and the learner says the
+// Japanese, or types it. Checked on the kana, so the kanji Whisper picks
+// doesn't matter, and ReazonSpeech's hearing counts too. Words missed last
+// time come first, then new ones, then the least sure; a word missed in a set
+// comes back once at the end. Per-word results stay in this browser.
+let RC=null,rcMicSeq=0,rcLastMissed=[];
+const rcAllWords=()=>(ANKI&&ANKI.study?ANKI.study.working:[]).filter(w=>w.c&&w.m);
+const rcChapter=()=>crUnit(S.genkiCh)||(GENKI||[])[0]||null;
+function rcPool(){
+  const all=rcAllWords();
+  if(S.rcFrom!=="ch") return all;
+  const u=rcChapter();
+  return u&&u.tag?all.filter(w=>w.l===u.tag):[];
+}
+const rcStats=()=>{ const o=load("wkl_recall",{}); return o&&typeof o==="object"?o:{}; };
+function rcOrder(pool){
+  const st=rcStats(),rank=w=>{ const s=st[w.c]; return !s?1:s.last===false?0:2+s.ok/Math.max(1,s.n); };
+  return shuffle(pool.slice()).sort((a,b)=>rank(a)-rank(b));
+}
+function rcRecord(w,ok){
+  const st=rcStats(),o=st[w.c]||{n:0,ok:0};
+  o.n++; if(ok) o.ok++; o.last=ok; o.t=Date.now();
+  st[w.c]=o;
+  store("wkl_recall",st);
+}
+function rcAbout(){
+  const all=rcAllWords().length,p=rcPool(),u=rcChapter();
+  $("rcAbout").textContent=!all?"No started words yet. wkjp gets them from Anki (GENKI, Post-1.5k) every 15 minutes.":
+    S.rcFrom==="ch"?(u?`${p.length} started word${p.length===1?"":"s"} from ${crLabel(u)}: ${u.ja}. Change the chapter on Today's course card.`:"No GENKI chapters loaded."):
+    `${p.length} started words.`;
+  $("btnRcStart").disabled=!p.length;
+}
+const rcReadings=w=>String(w.r||"").split(/[、,，・/／;；]|\s+/).map(x=>x.trim()).filter(Boolean);
+const rcSayText=w=>rcReadings(w)[0]||w.c;
+function rcMsg(t,cls){ const m=$("rcMsg"); m.textContent=t; m.className="note rcMsg"+(cls?" "+cls:""); }
+function rcStart(words){
+  const pool=words&&words.length?words:rcOrder(rcPool()),n=+(S.rcN==null?10:S.rcN);
+  const pick=words&&words.length?pool:n?pool.slice(0,n):pool;
+  if(!pick.length) return;
+  pcPause(); unlockAudio();
+  RC={q:pick.map(w=>({w,again:false})),i:0,got:0,answered:0,missed:[],phase:"ask",hint:0,tries:0,shown:false,heard:"",listening:false,stopNow:false};
+  $("rcSetup").classList.add("hidden"); $("rcDone").classList.add("hidden"); $("rcRun").classList.remove("hidden");
+  // the Start button keeps focus while hidden; space would press it again
+  if(document.activeElement&&document.activeElement.blur) document.activeElement.blur();
+  rcCard();
+}
+function rcCard(){
+  const s=RC;
+  if(!s) return;
+  if(s.i>=s.q.length){ rcEnd(); return; }
+  const it=s.q[s.i];
+  Object.assign(s,{phase:"ask",hint:0,tries:0,shown:false,heard:""});
+  $("rcProg").textContent=`${s.i+1} of ${s.q.length}${it.again?" · again":""} · ${s.got} right first time`;
+  $("rcEn").textContent=it.w.m;
+  $("rcHint").textContent=""; $("rcRes").innerHTML=""; rcMsg("");
+  $("rcInput").value=""; $("rcInput").disabled=false;
+  rcActs();
+}
+function rcActs(){
+  const s=RC;
+  if(!s) return;
+  const b=[];
+  if(s.phase==="ask"){
+    if(canRecord) b.push({t:s.listening?"⏹ Done":"🎤 Say it",f:rcListen,k:"space",l:"say it",p:true});
+    b.push({t:"💡 Hint",f:rcHint,k:"h",l:"hint"});
+    if(s.tries) b.push({t:"✓ That counts",f:rcCounts,k:"c",l:"that counts"});
+    b.push({t:"Show",f:rcShow,k:"s",l:"show"});
+  }else{
+    b.push({t:"🔊",f:rcPlay,k:"p",l:"hear it"});
+    b.push({t:s.i+1<s.q.length?"Next ▸":"Finish ▸",f:rcNext,k:"enter",l:"next",p:true});
+  }
+  b.push({t:"End",f:rcEnd,k:"esc",l:"end"});
+  const box=$("rcActs");
+  box.innerHTML="";
+  b.forEach(x=>{ const e=document.createElement("button"); e.className="btn"+(x.p?" primary":""); e.textContent=x.t; e.onclick=x.f; box.appendChild(e); });
+  $("rcKeys").innerHTML=b.map(x=>`<b>${x.k}</b> ${x.l}`).join(" · ");
+}
+function rcHint(){
+  const s=RC;
+  if(!s||s.phase!=="ask") return;
+  const r=rcReadings(s.q[s.i].w)[0]||"";
+  s.hint=Math.min(s.hint+1,Math.max(1,r.length-1));
+  $("rcHint").textContent=r.slice(0,s.hint)+"＿".repeat(Math.max(0,r.length-s.hint));
+}
+// one spoken answer; the mic stays open for the set (one permission prompt)
+async function rcListen(){
+  const s=RC;
+  if(!s||s.phase!=="ask"||!canRecord) return;
+  if(s.listening){ s.stopNow=true; return; }
+  stopAudio();
+  try{ await micOpen(); }catch(e){ rcMsg("Mic blocked: "+(e.message||e.name),"bad"); return; }
+  const my=++rcMicSeq,at=s.i,alive=()=>RC===s&&rcMicSeq===my&&s.i===at&&s.phase==="ask";
+  s.listening=true; s.stopNow=false; $("rcLevel").classList.remove("hidden"); rcActs();
+  rcMsg(`Listening… (${micTurnHint()})`);
+  const blob=await micUtterance(alive,{fill:$("rcLevelFill"),stopNow:()=>alive()&&s.stopNow,...micTurn()});
+  if(rcMicSeq===my){ s.listening=false; $("rcLevel").classList.add("hidden"); if(RC===s) rcActs(); }
+  if(!alive()) return;
+  if(!blob){ rcMsg("Didn't hear anything. Press 🎤 (or space) and say it."); return; }
+  rcMsg("…");
+  let err=null;
+  const [wh,rz]=await Promise.all([
+    sttTranscribe(blob,"ja",STT_PROMPT,{retry:true,alive,onWait:n=>{ if(alive()) rcMsg(`${STT_BUSY} Trying again (${n})…`); }}).then(sttClean,e=>{ err=e; return ""; }),
+    asrTranscribe(blob)]);
+  if(!alive()) return;
+  const heard=[wh,rz].filter(Boolean);
+  if(!heard.length){ rcMsg(err?"⚠ "+(err.message||"speech-to-text failed"):"Didn't catch that. Try again, a little closer to the mic.",err?"bad":""); return; }
+  rcMsg("");
+  rcAnswer(heard);
+}
+async function rcScore(heard,w){
+  const rs=rcReadings(w);
+  let best=0;
+  for(const r of rs.length?rs:[w.c]) best=Math.max(best,await crMatch(heard,{kana:r,ja:w.c}));
+  return best;
+}
+// what was heard (or typed), against the word: the best of Whisper and ReazonSpeech
+async function rcAnswer(cands){
+  const s=RC;
+  if(!s||s.phase!=="ask") return;
+  const at=s.i,w=s.q[at].w;
+  let best=-1,said="";
+  for(const c of cands){ const v=await rcScore(c,w); if(v>best){ best=v; said=c; } }
+  if(RC!==s||s.i!==at||s.phase!=="ask") return;
+  s.tries++; s.heard=said;
+  if(best>=0.8){ rcFinish(true,"✓ Right!"); return; }
+  $("rcRes").innerHTML=`<div class="v ${best>=0.55?"close":"wrong"}">${best>=0.55?"≈ Close.":"✗ Not that one."}</div>`+
+    `<div class="heard">heard <span lang="ja">${esc(said)}</span></div>`;
+  rcMsg("Say it again, take a 💡 hint, or show it. If you said another right word, press ✓ That counts.");
+  rcActs();
+}
+function rcFinish(ok,head){
+  const s=RC,it=s.q[s.i];
+  s.phase="result";
+  const first=ok&&s.tries<=1&&!s.hint&&!s.shown;
+  if(!it.again){
+    s.answered++; rcRecord(it.w,first);
+    if(first) s.got++; else { s.q.push({w:it.w,again:true}); s.missed.push(it.w); }
+  }
+  const rs=rcReadings(it.w),kana=rs.length&&rs.join("・")!==it.w.c?`<div class="kana" lang="ja">${esc(rs.join("・"))}</div>`:"";
+  $("rcHint").textContent="";
+  $("rcRes").innerHTML=`<div class="v ${ok?"good":"wrong"}">${head}</div><div class="w" lang="ja">${esc(it.w.c)}${wrSay(rcSayText(it.w))}</div>${kana}`+
+    (s.heard?`<div class="heard">heard <span lang="ja">${esc(s.heard)}</span></div>`:"");
+  rcMsg(first||it.again?"":"It comes back once at the end.");
+  // out of the box, so enter and the other keys work again
+  if(document.activeElement===$("rcInput")) $("rcInput").blur();
+  $("rcInput").disabled=true;
+  rcActs();
+}
+function rcCounts(){ if(RC&&RC.phase==="ask"&&RC.tries) rcFinish(true,"✓ Counted."); }
+function rcShow(){ if(RC&&RC.phase==="ask"){ RC.shown=true; rcMicSeq++; RC.listening=false; $("rcLevel").classList.add("hidden"); rcFinish(false,"The word was"); } }
+function rcPlay(){ if(RC&&RC.phase==="result"){ unlockAudio(); speakText(rcSayText(RC.q[RC.i].w),false); } }
+function rcNext(){ if(RC&&RC.phase==="result"){ RC.i++; rcCard(); } }
+function rcEnd(){
+  const s=RC;
+  if(!s) return;
+  rcMicSeq++; micClose(); stopAudio();
+  RC=null; rcLastMissed=s.missed.slice();
+  $("rcRun").classList.add("hidden"); $("rcLevel").classList.add("hidden");
+  $("rcSetup").classList.remove("hidden"); $("rcDone").classList.remove("hidden");
+  $("rcScore").textContent=s.answered?`${s.got} of ${s.answered} right first time.`:"Nothing answered.";
+  $("rcMiss").innerHTML=s.missed.map(w=>`<li><b lang="ja">${esc(w.c)}</b> ${esc(rcReadings(w).join("・")!==w.c?rcReadings(w).join("・"):"")} · ${esc(w.m)}${wrSay(rcSayText(w))}</li>`).join("");
+  $("btnRcMissed").classList.toggle("hidden",!s.missed.length);
+  rcAbout();
+}
+// leaving 単語 (another mode or tab): stop listening and let the mic go; the set waits
+function rcPause(){
+  if(!RC) return;
+  rcMicSeq++; micClose();
+  if(RC.listening){ RC.listening=false; $("rcLevel").classList.add("hidden"); rcMsg(""); rcActs(); }
+}
+// 話す's modes: Conversation is its own view; Pronunciation and Recall share viewSpeak (SPMODE)
+function spModeUI(){
+  $("viewSpeak").dataset.mode=SPMODE;
+  $("viewSpeak").querySelectorAll(".modeBar [data-mode]").forEach(b=>{ const on=b.dataset.mode===SPMODE; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
+}
+function spMode(m){
+  const to=m==="recall"?"recall":"pron";
+  if(to!==SPMODE){ if(to==="recall") pcPause(); else rcPause(); }
+  SPMODE=to; S.spMode=to; saveS();
+  spModeUI();
+  if(to==="recall") rcAbout();
+}
+function rcInit(){
+  [["rcFrom","rcFrom","all"],["rcN","rcN","10"]].forEach(([id,key,def])=>{
+    const seg=$(id),cur=String(S[key]==null?def:S[key]);
+    seg.querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on",b.dataset.v===cur);
+      b.onclick=()=>{ S[key]=b.dataset.v; saveS(); seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); rcAbout(); };
+    });
+  });
+  $("btnRcStart").onclick=()=>rcStart();
+  $("btnRcMissed").onclick=()=>rcStart(rcLastMissed);
+  $("rcRes").addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b){ unlockAudio(); speakText(b.dataset.say,false); } });
+  $("rcMiss").addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b){ unlockAudio(); speakText(b.dataset.say,false); } });
+  $("rcInput").addEventListener("keydown",e=>{
+    if(e.isComposing) return;
+    if(e.key==="Enter"){ e.preventDefault(); const v=$("rcInput").value.trim(); if(RC&&RC.phase==="ask"&&v) rcAnswer([v]); else if(RC&&RC.phase==="result") rcNext(); }
+    else if(e.key==="Escape") $("rcInput").blur();
+  });
+  document.addEventListener("keydown",e=>{
+    if(!RC||SPMODE!=="recall"||$("viewSpeak").classList.contains("hidden")) return;
+    if(e.target&&/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if((e.key==="Enter"||e.key===" ")&&e.target&&e.target.tagName==="BUTTON") return;
+    const k=e.key.length===1?e.key.toLowerCase():e.key,ask=RC.phase==="ask";
+    const act={" ":ask&&rcListen,Enter:!ask&&rcNext,h:ask&&rcHint,s:ask&&rcShow,c:ask&&RC.tries&&rcCounts,p:!ask&&rcPlay,Escape:rcEnd}[k];
+    if(act){ e.preventDefault(); act(); }
+  });
+  spModeUI();
+  crLoad().then(rcAbout);
+}
+
 /* ---------- tabs & wiring ---------- */
 const views={tabToday:"viewToday",tabPractice:"viewPractice",tabLessons:"viewLessons",tabReviews:"viewReviews",tabSpeak:"viewSpeak",tabTalk:"viewTalk",tabWrite:"viewWrite",tabDict:"viewDict",tabStats:"viewStats",tabSettings:"viewSettings"};
 Object.keys(views).forEach(t=>{
@@ -6107,6 +6415,8 @@ Object.keys(views).forEach(t=>{
     if(was==="viewTalk"&&to!=="viewTalk") liveStop();
     if(was==="viewToday"&&to!=="viewToday") crLeave();
     if(t!=="tabSpeak") pcPause();
+    if(was==="viewSpeak"&&to!=="viewSpeak") rcPause();
+    if(was==="viewWrite"&&to!=="viewWrite") wrMicStop();
     if(t==="tabSpeak"&&!PC) pcSrcNote();
     if(to==="viewReviews"&&was!=="viewReviews"){
       // with the card on loan to a lesson quiz, only the start card (which says so)
@@ -6465,8 +6775,9 @@ $("talkScene").onchange=e=>{
   sceneStart(e.target.value);
 };
 $("btnSceneEnd").onclick=sceneEnd;
-document.querySelectorAll(".modeBar [data-mode]").forEach(b=>{ b.onclick=()=>$(b.dataset.mode==="pron"?"tabSpeak":"tabTalk").click(); });
+document.querySelectorAll(".modeBar [data-mode]").forEach(b=>{ b.onclick=()=>{ if(b.dataset.mode==="talk"){ $("tabTalk").click(); return; } spMode(b.dataset.mode); $("tabSpeak").click(); }; });
 wrInit();
+rcInit();
 $("btnTalkHint").onclick=talkHint;
 document.addEventListener("keydown",crKey);
 $("crSteps").onclick=e=>{ const b=e.target.closest("[data-cr]"); if(b) crGo(b.dataset.cr); };
