@@ -1274,8 +1274,10 @@
         <label for="voiceSelect">Japanese voice</label>
         <select id="voiceSelect"></select>
       </div>
-      <label for="rateRange">Speed <span id="rateVal"></span></label>
-      <input type="range" id="rateRange" min="0.5" max="1.3" step="0.05" style="width:100%;">
+      <label for="rateRange">Normal speed (🔊) <span id="rateVal"></span></label>
+      <input type="range" id="rateRange" min="50" max="150" step="5" style="width:100%;">
+      <label for="slowRange">Slow speed (🐢) <span id="slowVal"></span></label>
+      <input type="range" id="slowRange" min="50" max="100" step="5" style="width:100%;">
       <div class="row" style="margin-top:10px;">
         <button class="btn small" id="btnTestVoice">Test voice 🔊</button>
       </div>
@@ -1704,7 +1706,7 @@ function store(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }ca
 function load(key,fallback){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch(e){ return fallback; } }
 function drop(key){ try{ localStorage.removeItem(key); }catch(e){} }
 
-let S=Object.assign({voiceName:null,rate:1,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
+let S=Object.assign({voiceName:null,rate:1,slowRate:0.6,srs:"started",len:10,weak:false,content:"mixed",mode:"mixed",
   engine:"webspeech",vvUrl:"",vvSpeaker:null,vvRandom:false,
   llmUrl:"",llmModel:"qwen3.6:35b-a3b",talkEngine:"claude",claudeModel:"claude-sonnet-5-5",talkSpeak:true,talkNewPct:15,talkGrammar:"",talkGrammarList:"",talkAutoSend:false,sttLang:"ja",
   rvHands:true,rvSay:true,rvSayWrong:true,rvSend:true,rvConfirm:true,
@@ -1756,13 +1758,15 @@ function stopAudio(){
   clearTimeout(speakTimer);
   if("speechSynthesis" in window) speechSynthesis.cancel();
 }
+// playback speed: 🔊 plays at S.rate, 🐢 at S.slowRate (both set in Settings as %)
+const speedOf=slow=>(slow?S.slowRate:S.rate)||(slow?0.6:1);
 function webSpeak(text,slow){
   if(!("speechSynthesis" in window)) return;
   speakTimer=setTimeout(()=>{
     const u=new SpeechSynthesisUtterance(sayFix(text));
     u.lang="ja-JP";
     if(voice) u.voice=voice;
-    u.rate=(S.rate||1)*(slow?0.6:1);
+    u.rate=speedOf(slow);
     speechSynthesis.speak(u);
   },80);
 }
@@ -1816,7 +1820,7 @@ const vvBase=()=>((S.vvUrl||VV_DEFAULT).trim()||VV_DEFAULT).replace(/\/+$/,"");
 const sayFix=t=>String(t||"").replace(/(?<![にでと])は(?=いりま)/g,"は、");
 async function vvFetchAudio(text,slow,spk){
   if(spk==null) spk=pickVvSpeaker();
-  const rate=(S.rate||1)*(slow?0.6:1);
+  const rate=speedOf(slow);
   const key=spk+"|"+rate.toFixed(2)+"|"+text;
   if(vvCache.has(key)) return vvCache.get(key);
   if(vvInflight.has(key)) return vvInflight.get(key);
@@ -1958,7 +1962,7 @@ function playChunks(chunks,i,my,slow,spk){
       const u=new SpeechSynthesisUtterance(sayFix(chunks[i]));
       u.lang="ja-JP";
       if(voice) u.voice=voice;
-      u.rate=(S.rate||1)*(slow?0.6:1);
+      u.rate=speedOf(slow);
       u.onend=()=>playChunks(chunks,i+1,my,slow);
       speechSynthesis.speak(u);
     },i===0?80:0);
@@ -2770,7 +2774,7 @@ function talkSpeaker(spk,onStart){
       });
     }else if("speechSynthesis" in window){
       const u=new SpeechSynthesisUtterance(sayFix(it.text));
-      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
+      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=speedOf(false);
       u.onend=next; u.onerror=next;
       go(); speechSynthesis.speak(u);
     }else next();
@@ -3210,7 +3214,7 @@ function rvSay(text){
       vvFetchAudio(text,false).then(url=>{ if(my!==vvSeq) done(); else vvPlay(url,done); }).catch(e=>{ vvError(e); done(); });
     }else if("speechSynthesis" in window){
       const u=new SpeechSynthesisUtterance(sayFix(text));
-      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=S.rate||1;
+      u.lang="ja-JP"; if(voice) u.voice=voice; u.rate=speedOf(false);
       u.onend=done; u.onerror=done;
       speechSynthesis.speak(u);
     }else done();
@@ -6491,10 +6495,12 @@ $("btnResetStats").onclick=()=>{
 
 /* settings */
 $("voiceSelect").onchange=e=>{ S.voiceName=e.target.value; saveS(); pickVoice(); };
-const rr=$("rateRange");
-rr.value=S.rate;
-$("rateVal").textContent="×"+(+S.rate).toFixed(2);
-rr.oninput=e=>{ S.rate=+e.target.value; $("rateVal").textContent="×"+S.rate.toFixed(2); saveS(); };
+const speedPct=x=>Math.round(x*100);
+for(const [id,key] of [["rate","rate"],["slow","slowRate"]]){
+  const el=$(id+"Range"),show=()=>$(id+"Val").textContent=speedPct(S[key])+"%";
+  el.value=speedPct(S[key]); show();
+  el.oninput=e=>{ S[key]=+e.target.value/100; show(); saveS(); };
+}
 $("btnTestVoice").onclick=()=>speak("こんにちは。日本語の練習をしましょう。");
 $("vvUrl").value=S.vvUrl||VV_DEFAULT;
 $("vvUrl").onchange=e=>{ S.vvUrl=e.target.value.trim()||VV_DEFAULT; saveS(); vvConnected=false; };
