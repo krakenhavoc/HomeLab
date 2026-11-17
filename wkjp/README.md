@@ -146,6 +146,9 @@ recordings (`rec`). The Anthropic key
   behind VOICEVOX, reads Xはいります/いりません as 入る after a noun
   (袋はいりません came out ふくろ はいりません), so a pause goes in after
   that は (not after には or では, where 入る is often meant).
+- Playback speed is two sliders in Settings, in percent: Normal (🔊, 50-150%,
+  default 100%) and Slow (🐢, 50-100%, default 60%). Both are absolute
+  (`speedOf`); Slow no longer scales with Normal.
 - Talk replies stream: the reply call to Claude asks for `stream: true`, and
   nginx passes the server-sent events straight through (`proxy_buffering off`
   on `/claude/`). The app reads the `reply` field out of the JSON as it's
