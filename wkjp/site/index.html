@@ -109,6 +109,10 @@
   }
   #btnPlay:active{transform:scale(.96);}
   #btnSlow{width:52px; height:52px; border-radius:50%; font-size:1.1rem;}
+  .speedRow{display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:-8px 0 18px; font-size:.8rem; color:var(--muted);}
+  .speedRow label{margin:0; display:flex; align-items:center; gap:6px;}
+  .speedRow input[type=range]{width:110px;}
+  .speedRow span{min-width:3.2em; font-variant-numeric:tabular-nums;}
   .qhint{text-align:center; font-size:.84rem; color:var(--muted); margin-bottom:16px;}
   .options{display:grid; grid-template-columns:1fr; gap:8px;}
   .options button{
@@ -840,6 +844,10 @@
         <button class="btn" id="btnSlow" title="play slowly">🐢</button>
         <button id="btnPlay" title="replay">🔊</button>
         <button class="btn" id="btnStop" style="width:52px;height:52px;border-radius:50%;" title="stop">■</button>
+      </div>
+      <div class="speedRow" title="playback speed (also in Settings)">
+        <label for="qRateRange">🔊 <input type="range" id="qRateRange" min="50" max="150" step="5"> <span id="qRateVal"></span></label>
+        <label for="qSlowRange">🐢 <input type="range" id="qSlowRange" min="50" max="100" step="5"> <span id="qSlowVal"></span></label>
       </div>
       <div class="qhint" id="qHint"></div>
       <div id="answerArea"></div>
@@ -6496,10 +6504,16 @@ $("btnResetStats").onclick=()=>{
 /* settings */
 $("voiceSelect").onchange=e=>{ S.voiceName=e.target.value; saveS(); pickVoice(); };
 const speedPct=x=>Math.round(x*100);
-for(const [id,key] of [["rate","rate"],["slow","slowRate"]]){
-  const el=$(id+"Range"),show=()=>$(id+"Val").textContent=speedPct(S[key])+"%";
-  el.value=speedPct(S[key]); show();
-  el.oninput=e=>{ S[key]=+e.target.value/100; show(); saveS(); };
+// each speed has a slider in Settings and a compact one on the Practice quiz card; keep them in step
+for(const [key,ids] of [["rate",["rate","qRate"]],["slowRate",["slow","qSlow"]]]){
+  const show=()=>ids.forEach(id=>{ $(id+"Range").value=speedPct(S[key]); $(id+"Val").textContent=speedPct(S[key])+"%"; });
+  show();
+  ids.forEach(id=>{
+    const el=$(id+"Range");
+    el.oninput=e=>{ S[key]=+e.target.value/100; show(); saveS(); };
+    // let go of focus after a drag so space / s still replay in the quiz
+    el.addEventListener("pointerup",()=>el.blur());
+  });
 }
 $("btnTestVoice").onclick=()=>speak("こんにちは。日本語の練習をしましょう。");
 $("vvUrl").value=S.vvUrl||VV_DEFAULT;
